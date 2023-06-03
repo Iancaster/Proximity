@@ -1,0 +1,53 @@
+# Import-ant Libraries
+import discord
+from discord.ext import commands
+import databaseFunctions as db
+import time
+
+bootTime = time.time()
+
+# Setup
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.members = True
+prox = discord.Bot(intents = intents, owner_id = 985699127742582846)
+
+@prox.listen()
+async def on_connect():
+
+    await prox.change_presence(
+        activity = discord.Game('the angles.'),
+        status = discord.Status.online)
+    
+    print(f'{prox.user.name} woke up in {time.time() - bootTime} seconds.')
+
+    return
+
+# Built-In
+@prox.command(
+    name = 'reload',
+    description = 'Refreshes and enables all cogs.',
+    checks = [commands.is_owner().predicate],
+    guild_only = True)
+async def reload(ctx: discord.ApplicationContext):
+    
+    await loadCogs()
+
+    await ctx.respond('Commands reloaded successfully, author.', ephemeral = True)
+    
+    return
+
+async def loadCogs():
+
+    if 'proxCommands' in prox.extensions:
+        prox.reload_extension('proxCommands')
+    
+    else:
+        prox.load_extension('proxCommands')
+        
+    return
+
+prox.load_extension('proxCommands')
+
+prox.run('MTExNDAwNDM4NDkyNjQyMTEyNg.GDXRZV.yUSnxv3Ak6Ws3GdN0QzrZj50ln-znrS7SdoBGs')
