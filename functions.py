@@ -145,14 +145,14 @@ async def listWords(words: list):
     for index, word in enumerate(words):
 
         if index < wordCount - 1 and wordCount > 2:
-            passage += f'{word.name}, '
+            passage += f'{word}, '
         
         elif index < wordCount - 1 and wordCount <= 2:
-            passage += f'{word.name} '
+            passage += f'{word} '
         elif index == wordCount - 1 and wordCount > 1:
-            passage += f'and {word.name}'
+            passage += f'and {word}'
         else:
-            passage += word.name
+            passage += word
 
     return passage
 
@@ -191,3 +191,4 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
                 'occupants' : occupants}}
     
     return node
+

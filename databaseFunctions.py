@@ -90,13 +90,6 @@ def newPlayerDB() -> 'connection':
     return connection
 
 #Table membership
-def newGuild(con, guildID: int): 
-    cursor = con.cursor()
-    cursor.execute(f"""INSERT or REPLACE INTO guilds(guildID, nodes, edges)
-              VALUES({guildID}, zeroblob(50000), zeroblob(50000))""")
-    con.commit()
-    print(f'Guild registered, ID: {guildID}.')
-    return
 
 def newPlayer(con, playerID: int, channelID: int): 
     cursor = con.cursor()
@@ -106,15 +99,17 @@ def newPlayer(con, playerID: int, channelID: int):
     print(f'Player registered, ID: {playerID}.')
     return
 
-def deleteGuild(con, guild_id: int, channelIDs: list):
+def deleteGuild(con, guild_id: int):
     cursor = con.cursor()
-    cursor.execute(f"""DELETE FROM guilds WHERE guildID = {guild_id}""")
 
-    for channelID in channelIDs:
+    guildData = getGuild(con, guild_id)
 
+    for nodeData in guildData['nodes'].values():
         cursor.execute(f"""DELETE FROM messages WHERE
-                        locationChannelID = {channelID}""")
+                        locationChannelID = {nodeData['channelID']}""")
         
+    
+    cursor.execute(f"""DELETE FROM guilds WHERE guildID = {guild_id}""")
     con.commit()
     print(f'Guild removed, ID: {guild_id}.')
     return
@@ -162,12 +157,20 @@ def getGuild(con, guild_id: int) -> 'guild_data':
     guildData = cursor.fetchone()
 
     if not guildData:
-        return None
+        cursor.execute(f"""INSERT or REPLACE INTO guilds(guildID, nodes, edges)
+                VALUES({guild_id}, zeroblob(50000), zeroblob(50000))""")
+        con.commit()
+        print(f'Guild registered, ID: {guild_id}.')
+        newGuild = {
+            'guildID' : guild_id,
+            'nodes' : {},
+            'edges' : {}}
+        return newGuild
 
     nodesUTF = base64.b64decode(guildData['nodes'])
     nodes = nodesUTF.decode('utf-8')
     if nodes:
-        guildData['nodes'] = nodes
+        guildData['nodes'] = json.loads(nodes)
     else:
         guildData['nodes'] = dict()
 
@@ -185,7 +188,8 @@ def updateGuild(con, guild_id: int, nodes: dict = {}, edges: dict = {}):
     cursor = con.cursor()
     
     if nodes:
-        nodesUTF = str(nodes).encode('utf-8')
+        nodesJSON = json.dumps(nodes)
+        nodesUTF = nodesJSON.encode('utf-8')
         nodes64 = base64.b64encode(nodesUTF)
         cursor.execute(f"""UPDATE guilds 
                         SET nodes = ? WHERE guildID = {guild_id}""", (nodes64,))
