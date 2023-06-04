@@ -90,14 +90,12 @@ class nodeCommands(commands.Cog):
             allowedRoles = list(role.id for role in allowedRoles)
             allowedPeople = list(person.id for person in allowedPeople)
 
-
             nodesList = list(category for category in interaction.guild.categories if category.name == 'nodes')
             if not nodesList:
                 nodesCategory = await interaction.guild.create_category('nodes')
             else:
                 nodesCategory = nodesList[0]
-
-            
+      
             permissions = {interaction.guild.default_role : discord.PermissionOverwrite(read_messages = False),
             interaction.guild.me : discord.PermissionOverwrite(send_messages = True, read_messages =True)}
             newNodeChannel = await interaction.guild.create_text_channel(
@@ -108,7 +106,7 @@ class nodeCommands(commands.Cog):
             con = db.connectToGuild()
             guildData = db.getGuild(con, interaction.guild_id)
             guildData['nodes'].update(await fn.newNode(name, newNodeChannel.id, roleMentions, peopleMentions))
-            db.updateGuild(con, interaction.guild_id, guildData['nodes'])
+            db.updateGuild(con, guildData)
             con.close()
 
             embed, file = await fn.embed(
@@ -116,19 +114,19 @@ class nodeCommands(commands.Cog):
                 f"You can find it at {newNodeChannel.mention}. \
                     The permissions you requested are set-- just not in the channel's Discord \
                     settings. No worries, it's all being kept track of by me.",
-                'I hope you like it.')
-            
+                'I hope you like it.')        
             await interaction.followup.send(embed = embed, ephemeral = True)
 
             description = await fn.formatWhitelist(roleMentions, peopleMentions)
-
             embed, file = await fn.embed(
                 'Cool, new node.',
-                f"Here's who is allowed: \n{description} \n\n Of course, this can change \
+                f"**Important!** Don't mess with the settings for this channel! \
+                    That means no editing the permissions, the name, or deleting it! Use \
+                    `/node edit`, `/node rename`, or `/node delete`, or your network will be broken! \
+                    \n\n Anyways, here's who is allowed: \n{description} \n\n Of course, this can change \
                     with `/node restrict`. I haven't added that command yet, but when I do,\
                     you can double check who's allowed in with `/node view`, also not added.",
-                'Yup.')
-            
+                'Yup.')         
             await newNodeChannel.send(embed = embed)
     
             return
@@ -170,31 +168,99 @@ class nodeCommands(commands.Cog):
             await ctx.respond(embed = embed, ephemeral = True)
             return
        
-        #place deleting function here
+        #Channels given for deletion
+        async def deleteNodes(nodeChannels):
+
+            realNodes = []
+            notNodes = []
+
+            #Sort channels into whether actually nodes
+            for channel in nodeChannels:
+
+                if channel.name in guildData['nodes']:
+
+                    realNodes.append(channel)
+                
+                else:
+
+                    notNodes.append(channel)
+            
+            #If channels found that aren't nodes
+            if notNodes:
+                notNodesMessage = f"\n\nYou listed {len(notNodes)} channel(s) that don't belong to a node."
+            else:
+                notNodesMessage = ''
+
+            #If channels found that are nodes
+            if realNodes:
+                nodeNames = [channel.mention for channel in realNodes]
+                nodesMessage = f'Delete the node(s) {await fn.listWords(nodeNames)}?'
+            else:
+                embed, file = await fn.embed(
+                'No nodes!',
+                f"You didn't offer any nodes to delete!{notNodesMessage}",
+                'You can call the command again?')
+                
+                await ctx.respond(embed = embed)
+                return
+
+            #Delete found channels if confirmed
+            async def confirmDelete(interaction:discord.Interaction):
+
+                await interaction.response.defer()
+
+                nonlocal realNodes
+
+                con = db.connectToGuild()
+                guildData = db.getGuild(con, interaction.guild_id)
+
+                for channel in realNodes:
+                    await channel.delete()
+                    del guildData['nodes'][channel.name]
+
+                db.updateGuild(con, guildData)
+                con.close()
+
+                embed, file = await fn.embed(
+                    'Deleted.',
+                    f'Successfully deleted {len(realNodes)} nodes and their channel(s).',
+                    'Closed the book on those places, eh?')
+                try:
+                    await interaction.followup.send(embed = embed, ephemeral = True)
+                except:
+                    pass
+                return
+
+            embed, file, view = await fn.dialogue(
+                'Confirm Deletion?',
+                f'{nodesMessage}{notNodesMessage}',
+                'This cannot be reversed.',
+                [confirmDelete])
+                
+            await ctx.respond(embed = embed, view = view)
+            return
 
         #If channel is a node
         if ctx.channel.name in guildData['nodes']:
             deletingNodes = [ctx.channel]
-            return
+            await deleteNodes(deletingNodes)
 
         #If a node is given in the command
-        if node:
+        elif node:
 
             if node.name in guildData['nodes']:
                 deletingNodes = [node]
+                await deleteNodes(deletingNodes)
 
             else:
                 embed, file = await fn.embed(
                 'Huh?',
                 f"{node.mention} isn't a node channel. Did you select the wrong one?",
                 'You can view all the nodes you can delete by just doing /node delete without the #node.')
-
                 await ctx.respond(embed = embed)
-
-                return
  
-        #Multi Select
-        if not deletingNodes:
+        #Multi Select - Channel is not a node and no node given in command
+        else:
             
             embed, file = await fn.embed(
                 'Delete Node?',
@@ -208,7 +274,7 @@ class nodeCommands(commands.Cog):
             
             async def submitNodes(interaction: discord.Interaction):
                 await fn.closeDialogue(interaction)
-                await fn.deleteNodes(interaction.channel, nodeSelect.values, ctx.guild_id)
+                await deleteNodes(nodeSelect.values)
                 return
 
             nodeSelect = discord.ui.Select(
@@ -228,7 +294,6 @@ class nodeCommands(commands.Cog):
             await ctx.respond(embed = embed, view = view)
 
         con.close()
-
         return
 
 class serverCommands(commands.Cog):
@@ -274,8 +339,11 @@ class serverCommands(commands.Cog):
 
             for node in guildData['nodes'].values():
 
-                nodeChannel = await discord.utils.get_or_fetch(interaction.guild, 'channel', node['channelID'])
-                await nodeChannel.delete()
+                try:
+                    nodeChannel = await discord.utils.get_or_fetch(interaction.guild, 'channel', node['channelID'])
+                    await nodeChannel.delete()
+                except:
+                    pass
 
             db.deleteGuild(con, interaction.guild_id)
             con.close()
@@ -283,7 +351,7 @@ class serverCommands(commands.Cog):
             embed, file = await fn.embed(
                 'See you.',
                 'All guild data, nodes, and edges, have been deleted, alongside player info. \
-                Player and node channels have been deleted, and location messages are gone, too.'
+                Player and node channels have been deleted, and location messages are gone, too.',
                 'You can always make them again if you change your mind.')
             
             await interaction.response.edit_message(embed = embed, view = None)

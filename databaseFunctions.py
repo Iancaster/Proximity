@@ -90,7 +90,6 @@ def newPlayerDB() -> 'connection':
     return connection
 
 #Table membership
-
 def newPlayer(con, playerID: int, channelID: int): 
     cursor = con.cursor()
     cursor.execute(f"""INSERT or REPLACE INTO players(playerID, channelID)
@@ -106,9 +105,8 @@ def deleteGuild(con, guild_id: int):
 
     for nodeData in guildData['nodes'].values():
         cursor.execute(f"""DELETE FROM messages WHERE
-                        locationChannelID = {nodeData['channelID']}""")
+                        locationChannelID = ?""", (nodeData['channelID'],))
         
-    
     cursor.execute(f"""DELETE FROM guilds WHERE guildID = {guild_id}""")
     con.commit()
     print(f'Guild removed, ID: {guild_id}.')
@@ -183,23 +181,24 @@ def getGuild(con, guild_id: int) -> 'guild_data':
 
     return guildData
   
-def updateGuild(con, guild_id: int, nodes: dict = {}, edges: dict = {}):
+def updateGuild(con, guildData = dict):
 
     cursor = con.cursor()
-    
-    if nodes:
-        nodesJSON = json.dumps(nodes)
-        nodesUTF = nodesJSON.encode('utf-8')
-        nodes64 = base64.b64encode(nodesUTF)
-        cursor.execute(f"""UPDATE guilds 
-                        SET nodes = ? WHERE guildID = {guild_id}""", (nodes64,))
+    guildID = guildData['guildID']
 
-    if edges:
-        edgesJSON = json.dumps(edges)
-        edgesUTF = edgesJSON.encode('utf-8')
-        edges64 = base64.b64encode(edgesUTF)
-        cursor.execute(f"""UPDATE guilds 
-                        SET nodes = ? WHERE guildID = {guild_id}""", (edges64,))
+    nodes = guildData.get('nodes', {})
+    nodesJSON = json.dumps(nodes)
+    nodesUTF = nodesJSON.encode('utf-8')
+    nodes64 = base64.b64encode(nodesUTF)
+    cursor.execute(f"""UPDATE guilds 
+                        SET nodes = ? WHERE guildID = {guildID}""", (nodes64,))
+    
+    edges = guildData.get('edges', {})
+    edgesJSON = json.dumps(edges)
+    edgesUTF = edgesJSON.encode('utf-8')
+    edges64 = base64.b64encode(edgesUTF)
+    cursor.execute(f"""UPDATE guilds 
+                        SET edges = ? WHERE guildID = {guildID}""", (edges64,))
 
     con.commit()
     return 

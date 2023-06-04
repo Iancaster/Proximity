@@ -195,7 +195,9 @@ async def formatNodeName(rawName: str):
 
     sanitizedName = ''
     lowerName = rawName.lower()
-    sanitizedName = lowerName.replace(' ', '-')
+    spacelessName = lowerName.replace(' ', '-')
+
+    sanitizedName = ''.join(character for character in spacelessName if character.isalnum())
 
     return sanitizedName
 
@@ -209,43 +211,3 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
                 'occupants' : occupants}}
     
     return node
-
-async def deleteNodes(speakingChannel: discord.TextChannel, candidateChannels: list, guildID):
-
-    realNodes = []
-    notNodes = []
-
-    con = db.connectToGuild()
-    guildData = db.getGuild(con, guildID)
-
-    for channel in candidateChannels:
-
-        if channel.name in guildData['nodes']:
-
-            realNodes.append(channel)
-        
-        else:
-
-            notNodes.append(channel)
-    
-    if realNodes:
-        nodeNames = [channel.mention for channel in realNodes]
-        nodesMessage = f'Delete the nodes {await listWords(nodeNames)}?'
-    else:
-        nodesMessage = "You didn't offer any nodes to delete!"
-
-    if notNodes:
-        nodesMessage += f"\n\nYou listed {len(notNodes)} channel(s) that don't belong to a node."
-
-    async def confirmDelete(interaction:discord.Interaction):
-        return
-
-    embed, file, view = await dialogue(
-        'Confirm Deletion?',
-        nodesMessage,
-        'This cannot be reversed.',
-        [confirmDelete])
-    
-    speakingChannel.send(embed = embed, view = view)
-
-    return
