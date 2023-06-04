@@ -50,6 +50,14 @@ async def closeDialogue(interaction: discord.Interaction):
                     style = component.style,
                     disabled = True)
                 view.add_item(button)
+            
+            if isinstance(component, discord.ui.Select):
+                button = discord.ui.Select(
+                    placeholder = 'Disabled',
+                    min_values = 0,
+                    max_values = 0,
+                    disabled = 0)
+                view.add_item(button)
   
     await interaction.response.edit_message(view = view)
     return   
@@ -92,7 +100,9 @@ async def dialogue(
 
 async def nullResponse(interaction: discord.Interaction) -> 'nothing_lol':
 
-    return
+    await interaction.response.defer()
+
+    return #get fucked lmao
 
 async def initWhitelist(
     maxRoles: int,
@@ -181,6 +191,14 @@ async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
 
     return description
 
+async def formatNodeName(rawName: str):
+
+    sanitizedName = ''
+    lowerName = rawName.lower()
+    sanitizedName = lowerName.replace(' ', '-')
+
+    return sanitizedName
+
 #Graph
 async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeople: list = [], occupants: list = []):
     
@@ -192,3 +210,42 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
     
     return node
 
+async def deleteNodes(speakingChannel: discord.TextChannel, candidateChannels: list, guildID):
+
+    realNodes = []
+    notNodes = []
+
+    con = db.connectToGuild()
+    guildData = db.getGuild(con, guildID)
+
+    for channel in candidateChannels:
+
+        if channel.name in guildData['nodes']:
+
+            realNodes.append(channel)
+        
+        else:
+
+            notNodes.append(channel)
+    
+    if realNodes:
+        nodeNames = [channel.mention for channel in realNodes]
+        nodesMessage = f'Delete the nodes {await listWords(nodeNames)}?'
+    else:
+        nodesMessage = "You didn't offer any nodes to delete!"
+
+    if notNodes:
+        nodesMessage += f"\n\nYou listed {len(notNodes)} channel(s) that don't belong to a node."
+
+    async def confirmDelete(interaction:discord.Interaction):
+        return
+
+    embed, file, view = await dialogue(
+        'Confirm Deletion?',
+        nodesMessage,
+        'This cannot be reversed.',
+        [confirmDelete])
+    
+    speakingChannel.send(embed = embed, view = view)
+
+    return

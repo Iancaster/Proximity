@@ -25,10 +25,11 @@ class nodeCommands(commands.Cog):
         name: discord.Option(
             str,
             'What should it be called?',
-            required = True
-            )):
+            required = True)):
 
         await ctx.defer(ephemeral = True)
+
+        name = await fn.formatNodeName(name)
 
         allowedRoles = []
         allowedPeople = []
@@ -142,44 +143,91 @@ class nodeCommands(commands.Cog):
     @node.command(
         name = 'delete',
         description = 'Delete a node.')
-    async def new(
+    async def delete(
         self,
         ctx: discord.ApplicationContext,
-        name: discord.Option(
+        node: discord.Option(
             discord.TextChannel,
             'Either call this command inside a node or name it here.',
             required = False)):
         
+        await ctx.defer(ephemeral = True)
+
         con = db.connectToGuild()
         guildData = db.getGuild(con, ctx.guild_id)
+        deletingNodes = []
 
+        #If no nodes exist
         if not guildData['nodes']:
             db.deleteGuild(con, ctx.guild_id)
             con.close()
+
+            embed, file = await fn.embed(
+                'Trick Question?',
+                'You have no nodes to delete.',
+                'So, cool, I guess.')
+
+            await ctx.respond(embed = embed, ephemeral = True)
+            return
+       
+        #place deleting function here
+
+        #If channel is a node
+        if ctx.channel.name in guildData['nodes']:
+            deletingNodes = [ctx.channel]
             return
 
-        if name:
-            #delete the named node
-            return
-        
-        #get all node IDs
-        nodeIDLIST = []
-        if ctx.channel_id in nodeIDLIST:
-            #Delete current node
-            return
+        #If a node is given in the command
+        if node:
 
-        #Tell them how to use the command, have a view with text_channel_select for it
-        await ctx.defer(ephemeral = True)
-        #Formatting results
-        embed, file = await fn.embed(
-            f'Delete Node?',
-            'You can delete a node three ways:\
-                1. Call this command inside of a node channel.\
-                2. Do `/node delete #node-channel`.\
-                3. Select a node channel with the list below.',
-            'This will remove the node, all its edges, and its channel.')
+            if node.name in guildData['nodes']:
+                deletingNodes = [node]
 
-        await ctx.respond(embed = embed)
+            else:
+                embed, file = await fn.embed(
+                'Huh?',
+                f"{node.mention} isn't a node channel. Did you select the wrong one?",
+                'You can view all the nodes you can delete by just doing /node delete without the #node.')
+
+                await ctx.respond(embed = embed)
+
+                return
+ 
+        #Multi Select
+        if not deletingNodes:
+            
+            embed, file = await fn.embed(
+                'Delete Node?',
+                "You can delete a node three ways:\n\
+                • Call this command inside of a node channel.\n\
+                • Do `/node delete #node-channel`.\n\
+                • Select any node channels with the list below.",
+                'This will remove the node, all its edges, and its channel.')
+
+            view = discord.ui.View()
+            
+            async def submitNodes(interaction: discord.Interaction):
+                await fn.closeDialogue(interaction)
+                await fn.deleteNodes(interaction.channel, nodeSelect.values, ctx.guild_id)
+                return
+
+            nodeSelect = discord.ui.Select(
+                placeholder = 'Which nodes to delete?',
+                select_type = discord.ComponentType.channel_select,
+                min_values = 1,
+                max_values = len(ctx.guild.channels))
+            nodeSelect.callback = submitNodes
+            view.add_item(nodeSelect)
+
+            cancel = discord.ui.Button(
+                label = 'Cancel',
+                style = discord.ButtonStyle.secondary)
+            cancel.callback = fn.closeDialogue
+            view.add_item(cancel)
+
+            await ctx.respond(embed = embed, view = view)
+
+        con.close()
 
         return
 
@@ -220,8 +268,6 @@ class serverCommands(commands.Cog):
         con.close()
  
         async def deleteData(interaction: discord.Interaction):
-
-            await interaction.response.defer()
             
             con = db.connectToGuild()
             guildData = db.getGuild(con, interaction.guild_id)
@@ -236,10 +282,11 @@ class serverCommands(commands.Cog):
 
             embed, file = await fn.embed(
                 'See you.',
-                'All guild data and channels and nodes and edges and everything is deleted.',
-                'Sad to see you go.')
+                'All guild data, nodes, and edges, have been deleted, alongside player info. \
+                Player and node channels have been deleted, and location messages are gone, too.'
+                'You can always make them again if you change your mind.')
             
-            await interaction.followup.send(embed = embed, ephemeral = True)
+            await interaction.response.edit_message(embed = embed, view = None)
 
             return
 
