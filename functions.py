@@ -211,3 +211,31 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
                 'occupants' : occupants}}
     
     return node
+
+async def identifyNodeChannel(guildData: dict, nodeChannel: discord.TextChannel = None, originChannel: discord.TextChannel = None):
+
+    if not guildData.get('nodes', {}): #No nodes
+        return 'noNodes'
+    
+    elif isinstance(nodeChannel, discord.TextChannel): #Channel presented
+
+        if nodeChannel.name in guildData.get('nodes', {}):
+            return nodeChannel
+        
+        else:
+            return 'namedNotNode'
+
+    elif isinstance(originChannel, discord.TextChannel): #Origin channel is node?
+
+        if originChannel.name in guildData.get('nodes', {}):
+            return originChannel
+        
+        else:
+            return 'channelsNotNodes'
+        
+    elif nodeChannel or originChannel: #Malformed inputs
+        
+        return 'notChannel' 
+    
+    else: #No inputs at all
+        return 'nothingPresented'
