@@ -123,13 +123,18 @@ async def initWhitelist(
     submit = discord.ui.Button(
         label = 'Submit',
         style = discord.ButtonStyle.success)
+
+    cancel = discord.ui.Button(
+        label = 'Cancel',
+        style = discord.ButtonStyle.secondary)
     
-    return addRole, addPerson, submit
+    return addRole, addPerson, submit, cancel
 
 async def refineWhitelist(
     addRole,
     addPerson,
     submit,
+    cancel,
     callbacks: list = []) -> 'view':
 
     callbacks.extend([nullResponse, nullResponse, nullResponse])
@@ -143,6 +148,9 @@ async def refineWhitelist(
 
     submit.callback = callbacks[2]
     view.add_item(submit)
+
+    cancel.callback = callbacks[3]
+    view.add_item(cancel)
 
     return view
 
@@ -197,9 +205,48 @@ async def formatNodeName(rawName: str):
     lowerName = rawName.lower()
     spacelessName = lowerName.replace(' ', '-')
 
-    sanitizedName = ''.join(character for character in spacelessName if character.isalnum())
+    sanitizedName = ''.join(character for character in spacelessName if character.isalnum() or character is '-')
 
     return sanitizedName
+
+async def formatSingleNode(name: str, whitelist: str, occupantMentions: str, notNodesMessage: str):
+
+    occupantMentions = [f'<@{occupant}' for occupant in occupantMentions]
+
+    description = f"""
+        • Whitelist: {whitelist}\n\
+        • Occupants: {occupantMentions if occupantMentions else 'Nobody is present here.'}\n\
+        • Neighbor nodes: feature not addded yet."""
+
+    embedData, file = await embed(
+    f"Selected: {name}",
+    description,
+    notNodesMessage)
+
+    return embedData
+
+async def formatManyNodes(nodes: list, notNodesMessage: str, whitelist: str = ''):
+
+    if not whitelist:
+        whitelist = await compareWhitelists(nodes)
+    else:
+        whitelist = f'Every node will be updated to have the whitelist of...{whitelist}'
+
+    occupants = 0
+    for node in nodes:
+        occupants += len(node.get('occupants', {}))
+
+    description = f"""
+        • Whitelist: {whitelist}\n\
+        • Occupants: {occupants} person(s) in these nodes.\n\
+        • Neighbor nodes: feature not addded yet."""
+
+    embedData, file = await embed(
+        f"Selected {len(nodes)} nodes.",
+        description,
+        notNodesMessage)
+        
+    return embedData
 
 #Graph
 async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeople: list = [], occupants: list = []):
@@ -212,14 +259,57 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
     
     return node
 
-async def identifyNodeChannel(guildData: dict, nodeChannel: discord.TextChannel = None, originChannel: discord.TextChannel = None):
+async def compareWhitelists(graphComponentValues: list):
 
-    if not guildData.get('nodes', {}): #No nodes
+    firstRoles = graphComponentValues[0]['allowedRoles']
+    firstPeople = graphComponentValues[0]['allowedPeople']
+    for node in graphComponentValues:
+
+        if firstRoles != node['allowedRoles'] or firstPeople != node['allowedPeople']:
+
+            return 'Multiple different whitelists.'
+
+    return f'Every component has the same whitelist...{await formatWhitelist(firstRoles, firstPeople)}'
+
+async def updateNodeWhitelists(nodes: dict, allowedRoles: list, allowedPeople: list):
+
+    updatedNodes = {}
+    for nodeName, nodeData in nodes.items():
+
+        nodeData['allowedRoles'] = allowedRoles
+        nodeData['allowedPeople'] = allowedPeople
+        
+        updatedNodes[nodeName] = nodeData
+
+    return updatedNodes
+
+async def nodesFromNames(nodeNames: list, guildNodes: dict):
+
+    return {node : guildNodes[node] for node in nodeNames if node in guildNodes}
+
+#Guild
+async def assertNodeCategory(guild: discord.Guild):
+
+    nodeCategory = discord.utils.get(guild.categories, name = 'nodes')
+    
+    if nodeCategory:
+        return nodeCategory
+    
+    return uild.create_category('nodes')
+
+async def identifyNodeChannel(
+    guildData: dict,
+    nodeChannel: discord.TextChannel = None,
+    originChannel: discord.TextChannel = None):
+
+    nodes = guildData.get('nodes', {})
+
+    if not nodes: #No nodes
         return 'noNodes'
     
     elif isinstance(nodeChannel, discord.TextChannel): #Channel presented
 
-        if nodeChannel.name in guildData.get('nodes', {}):
+        if nodeChannel.name in nodes:
             return nodeChannel
         
         else:
@@ -227,7 +317,7 @@ async def identifyNodeChannel(guildData: dict, nodeChannel: discord.TextChannel 
 
     elif isinstance(originChannel, discord.TextChannel): #Origin channel is node?
 
-        if originChannel.name in guildData.get('nodes', {}):
+        if originChannel.name in nodes:
             return originChannel
         
         else:
@@ -239,3 +329,23 @@ async def identifyNodeChannel(guildData: dict, nodeChannel: discord.TextChannel 
     
     else: #No inputs at all
         return 'nothingPresented'
+
+async def nodeChannelsFromChannels(channels: list, guildData: dict):
+
+    nodeChannels = []
+    notNodes = 0
+
+    for channel in channels:
+
+        result = await identifyNodeChannel(guildData, channel)
+
+        if not isinstance(result, str):
+            nodeChannels.append(result)
+        
+        else:
+            notNodes += 1
+
+    nodesMessage = f"\n\nYou listed {notNodes} channel(s) that don't belong to any nodes." if notNodes else ''
+
+    return nodeChannels, nodesMessage
+
