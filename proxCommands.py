@@ -987,6 +987,7 @@ class serverCommands(commands.Cog):
 
         con = db.connectToGuild()
         guildData = db.getGuild(con, ctx.guild_id)
+        print(guildData)
         if not guildData.get('nodes', {}) and not guildData.get('edges', {}):
             db.deleteGuild(con, ctx.guild_id)
             con.close()

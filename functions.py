@@ -193,7 +193,7 @@ async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
     description = f'People with {rolesDescription} will be allowed to come here,\
         as well as {peopleDescription}.'
     if not allowedPeople:
-        description = 'Everyone will be allowed to travel to/through this node.'
+        description = 'Everyone will be allowed to travel to/through this place.'
 
     return description
 
