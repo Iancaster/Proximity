@@ -104,75 +104,73 @@ async def nullResponse(interaction: discord.Interaction) -> 'nothing_lol':
 
     return #get fucked lmao
 
-async def initWhitelist(
+async def whitelistView(
     maxRoles: int,
-    maxPeople: int):
+    maxPeople: int,
+    callbacks: list = [],
+    view: discord.ui.View = None):
+
+    if not view:
+        view = discord.ui.View()
+    callbacks.extend([closeDialogue, closeDialogue, closeDialogue, closeDialogue])
 
     addRole = discord.ui.Select(
         placeholder = 'Allow only certain roles?',
         select_type = discord.ComponentType.role_select,
         min_values = 0,
         max_values = maxRoles)
+    addRole.callback = callbacks[0]
+    view.add_item(addRole)
     
     addPerson = discord.ui.Select(
         placeholder = 'Allow only certain people?',
         select_type = discord.ComponentType.user_select,
         min_values = 0,
         max_values = maxPeople)
-    
+    addPerson.callback = callbacks[1]
+    view.add_item(addPerson)
+
     submit = discord.ui.Button(
         label = 'Submit',
         style = discord.ButtonStyle.success)
+    submit.callback = callbacks[2]
+    view.add_item(submit)
 
     cancel = discord.ui.Button(
         label = 'Cancel',
         style = discord.ButtonStyle.secondary)
-    
-    return addRole, addPerson, submit, cancel
-
-async def refineWhitelist(
-    addRole,
-    addPerson,
-    submit,
-    cancel,
-    callbacks: list = []) -> 'view':
-
-    callbacks.extend([nullResponse, nullResponse, nullResponse])
-    view = discord.ui.View()
-
-    addRole.callback = callbacks[0]
-    view.add_item(addRole)
-    
-    addPerson.callback = callbacks[1]
-    view.add_item(addPerson)
-
-    submit.callback = callbacks[2]
-    view.add_item(submit)
-
     cancel.callback = callbacks[3]
     view.add_item(cancel)
 
-    return view
+    return view, addRole, addPerson, submit, cancel
 
 #Formatting
 async def listWords(words: list):
 
-    passage = ''
-    wordCount = len(words)
+    match len(words):
 
-    for index, word in enumerate(words):
-
-        if index < wordCount - 1 and wordCount > 2:
-            passage += f'{word}, '
+        case 0:
+            return ''
         
-        elif index < wordCount - 1 and wordCount <= 2:
-            passage += f'{word} '
-        elif index == wordCount - 1 and wordCount > 1:
-            passage += f'and {word}'
-        else:
-            passage += word
+        case 1:
+            return words[0]
 
-    return passage
+        case 2:
+            return f'{words[0]} and {words[1]}'
+
+        case _:
+
+            passage = ''
+
+            for index, word in enumerate(words):
+
+                if index < wordCount - 1:
+                    passage += f'{word}, '
+                    continue
+                
+                passage += f'and {word}'
+
+            return passage
 
 async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
 
@@ -248,7 +246,7 @@ async def formatManyNodes(nodes: list, notNodesMessage: str, whitelist: str = ''
         
     return embedData
 
-#Graph
+#Nodes
 async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeople: list = [], occupants: list = []):
     
     node = {name : 
@@ -259,6 +257,21 @@ async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeo
     
     return node
 
+async def nodesFromNames(nodeNames: list, guildNodes: dict):
+
+    return {node : guildNodes[node] for node in nodeNames if node in guildNodes}
+
+#Edges
+async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowedPeople: list = []):
+    
+    edge = {(origin, destination) : 
+                {'allowedRoles' : allowedRoles,
+                'allowedPeople' : allowedPeople}}
+    
+    return edge
+
+
+#Graph
 async def compareWhitelists(graphComponentValues: list):
 
     firstRoles = graphComponentValues[0]['allowedRoles']
@@ -282,10 +295,6 @@ async def updateNodeWhitelists(nodes: dict, allowedRoles: list, allowedPeople: l
         updatedNodes[nodeName] = nodeData
 
     return updatedNodes
-
-async def nodesFromNames(nodeNames: list, guildNodes: dict):
-
-    return {node : guildNodes[node] for node in nodeNames if node in guildNodes}
 
 #Guild
 async def assertNodeCategory(guild: discord.Guild):
@@ -332,18 +341,8 @@ async def identifyNodeChannel(
 
 async def nodeChannelsFromChannels(channels: list, guildData: dict):
 
-    nodeChannels = []
-    notNodes = 0
-
-    for channel in channels:
-
-        result = await identifyNodeChannel(guildData, channel)
-
-        if not isinstance(result, str):
-            nodeChannels.append(result)
-        
-        else:
-            notNodes += 1
+    nodeChannels = [channel for channel in channels if channel.name in guildData['nodes']]
+    notNodes = len(channels) - len(nodeChannels)
 
     nodesMessage = f"\n\nYou listed {notNodes} channel(s) that don't belong to any nodes." if notNodes else ''
 

@@ -19,16 +19,8 @@ def makeGraph(nodes: dict, edges: list = []) -> 'completed_graph':
     graph.add_edges_from(edges)    
     return graph
 
-# nodes = dict()
-# nodes.update(fn.newNode('room', 1114006080570273893))
-# nodes.update(fn.newNode('nearby', 1114006028518961304))
-# nodes.update(fn.newNode('distant', 1114006097670455396))
 
-# edges = list()
-# edges.extend([('room', 'nearby'),
-#                  ('nearby', 'room'),
-#                  ('nearby', 'distant'),
-#                  ('distant', 'nearby')])
+guildData = {'guildID': 1114005940392439899, 'nodes': {'first': {'channelID': 1116153314950795304, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}, 'second': {'channelID': 1116153341672702022, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}}, 'edges': {('first', 'second'): {'allowedRoles': [], 'allowedPeople': []}}}
 
 # graph = makeGraph(nodes, edges)
 # nx.draw_shell(graph, with_labels=True, font_weight='bold')

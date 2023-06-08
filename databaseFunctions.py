@@ -175,7 +175,9 @@ def getGuild(con, guild_id: int) -> 'guild_data':
     edgesUTF = base64.b64decode(guildData['edges'])
     edges = edgesUTF.decode('utf-8')
     if edges:
-        guildData['edges'] = json.loads(edges)
+        edgesJSON = json.loads(edges)
+        guildData['edges'] = {tuple(edgeName.strip("()").split(", ")) : edgeData for edgeName, edgeData in edgesJSON.items()}
+
     else:
         guildData['edges'] = dict()
 
@@ -194,6 +196,8 @@ def updateGuild(con, guildData = dict):
                         SET nodes = ? WHERE guildID = {guildID}""", (nodes64,))
     
     edges = guildData.get('edges', {})
+    edges = {str(edgeName) : edgeData for edgeName, edgeData in edges.items()}
+
     edgesJSON = json.dumps(edges)
     edgesUTF = edgesJSON.encode('utf-8')
     edges64 = base64.b64encode(edgesUTF)
