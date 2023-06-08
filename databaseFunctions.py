@@ -176,8 +176,12 @@ def getGuild(con, guild_id: int) -> 'guild_data':
     edges = edgesUTF.decode('utf-8')
     if edges:
         edgesJSON = json.loads(edges)
-        guildData['edges'] = {tuple(edgeName.strip("()").split(", ")) : edgeData for edgeName, edgeData in edgesJSON.items()}
-
+        guildData['edges'] = {}
+        
+        for edgeSTR, edgeData in edgesJSON.items():
+            edgeName = tuple(edgeSTR.strip('()').replace("'", '').split(', '))
+            guildData['edges'][edgeName] = edgeData
+            
     else:
         guildData['edges'] = dict()
 

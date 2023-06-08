@@ -781,40 +781,33 @@ class edgeCommands(commands.Cog):
                     description,
                     'This command overwrites/edits existing edges with the same origin and destination.')
 
-                await ctx.edit(embed = embed, view = view)
-                return
+                return embed
 
             async def changeDestinations(interaction: discord.Interaction):
-
-                await interaction.response.defer()
-                await refreshEmbed()
+                await interaction.response.edit_message(embed = await refreshEmbed())
                 return
 
             async def changeDirectionality(interaction: discord.Interaction):
 
-                await interaction.response.defer()
-
                 nonlocal twoWay
                 twoWay = not twoWay
                 
-                await refreshEmbed()
+                await interaction.response.edit_message(embed = await refreshEmbed())
                 return
 
             async def changeRoles(interaction: discord.Interaction):
-
-                await interaction.response.defer()                
-                await refreshEmbed()
+                await interaction.response.edit_message(embed = await refreshEmbed())
                 return
             
             async def changePeople(interaction: discord.Interaction):
-
-                await interaction.response.defer()                
-                await refreshEmbed()                
+                await interaction.response.edit_message(embed = await refreshEmbed())
                 return
             
             async def submitEdge(interaction: discord.Interaction):
 
                 await interaction.response.defer()
+
+                nonlocal twoWay
 
                 con = db.connectToGuild()
                 guildData = db.getGuild(con, ctx.guild_id)
@@ -829,25 +822,27 @@ class edgeCommands(commands.Cog):
                     embed, file = await fn.embed(
                         'No destinations?',
                         f"Out of the {len(addDestinations.values)} channels you selected, none are node\
-                            channels eligible to be connected.",
+                            channels eligible to be connected. Just so you know-- it's impossible to\
+                            create an edge from a node to itself.",
                         'You can always call the command again.')        
                     await interaction.followup.send(embed = embed, ephemeral = True)
                     return    
+
+                allowedRoles =  [role.id for role in addRole.values]
+                allowedPeople = [person.id for person in addPerson.values]
 
                 for destination in destinationNodes:
 
                     guildData['edges'].update(
                         {(origin.name, destination.name) :{
-                            'allowedRoles' : [role.id for role in addRole.values],
-                            'allowedPeople' : [person.id for person in addPerson.values]}})
+                            'allowedRoles' : allowedRoles,
+                            'allowedPeople' : allowedPeople}})
                 
-                if twoWay:
-                    for destination in destinationNodes:
-
+                    if twoWay:
                         guildData['edges'].update(
-                        {(origin.name, destination.name) :{
-                            'allowedRoles' : [role.id for role in addRole.values],
-                            'allowedPeople' : [person.id for person in addPerson.values]}})
+                            {(destination.name, origin.name) :{
+                            'allowedRoles' : allowedRoles,
+                            'allowedPeople' : allowedPeople}})
                 
                 db.updateGuild(con, guildData)
                 con.close()
@@ -857,9 +852,6 @@ class edgeCommands(commands.Cog):
                     f"You can view the graph with `/graph view`.",
                     'I hope you like it.')        
                 await interaction.followup.send(embed = embed, ephemeral = True)    
-                
-                print(guildData)
-
                 return
             
             view = discord.ui.View()
@@ -885,8 +877,7 @@ class edgeCommands(commands.Cog):
                 'One moment...',
                 'This should get edited.')
 
-            await ctx.respond(embed = embed, view = view)
-            await refreshEmbed()
+            await ctx.respond(embed = await refreshEmbed(), view = view, ephemeral = True)
             return
         
         result = await fn.identifyNodeChannel(guildData, origin, ctx.channel)
@@ -960,13 +951,13 @@ class edgeCommands(commands.Cog):
                 cancel.callback = fn.closeDialogue
                 view.add_item(cancel)
 
-                await ctx.respond(embed = embed, view = view)
+                await ctx.respond(embed = embed, view = view, ephemeral = True)
 
             case _:
 
                 embed, file = await fn.embed(
-                    'Woah.',
-                    'You just unlocked a new error: Err. 2, Node Editing.',
+                    'Impressive.',
+                    'You just unlocked a new error: Err. 3, Edge Creation.',
                     'Please bring this to the attention of the developer, David Lancaster.')
 
                 await ctx.respond(embed = embed)
