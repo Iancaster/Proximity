@@ -1,9 +1,9 @@
 import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from discord import utils
 import functions as fn
 import databaseFunctions as db
+import networkx as nx
 
 class nodeCommands(commands.Cog):
 
@@ -113,13 +113,13 @@ class nodeCommands(commands.Cog):
 
             description = await fn.formatWhitelist(roleMentions, peopleMentions)
             embed, file = await fn.embed(
-                'Cool, new node.',
-                f"**Important!** Don't mess with the settings for this channel! \
-                    That means no editing the permissions, the name, or deleting it! Use \
-                    `/node edit`, `/node rename`, or `/node delete`, or your network will be broken! \
-                    \n\n Anyways, here's who is allowed: \n{description} \n\n Of course, this can change \
-                    with `/node edit`, which lets you view/change the whitelist, among other things.",
-                "You can also set the location message for this node by doing /node message while you're here.")         
+            'Cool, new node.',
+            f"**Important!** Don't mess with the settings for this channel! \
+            That means no editing the permissions, the name, or deleting it! Use \
+            `/node edit`, `/node rename`, or `/node delete`, or your network will be broken! \
+            \n\nAnyways, here's who is allowed:\n{description}\n\n Of course, this can change \
+            with `/node edit`, which lets you view/change the whitelist, among other things.",
+            "You can also set the location message for this node by doing /node message while you're here.")         
             await newNodeChannel.send(embed = embed)
     
             return
@@ -849,7 +849,7 @@ class edgeCommands(commands.Cog):
 
                 embed, file = await fn.embed(
                     'Nodes connected!',
-                    f"You can view the graph with `/graph view`.",
+                    f"You can view the graph with `/server view`.",
                     'I hope you like it.')        
                 await interaction.followup.send(embed = embed, ephemeral = True)    
                 return
@@ -1040,6 +1040,183 @@ class serverCommands(commands.Cog):
         
         return
     
+    @server.command(
+        name = 'view',
+        description = 'View the entire graph or just a portion.')
+    async def view(
+        self,
+        ctx: discord.ApplicationContext,
+        node: discord.Option(
+            discord.TextChannel,
+            'Specify a node to highlight?',
+            required = False)):
+        
+        await ctx.defer(ephemeral = True)
+
+        con = db.connectToGuild()
+        guildData = db.getGuild(con, ctx.guild_id)
+        con.close()
+
+        async def viewEgo(guildData: dict, givenChannel: str = None):
+
+            #Nothing provided
+            if not givenChannel:
+                graph = await fn.makeGraph(guildData)
+                graphView = await fn.showGraph(graph)
+
+                embed, file = await fn.embed(
+                    'Complete Graph',
+                    "Here is a view of every node and edge.\
+                    You can narrow it down to just one node and any neighbors if you specify\
+                    a node with `/server view #node` or if you call this command from within\
+                    a node channel.",
+                    'Enjoy.',
+                    ('full', graphView))
+
+                await ctx.respond(embed = embed, file = file, ephemeral = True)
+                return
+
+            #If something provided
+            if givenChannel.name in guildData['nodes']:
+
+                nodeName = givenChannel.name
+                graph = await fn.makeGraph(guildData)
+                
+                nodeExits = list(graph.successors(nodeName))
+                nodeEntrances = list(graph.predecessors(nodeName))
+                nodeNeighbors = list(set(nodeExits + nodeEntrances))
+                nodeNeighbors.append(nodeName)
+                subgraph = graph.subgraph(nodeNeighbors)
+
+                graphView = await fn.showGraph(subgraph)
+
+                embed, file = await fn.embed(
+                    f'Subgraph of: {givenChannel.mention}',
+                    "Here is the given node, as well as any neighbors.",
+                    'Enjoy.',
+                    ('full', graphView))
+
+                await ctx.respond(embed = embed, file = file, ephemeral = True)
+                return
+
+            else:
+                embed, file = await fn.embed(
+                'Not a node!',
+                f"What you provided, {givenChannel.mention}, isn't a node.",
+                'You can call the command again?')
+                
+                await ctx.respond(embed = embed, ephemeral = True)
+                return    
+                
+        result = await fn.identifyNodeChannel(guildData, node, ctx.channel)
+        match result:
+            
+            case channel if isinstance(result, discord.TextChannel): 
+                
+                await viewEgo(guildData, result)
+            
+            case 'noNodes': #No nodes in guild
+            
+                con = db.connectToGuild()
+                db.deleteGuild(con, ctx.guild_id)
+                con.close()
+
+                embed, file = await fn.embed(
+                    'Hey now.',
+                    "You have no nodes or anything. So here's your graph view, I guess.",
+                    'Make some nodes first with /node new.',
+                    ('full', 'assets/blank.png'))
+
+                await ctx.respond(embed = embed, file = file)
+                return
+
+            case 'namedNotNode': #"Node" channel given isnt a node
+
+                embed, file = await fn.embed(
+                'What?',
+                f"{node.mention} isn't a node channel. Did you select the wrong one?",
+                'View the dropdown list of nodes you can edit by doing /node edit without the #node.')
+                await ctx.respond(embed = embed)
+                return
+
+            case 'channelsNotNodes': #Multi select
+                await viewEgo(guildData)
+                return
+
+            case _:
+
+                embed, file = await fn.embed(
+                    'Woah.',
+                    'You just unlocked a new error: Err. 3, Graph viewing.',
+                    'Please bring this to the attention of the developer, David Lancaster.')
+
+                await ctx.respond(embed = embed)
+                return
+        
+        return
+
+    @server.command(
+        name = 'fix',
+        description = 'Fix certain issues with the server.')
+    async def fix(
+        self,
+        ctx: discord.ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+
+        con = db.connectToGuild()
+        guildData = db.getGuild(con, ctx.guild_id)
+        con.close()
+
+        graph = await fn.makeGraph(guildData)
+
+        isolates = list(nx.isolates(graph))
+        if isolates:
+            isolatedMentions = [f"<#{graph.nodes[isolatedNode]['channelID']}>" for isolatedNode in isolates]
+            isolatesMessage = f'The following nodes have no edges, meaning \
+                **no way in or out:** {await fn.listWords(isolatedMentions)}.\n\n'
+
+        else:
+            isolatesMessage = "Every node has at least one way in and/or out. Keep in\
+                mind that this is only looking for ways in *or* out-- not both.\
+                Because, you know, maybe you want someplace that you can't escape\
+                from, or that you can't access.\n\n"
+            
+        async def regenChannels(interaction: discord.Interaction):
+            
+            con = db.connectToGuild()
+            guildData = db.getGuild(con, interaction.guild_id)
+
+            for node in guildData.get('nodes', {}).values():
+
+                try:
+                    nodeChannel = await discord.utils.get_or_fetch(interaction.guild, 'channel', node['channelID'])
+                    await nodeChannel.delete()
+                except:
+                    pass
+
+            db.deleteGuild(con, interaction.guild_id)
+            con.close()
+
+            embed, file = await fn.embed(
+                'See you.',
+                'All guild data, nodes, and edges, have been deleted, alongside player info. \
+                Player and node channels have been deleted, and location messages are gone, too.',
+                'You can always make them again if you change your mind.')
+            
+            await interaction.response.edit_message(embed = embed, view = None)
+
+            return
+
+        embed, file = await fn.embed(
+        f'Fix Server',
+        f'{isolatesMessage}',
+        'Also this ig')
+
+        await ctx.respond(embed = embed)
+        
+        return
+ 
 def setup(prox):
 
     prox.add_cog(nodeCommands(prox), override = True)

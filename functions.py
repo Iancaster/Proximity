@@ -1,6 +1,9 @@
 import discord
-import asyncio
 import databaseFunctions as db
+import networkx as nx
+from io import BytesIO
+import matplotlib.pyplot as plt
+
 
 #Dialogues
 async def embed(
@@ -203,7 +206,7 @@ async def formatNodeName(rawName: str):
     lowerName = rawName.lower()
     spacelessName = lowerName.replace(' ', '-')
 
-    sanitizedName = ''.join(character for character in spacelessName if character.isalnum() or character is '-')
+    sanitizedName = ''.join(character for character in spacelessName if character.isalnum() or character == '-')
 
     return sanitizedName
 
@@ -270,7 +273,6 @@ async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowe
     
     return edge
 
-
 #Graph
 async def compareWhitelists(graphComponentValues: list):
 
@@ -296,6 +298,53 @@ async def updateNodeWhitelists(nodes: dict, allowedRoles: list, allowedPeople: l
 
     return updatedNodes
 
+async def makeGraph(guildData: dict):
+    graph = nx.DiGraph()
+
+    nodes = guildData.get('nodes', {})
+    for nodeName, nodeData in nodes.items():
+        graph.add_node(
+            nodeName,
+            channelID = nodeData['channelID'],
+            allowedRoles = nodeData['allowedRoles'],
+            allowedPeople = nodeData['allowedPeople'],
+            occupants = nodeData['occupants'])
+    
+    edges = guildData.get('edges', {})
+    for edgeName, edgeData in edges.items():
+
+        graph.add_edge(
+            edgeName[0],
+            edgeName[1],
+            allowedRoles = edgeData['allowedRoles'],
+            allowedPeople = edgeData['allowedPeople'])
+        
+    return graph
+
+async def showGraph(graph: nx.Graph):
+    
+    nx.draw_shell(
+        graph,
+        with_labels = True,
+        font_weight = 'bold',
+        arrows = True,
+        arrowsize = 20,
+        width = 2,
+        arrowstyle = '->',
+        node_shape = 'o',
+        node_size = 4000,
+        node_color = '#ffffff',
+        margins = (.3, .1))
+    
+    graphImage = plt.gcf()
+    plt.close()
+    bytesIO = BytesIO()
+    graphImage.savefig(bytesIO)
+    bytesIO.seek(0)
+
+    return bytesIO
+
+
 #Guild
 async def assertNodeCategory(guild: discord.Guild):
 
@@ -304,7 +353,7 @@ async def assertNodeCategory(guild: discord.Guild):
     if nodeCategory:
         return nodeCategory
     
-    return uild.create_category('nodes')
+    return guild.create_category('nodes')
 
 async def identifyNodeChannel(
     guildData: dict,
