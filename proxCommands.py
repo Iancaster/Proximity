@@ -265,16 +265,6 @@ class nodeCommands(commands.Cog):
 
                 await ctx.respond(embed = embed, view = view)
 
-            case _:
-
-                embed, file = await fn.embed(
-                    'How? What?',
-                    'You just unlocked a new error: Err. 1, Node Deletion.',
-                    'Please bring this to the attention of the developer, David Lancaster.')
-
-                await ctx.respond(embed = embed)
-                return
-        
         return
 
     @node.command(
@@ -489,17 +479,7 @@ class nodeCommands(commands.Cog):
                 view.add_item(cancel)
 
                 await ctx.respond(embed = embed, view = view)
-
-            case _:
-
-                embed, file = await fn.embed(
-                    'Woah.',
-                    'You just unlocked a new error: Err. 2, Node Editing.',
-                    'Please bring this to the attention of the developer, David Lancaster.')
-
-                await ctx.respond(embed = embed)
-                return
-        
+     
         return
 
     @node.command(
@@ -696,8 +676,6 @@ class nodeCommands(commands.Cog):
 
                 await ctx.respond(embed = embed, view = view)
 
-            case _:
-
                 embed, file = await fn.embed(
                     'Woah.',
                     'You just unlocked a new error: Err. 2, Node Editing.',
@@ -883,7 +861,7 @@ class edgeCommands(commands.Cog):
         result = await fn.identifyNodeChannel(guildData, origin, ctx.channel)
         match result:
 
-            case noNodes if not guildData['nodes']: #No nodes in guild
+            case 'noNodes': #No nodes in guild
             
                 con = db.connectToGuild()
                 db.deleteGuild(con, ctx.guild_id)
@@ -953,16 +931,184 @@ class edgeCommands(commands.Cog):
 
                 await ctx.respond(embed = embed, view = view, ephemeral = True)
 
-            case _:
+        return
+
+    @edge.command(
+        name = 'delete',
+        description = 'See/remove the connections of a given node.')
+    async def delete(
+        self,
+        ctx: discord.ApplicationContext,
+        origin: discord.Option(
+            discord.TextChannel,
+            'Either call this command inside a node or name it here.',
+            required = False)):
+        
+        await ctx.defer(ephemeral = True)
+
+        con = db.connectToGuild()
+        guildData = db.getGuild(con, ctx.guild_id)
+        con.close()
+
+        async def removeEdges(givenChannel: discord.TextChannel, guildData: dict):
+
+            #Sort channel into whether actually node
+            result = await fn.identifyNodeChannel(guildData, givenChannel)
+            if isinstance(result, discord.TextChannel):
+                nodeChannel = result
+
+            else:
+                embed, file = await fn.embed(
+                'Not a node!',
+                f"What you provided, {givenChannel.mention}, isn't a node.",
+                'You can call the command again?')
+                
+                await ctx.respond(embed = embed, ephemeral = True)
+                return
+
+            allRelations = []
+
+            async def refreshEmbed():
+
+                edgesDescription = 'This node has the following connections:'
+                graph = await fn.makeGraph(guildData)
+                ancestors, neighbors, successors = await fn.getNodeRelations(graph, nodeChannel.name)
+
+                nonlocal allRelations
+                allRelations = ancestors + neighbors + successors
+
+                subgraph = graph.subgraph(allRelations + [nodeChannel.name])
+                graphView = ('full', await fn.showGraph(subgraph))
+
+                for ancestor in ancestors:
+                    edgesDescription += f'\n-> {ancestor}'
+
+                for neighbor in neighbors:
+                    edgesDescription += f'\n<-> {neighbor}'
+                
+                for successor in successors:
+                    edgesDescription += f'\n<- {successor}'
+
+                if not ancestors and not neighbors and not successors:
+                    edgesDescription = 'This node has no connections with any other node.'
+                    graphView = None                  
 
                 embed, file = await fn.embed(
-                    'Impressive.',
-                    'You just unlocked a new error: Err. 3, Edge Creation.',
-                    'Please bring this to the attention of the developer, David Lancaster.')
+                    f"{nodeChannel.name}'s Edges",
+                    edgesDescription,
+                    'That about sums it up.',
+                    graphView)
+
+                return embed, file
+
+            async def submitEdges(interaction: discord.Interaction):
+
+                return
+
+            #View
+            embed, file = await refreshEmbed()
+            if file:
+
+                view = discord.ui.View()
+
+                addEdges = discord.ui.Select(
+                    placeholder = 'Which edges to delete?',
+                    min_values = 0,
+                    max_values = len(allRelations))
+                addEdges.callback = fn.nullResponse
+                view.add_item(addEdges)
+
+                submit = discord.ui.Button(
+                    label = 'Delete',
+                    style = discord.ButtonStyle.danger)
+                submit.callback = callbacks[2]
+                view.add_item(submit)
+
+                cancel = discord.ui.Button(
+                    label = 'Cancel',
+                    style = discord.ButtonStyle.secondary)
+                cancel.callback = callbacks[3]
+                view.add_item(cancel)
+
+                await ctx.respond(embed = embed, file = file, view = view, ephemeral = True)
+            else: 
+                await ctx.respond(embed = embed, ephemeral = True)
+            return
+                
+        result = await fn.identifyNodeChannel(guildData, origin, ctx.channel)
+        match result:
+
+            case 'noNodes':
+            
+                con = db.connectToGuild()
+                db.deleteGuild(con, ctx.guild_id)
+                con.close()
+
+                embed, file = await fn.embed(
+                    'Easy there.',
+                    "You don't have any nodes, which means you have no connections between\
+                    nodes, either. Make some nodes with `/node new`.",
+                    'Then you can connect them with /edge new.')
 
                 await ctx.respond(embed = embed)
                 return
-        
+            
+            case noEdges if len(guildData['nodes']) < 2:
+
+                embed, file = await fn.embed(
+                    'Slow down.',
+                    "You don't have enough nodes for an edge to exist. Make some nodes with `/node new`.",
+                    'Then you can connect them with /edge new.')
+
+                await ctx.respond(embed = embed)
+                return
+            
+            case channel if isinstance(result, discord.TextChannel): 
+                
+                await removeEdges(result, guildData)
+
+            case 'namedNotNode': #"Node" channel given isnt a node
+
+                embed, file = await fn.embed(
+                'What?',
+                f"{node.mention} isn't a node channel. Did you select the wrong one?",
+                'View the dropdown list of nodes you can edit by doing /node edit without the #node.')
+                await ctx.respond(embed = embed)
+                return
+
+            case 'channelsNotNodes': #Single select
+            
+                embed, file = await fn.embed(
+                    'Rename a node?',
+                    "You can rename a node three ways:\n\
+                    • Call this command inside of a node channel.\n\
+                    • Do `/node rename #node-channel`.\n\
+                    • Select a node channel from the list below.",
+                    'Either way, the node gets renamed.')
+
+                view = discord.ui.View()
+                
+                async def submitNode(interaction: discord.Interaction):
+                    await fn.closeDialogue(interaction)
+                    await removeEdges(nodeSelect.values[0], guildData)
+                    return
+
+                nodeSelect = discord.ui.Select(
+                    placeholder = 'Which node to rename?',
+                    select_type = discord.ComponentType.channel_select,
+                    min_values = 1,
+                    max_values = 1)
+                nodeSelect.callback = submitNode
+                view.add_item(nodeSelect)
+
+                cancel = discord.ui.Button(
+                    label = 'Cancel',
+                    style = discord.ButtonStyle.secondary)
+                cancel.callback = fn.closeDialogue
+                view.add_item(cancel)
+
+                await ctx.respond(embed = embed, view = view)
+    
         return
 
 class serverCommands(commands.Cog):
@@ -1217,8 +1363,103 @@ class serverCommands(commands.Cog):
         
         return
  
+class helpCommands(commands.Cog):
+
+    def __init__(self, bot: discord.Bot):
+        self.prox = bot
+
+    help = SlashCommandGroup(
+        name = 'help',
+        description = "Understand what's going on.",
+        guild_only = True,
+        guild_ids = [1114005940392439899])
+
+    @help.command(
+        name = 'me',
+        description = 'Basic help.')
+    async def clear( ##Come back here and include a purge for player channels + db
+        self,
+        ctx: discord.ApplicationContext,
+        word: discord.Option(
+            str,
+            'Get help on a specific term?',
+            required = False)):
+
+        await ctx.defer(ephemeral = True)
+        word = word.lower() if word else ''
+
+        allHelp = {
+            'graph' : "A __graph__ (a.k.a. __network__), is a math thing: basically, there's\
+                dots (__nodes__) and there may or may not be connections between those dots\
+                (__edges__). That's basically it.\n\nFor us, though, all that matters is that\
+                __nodes__ are __locations__ and __edges__ are connections between them.",
+            'network' : "See __graph__.",
+            'node' : "A __node__ is a dot on a __graph__. If it's connected to any other\
+            __node__s, that's called an __edge__. For us, a \"__node__\" has a couple things--\
+            the __location__ is represents, the __permissions__ for it, and the Discord channel\
+            for that __node__, which isn't visible to the players.",
+            'location' : "The actual place represented by a __node__, like a kitchen. These\
+            must be big enough to fit the __player__s, and small enough that anyone in one part of\
+            the node can reasonably be expected to hear/see anything in any other part of the\
+            __location__. Every __player__ is located in some __location__ at any point in time.",
+            'permissions' : "Who's allowed to travel into/through a __node__ or an __edge__.\
+            This mostly affects __movement__, where a __player__ is denied access to a place\
+            because there's no route to their destination after accounting for their __permissions__.",
+            'edges' : "Connections between __node__s on a __graph__. Any time two __locations__ are\
+            connected for __movement__ or __sound__, an __edge__ should exist. Usually a door,\
+            but it can be a hallway, bridge, elevator, portal... Can only let people through who\
+            satisfy the __permissions__, but sound can travel freely.",
+            'movement' : "The way that __player__s change which __location__ along the __graph__\
+            their __presence__ is in. When they try to move to a new __location__, they need a\
+            path along the __edges__ from where they are to their destination __node__, such that\
+            they have permission to access every node and edge along the way.",
+            'presence' : "The __location__ that a __player__ will hear all __sound__ in. Anytime\
+            someone speaks in the same __location__, the __player__s who are present will hear.\
+            __Presence__ also means that you'll see everyone in a room when you walk in, and\
+            they'll see you.",
+            'sound' : "Everything that __player__s are notified of. Includes everything spoken\
+            by a __player__ in the same __location__, but may include __indirect__ sound from\
+            __neighbor__ __node__s. Note that you trasmit all the same kind of noise as they do.",
+            'indirect' : "As opposed to __sound__ that is __direct__, __indirect__ sound can only\
+            by faintly made out, and only voices or small segments of the speech may be heard.\
+            __Indirect__ sound is usually heard through __edges__ to __neighbor__ __nodes__,\
+            and can be heard __direct__ly by __eavesdropping__.",
+            'direct' : "As opposed to __sound__ that is __indirect__, __direct__ sound can be\
+            fully heard, including identifying the speaker and what they're saying. Usually heard\
+            through the __player__ being in the same __location__ as the speaker, or by __eavesdropping__.",
+            'neighbor' : "A __node__ that is connected to another __node__ along one of its __edges__.\
+            Fun fact: if a __node__ has an edge that points *to* another one, and it's only one-way,\
+            they're not technically neighbors (even though this `/help` command defines them as such).\
+            Instead, the origin would be the \"ancestor\" and the destination would be its \"successor.\"",
+            'player' : 'People who have __presence__ at a __location__, can hear __sound__ from __node__s\
+            they __neighbor__ as well as from other people in the same place. Capable of __movement__\
+            and __eavesdropping__. In short, everyone who is placed in the __graph__.',
+            'underlined' : "What-- no, \"__underlined__\" was so you can see what an __underlined__\
+            word looked like, you're not supposed to actually search it. Goof."}
+        
+        if word in allHelp:
+            embed, file = await fn.embed(
+            f'Help for "{word}"',
+            allHelp[word],
+            "Clear things up, I hope?")
+
+            await ctx.respond(embed = embed)
+            return
+
+        embed, file = await fn.embed(
+        'Hello!',
+        f"This command will help you understand any __underlined__ words\
+        in `/help player`, or if you're a server owner, `/help admin`.\
+        When you find an underlined word you want to know more about,\
+        just do `/help me <word>`. :)",
+        "I'll be here if/when you need me.")
+
+        await ctx.respond(embed = embed)
+        return
+    
 def setup(prox):
 
     prox.add_cog(nodeCommands(prox), override = True)
     prox.add_cog(edgeCommands(prox), override = True)
     prox.add_cog(serverCommands(prox), override = True)
+    prox.add_cog(helpCommands(prox), override = True)

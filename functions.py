@@ -55,12 +55,12 @@ async def closeDialogue(interaction: discord.Interaction):
                 view.add_item(button)
             
             if isinstance(component, discord.ui.Select):
-                button = discord.ui.Select(
+                select = discord.ui.Select(
                     placeholder = 'Disabled',
                     min_values = 0,
                     max_values = 0,
                     disabled = 0)
-                view.add_item(button)
+                view.add_item(select)
   
     await interaction.response.edit_message(view = view)
     return   
@@ -344,6 +344,13 @@ async def showGraph(graph: nx.Graph):
 
     return bytesIO
 
+async def getNodeRelations(graph: nx.Graph, origin: str):
+
+    neighbors = [node for node in graph.neighbors(origin) if graph.has_edge(node, origin)]
+    successors = [node for node in graph.successors(origin) if node not in neighbors]
+    ancestors = [node for node in graph.predecessors(origin) if node not in neighbors]
+
+    return ancestors, neighbors, successors
 
 #Guild
 async def assertNodeCategory(guild: discord.Guild):
