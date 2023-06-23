@@ -3,6 +3,46 @@ import matplotlib.pyplot as plt
 import databaseFunctions as db
 import io
 
+def findConnections(graph: nx.Graph, nodes: list, split: bool = False):
+    
+    successors = set()
+    ancestors = set()
+
+    for node in nodes:
+        successors = successors.union(graph.successors(node))
+        ancestors = ancestors.union(graph.predecessors(node))
+
+    neighbors = ancestors.union(successors)
+
+    if split:
+        ancestors -= neighbors
+        successors -= neighbors
+        return list(ancestors), list(neighbors), list(successors)
+    
+    else: 
+        return list(neighbors)
+
+def oldFind(graph: nx.Graph, nodes: list, split = False):
+    bidirectional = set()
+    predecessors = set()
+    ancestors = set()
+    
+    for node in nodes:
+        bidirectional.update([n for n in graph.neighbors(node) if graph.has_edge(n, node)])
+        predecessors.update(graph.predecessors(node))
+        ancestors.update(graph.successors(node))
+    
+    if split:
+        bidirectional -= set(nodes)
+        predecessors -= bidirectional
+        ancestors -= bidirectional
+        return list(bidirectional), list(predecessors), list(ancestors)
+    else:
+        connected_nodes = bidirectional | predecessors | ancestors
+        return list(connected_nodes)
+
+    return ancestors, neighbors, successors
+
 def makeGraph(guildData: dict):
     graph = nx.DiGraph()
 
@@ -39,12 +79,13 @@ def showGraph(graph: nx.Graph):
         node_shape = 'o',
         node_size = 4000,
         node_color = '#ffffff',
-        margins = (.3, .1))
+        margins = (.3, .1),
+        edge_color = 'red')
     
     graphImage = plt.gcf()
     plt.show()
 
-    return bytesIO
+    return
 
 
 
@@ -54,10 +95,12 @@ guildData = {'guildID': 1114005940392439899, 'nodes': {'really long name': {'cha
 #guildData = db.getGuild(con, 1114005940392439899)
 #con.close()
 graph = makeGraph(guildData)
-plt.show()
+#plt.show()
 
-bytesIO = showGraph(graph)
+#bytesIO = showGraph(graph)
 
+from timeit import timeit
+print(timeit(lambda: oldFind(graph, ['second'], False), number = 10000))
 
 
 #neighbors = graph.neighbors('room')

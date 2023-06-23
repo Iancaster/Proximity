@@ -15,137 +15,213 @@ async def embed(
     embed = discord.Embed(
         title = title,
         description = description,
-        color = discord.Color.from_rgb(102, 89, 69))
+        color = discord.Color.from_rgb(67, 8, 69))
 
     embed.set_footer(text = footer)
 
-    if imageDetails == None:
-        file = None
+    match imageDetails:
+        
+        case None:
+            file = discord.MISSING
 
-    else:
-        match imageDetails[0]:
-
-            case 'thumb':
-                file = discord.File(f'assets/imagery/{imageDetails[1]}', filename='image.png')
-                embed.set_thumbnail(url='attachment://image.png')
+        case thumb if imageDetails[1] == 'thumb':
+            file = discord.File(f'assets/imagery/{imageDetails[0]}', filename='image.png')
+            embed.set_thumbnail(url='attachment://image.png')
+        
+        case full if imageDetails[1] == 'full':
+            file = discord.File(imageDetails[0], filename='image.png')
+            embed.set_image(url='attachment://image.png')
             
-            case 'full':
-                file = discord.File(imageDetails[1], filename='image.png')
-                embed.set_image(url='attachment://image.png')
-                
-            case _:
-                print(f"Unrecognized file in dialogue headed with: {title}")
-                file = None
+        case _:
+            print(f"Unrecognized image viewing mode in dialogue!")
+            file = discord.MISSING
 
     return embed, file
 
 async def closeDialogue(interaction: discord.Interaction):
 
-    view = discord.ui.View()
-    actionRows = interaction.message.components
-    for actionRow in actionRows:
+    embedData, _ = await embed(
+        'Cancelled.',
+        'Window closed.',
+        'Feel free to call the command again.')
 
-        for component in actionRow.children:
-
-            if isinstance(component, discord.Button):
-                button = discord.ui.Button(
-                    label = component.label,
-                    style = component.style,
-                    disabled = True)
-                view.add_item(button)
-            
-            if isinstance(component, discord.ui.Select):
-                select = discord.ui.Select(
-                    placeholder = 'Disabled',
-                    min_values = 0,
-                    max_values = 0,
-                    disabled = 0)
-                view.add_item(select)
-  
-    await interaction.response.edit_message(view = view)
+    await interaction.response.edit_message(embed = embedData, attachments = [], view = None)
     return   
  
-async def dialogue(
-    title: str = 'No Title',
-    description: str = 'No description.',
-    footer: str = 'No footer.',
-    callbacks: list = [],
-    includeReject = False,
-    imageDetails = None):
-
-    callbacks.extend([closeDialogue, closeDialogue, closeDialogue])
-
-    embedData, file = await embed(
-        title,
-        description,
-        footer,
-        imageDetails)
-
-    view = discord.ui.View()
-    buttonAccept = discord.ui.Button(
-        label = 'Accept',
-        style = discord.ButtonStyle.success)
-    buttonAccept.callback = callbacks[0]  
-    view.add_item(buttonAccept)
-    if includeReject:
-        buttonReject = discord.ui.Button(
-            label = 'Reject',
-            style = discord.ButtonStyle.danger)
-        buttonReject.callback = callbacks[1]
-        view.add_item(buttonReject)
-    buttonCancel = discord.ui.Button(
-        label = 'Cancel',
-        style = discord.ButtonStyle.secondary)
-    buttonCancel.callback = callbacks[2]
-    view.add_item(buttonCancel)
-
-    return embedData, file, view
-
-async def nullResponse(interaction: discord.Interaction) -> 'nothing_lol':
+async def nullResponse(interaction: discord.Interaction):
 
     await interaction.response.defer()
-
     return #get fucked lmao
 
-async def whitelistView(
-    maxRoles: int,
-    maxPeople: int,
-    callbacks: list = [],
-    view: discord.ui.View = None):
+async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = None, refresh: callable = None):
 
-    if not view:
-        view = discord.ui.View()
-    callbacks.extend([closeDialogue, closeDialogue, closeDialogue, closeDialogue])
-
-    addRole = discord.ui.Select(
-        placeholder = 'Allow only certain roles?',
+    roleSelect = discord.ui.Select(
+        placeholder = 'Which roles to add?',
         select_type = discord.ComponentType.role_select,
         min_values = 0,
         max_values = maxRoles)
-    addRole.callback = callbacks[0]
-    view.add_item(addRole)
+
+    if callback:
+        roleSelect.callback = callback
+    else:
+        async def rolesChosen(interaction: discord.Interaction):
+            embed = await refresh()
+            await interaction.response.edit_message(embed = embed)
+            return
+        roleSelect.callback = rolesChosen
     
-    addPerson = discord.ui.Select(
-        placeholder = 'Allow only certain people?',
+    view.add_item(roleSelect)
+    return view, roleSelect
+
+async def addEdges(callback, ancestors: list, neighbors: list, successors: list, view: discord.ui.View, delete: bool = True):
+
+    action = 'delete' if delete else 'change whitelists'
+
+    edgeSelect = discord.ui.Select(
+        placeholder = f'Which edges to {action}?',
+        min_values = 0,
+        max_values = len(ancestors + neighbors + successors))
+    edgeSelect.callback = callback
+
+    for ancestor in ancestors:
+        edgeSelect.add_option(label = f'<- {ancestor}')
+
+    for neighbor in neighbors:
+        edgeSelect.add_option(label = f'<-> {neighbor}')
+    
+    for successor in successors:
+        edgeSelect.add_option(label = f'-> {successor}')
+
+    view.add_item(edgeSelect)
+
+    return view, edgeSelect
+
+async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = None, refresh: callable = None):
+
+    memberSelect = discord.ui.Select(
+        placeholder = 'Which people to add?',
         select_type = discord.ComponentType.user_select,
         min_values = 0,
-        max_values = maxPeople)
-    addPerson.callback = callbacks[1]
-    view.add_item(addPerson)
+        max_values = maxUsers)
+
+    if callback:
+        memberSelect.callback = callback
+    else:
+        async def peopleChosen(interaction: discord.Interaction):
+            embed = await refresh()
+            await interaction.response.edit_message(embed = embed)
+            return
+        memberSelect.callback = peopleChosen
+
+    view.add_item(memberSelect)
+    return view, memberSelect
+
+async def addClear(view: discord.ui.View, callback: callable):
+
+    clear = discord.ui.Button(
+        label = 'Clear Whitelist',
+        style = discord.ButtonStyle.secondary)
+    clear.callback = callback
+    view.add_item(clear)
+
+    return view, clear
+
+async def addSubmit(view: discord.ui.View, callback: callable):
 
     submit = discord.ui.Button(
         label = 'Submit',
         style = discord.ButtonStyle.success)
-    submit.callback = callbacks[2]
+    submit.callback = callback
     view.add_item(submit)
+
+    return view, submit
+
+async def addEvilConfirm(view: discord.ui.View, callback: callable):
+
+    evilConfirm = discord.ui.Button(
+        label = 'Confirm',
+        style = discord.ButtonStyle.danger)
+    evilConfirm.callback = callback
+    view.add_item(evilConfirm)
+
+    return view, evilConfirm
+
+async def addCancel(view: discord.ui.View):
 
     cancel = discord.ui.Button(
         label = 'Cancel',
         style = discord.ButtonStyle.secondary)
-    cancel.callback = callbacks[3]
+    cancel.callback = closeDialogue
     view.add_item(cancel)
 
-    return view, addRole, addPerson, submit, cancel
+    return view, cancel
+
+async def addNameModal(view: discord.ui.View, refresh: callable):
+
+    modal = discord.ui.Modal(title = 'Choose a new name?')
+
+    nameSelect = discord.ui.InputText(
+        label = 'name',
+        style = discord.InputTextStyle.short,
+        min_length = 1,
+        max_length = 15,
+        placeholder = "What should it be?")
+    modal.add_item(nameSelect)
+    
+    async def nameChosen(interaction: discord.Interaction):
+        embed = await refresh()
+        await interaction.response.edit_message(embed = embed)
+        return
+    modal.callback = nameChosen
+
+    async def sendModal(interaction: discord.Interaction):
+        await interaction.response.send_modal(modal = modal)
+        return
+
+    modalButton = discord.ui.Button(
+        label = 'Change Name',
+        style = discord.ButtonStyle.success)
+    modalButton.callback = sendModal
+    view.add_item(modalButton)
+
+    return view, nameSelect
+
+async def addNodes(view: discord.ui.View, nodes: list, callback: callable = None, refresh: callable = None, manyNodes: bool = True):
+
+    if not nodes:
+        nodeSelect = discord.ui.Select(
+            placeholder = 'No nodes to select.',
+            disabled = True)
+        nodeSelect.add_option(
+            label = 'Nothing to choose.')
+        view.add_item(nodeSelect)
+        return view, nodeSelect
+
+    if manyNodes:
+        maxValues = len(nodes)
+    else:
+        maxValues = 1
+    
+    nodeSelect = discord.ui.Select(
+        placeholder = 'Which node(s) to select?',
+        min_values = 1,
+        max_values = maxValues)
+    
+    if callback:
+        nodeSelect.callback = callback
+    else:
+        async def nodesChosen(interaction: discord.Interaction):
+            embed = await refresh()
+            await interaction.response.edit_message(embed = embed)
+            return
+        nodeSelect.callback = nodesChosen
+
+    for node in nodes:
+        nodeSelect.add_option(
+            label = node)
+    
+    view.add_item(nodeSelect)
+    return view, nodeSelect
 
 #Formatting
 async def listWords(words: list):
@@ -167,7 +243,7 @@ async def listWords(words: list):
 
             for index, word in enumerate(words):
 
-                if index < wordCount - 1:
+                if index < len(words) - 1:
                     passage += f'{word}, '
                     continue
                 
@@ -177,19 +253,22 @@ async def listWords(words: list):
 
 async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
 
+    roleMentions = [f'<@&{roleID}>' for roleID in allowedRoles]
+    peopleMentions = [f'<@{personID}>' for personID in allowedPeople]
+
     if allowedRoles and not allowedPeople:
-        return f'Only people with these roles are allowed into this node: ({await listWords(allowedRoles)}).'
+        return f'Only people with these roles are allowed into this node: ({await listWords(roleMentions)}).'
 
     elif allowedPeople and not allowedRoles:
-        return f'Only these people are allowed into this node: ({await listWords(allowedPeople)}).'
+        return f'Only these people are allowed into this node: ({await listWords(peopleMentions)}).'
 
     if allowedRoles:
-        rolesDescription = f'any of these roles: ({await listWords(allowedRoles)})'
+        rolesDescription = f'any of these roles: ({await listWords(roleMentions)})'
     else:
         rolesDescription = 'any role'
 
     if allowedPeople:
-        peopleDescription = f'any of these people: ({await listWords(allowedPeople)})'
+        peopleDescription = f'any of these people: ({await listWords(peopleMentions)})'
     else:
         peopleDescription = 'everyone else'
 
@@ -200,63 +279,34 @@ async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
 
     return description
 
-async def formatNodeName(rawName: str):
+async def discordify(text: str):
 
-    sanitizedName = ''
-    lowerName = rawName.lower()
-    spacelessName = lowerName.replace(' ', '-')
+    spacelessText = '-'.join(text.split())
+    discordified = ''.join(character.lower() for character in spacelessText if character.isalnum() or character == '-')
 
-    sanitizedName = ''.join(character for character in spacelessName if character.isalnum() or character == '-')
+    return discordified[:15]
 
-    return sanitizedName
+async def whitelistsSimilar(components: list):
 
-async def formatSingleNode(name: str, whitelist: str, occupantMentions: str, notNodesMessage: str):
+    firstRoles = components[0].get('allowedRoles', [])
+    firstPeople = components[0].get('allowedPeople', [])
+    for component in components:
 
-    occupantMentions = [f'<@{occupant}' for occupant in occupantMentions]
+        if firstRoles != component.get('allowedRoles', []) or firstPeople != component.get('allowedPeople', []):
+            return False
 
-    description = f"""
-        • Whitelist: {whitelist}\n\
-        • Occupants: {occupantMentions if occupantMentions else 'Nobody is present here.'}\n\
-        • Neighbor nodes: feature not addded yet."""
-
-    embedData, file = await embed(
-    f"Selected: {name}",
-    description,
-    notNodesMessage)
-
-    return embedData
-
-async def formatManyNodes(nodes: list, notNodesMessage: str, whitelist: str = ''):
-
-    if not whitelist:
-        whitelist = await compareWhitelists(nodes)
-    else:
-        whitelist = f'Every node will be updated to have the whitelist of...{whitelist}'
-
-    occupants = 0
-    for node in nodes:
-        occupants += len(node.get('occupants', {}))
-
-    description = f"""
-        • Whitelist: {whitelist}\n\
-        • Occupants: {occupants} person(s) in these nodes.\n\
-        • Neighbor nodes: feature not addded yet."""
-
-    embedData, file = await embed(
-        f"Selected {len(nodes)} nodes.",
-        description,
-        notNodesMessage)
-        
-    return embedData
+    return True
 
 #Nodes
-async def newNode(name: str, channelID: int, allowedRoles: list = [], allowedPeople: list = [], occupants: list = []):
+async def newNode(channelID: int, allowedRoles: list = [], allowedPeople: list = []):
     
-    node = {name : 
-                {'channelID' : channelID,
-                'allowedRoles' : allowedRoles,
-                'allowedPeople' : allowedPeople,
-                'occupants' : occupants}}
+    node = {'channelID' : channelID}
+
+    if allowedRoles:
+        node['allowedRoles'] = allowedRoles
+    
+    if allowedPeople:
+        node['allowedPeople'] = allowedPeople
     
     return node
 
@@ -267,37 +317,17 @@ async def nodesFromNames(nodeNames: list, guildNodes: dict):
 #Edges
 async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowedPeople: list = []):
     
-    edge = {(origin, destination) : 
-                {'allowedRoles' : allowedRoles,
-                'allowedPeople' : allowedPeople}}
+    edge = {(origin, destination) : {}}
+
+    if allowedRoles:
+        edge['allowedRoles'] = allowedRoles
+
+    if allowedPeople:
+        edge['allowedPeople'] = allowedPeople
     
     return edge
 
 #Graph
-async def compareWhitelists(graphComponentValues: list):
-
-    firstRoles = graphComponentValues[0]['allowedRoles']
-    firstPeople = graphComponentValues[0]['allowedPeople']
-    for node in graphComponentValues:
-
-        if firstRoles != node['allowedRoles'] or firstPeople != node['allowedPeople']:
-
-            return 'Multiple different whitelists.'
-
-    return f'Every component has the same whitelist...{await formatWhitelist(firstRoles, firstPeople)}'
-
-async def updateNodeWhitelists(nodes: dict, allowedRoles: list, allowedPeople: list):
-
-    updatedNodes = {}
-    for nodeName, nodeData in nodes.items():
-
-        nodeData['allowedRoles'] = allowedRoles
-        nodeData['allowedPeople'] = allowedPeople
-        
-        updatedNodes[nodeName] = nodeData
-
-    return updatedNodes
-
 async def makeGraph(guildData: dict):
     graph = nx.DiGraph()
 
@@ -305,24 +335,40 @@ async def makeGraph(guildData: dict):
     for nodeName, nodeData in nodes.items():
         graph.add_node(
             nodeName,
-            channelID = nodeData['channelID'],
-            allowedRoles = nodeData['allowedRoles'],
-            allowedPeople = nodeData['allowedPeople'],
-            occupants = nodeData['occupants'])
+            channelID = nodeData['channelID'])
+        
+        allowedRoles = nodeData.get('allowedRoles', [])
+        if allowedRoles:
+            graph.nodes[nodeName]['allowedRoles'] = []
+
+        allowedPeople = nodeData.get('allowedPeople', [])
+        if allowedPeople:
+            graph.nodes[nodeName]['allowedPeople'] = allowedPeople
+
+        occupants = nodeData.get('occupants', [])
+        if occupants:
+            graph.nodes[nodeName]['occupants'] = occupants
     
     edges = guildData.get('edges', {})
     for edgeName, edgeData in edges.items():
 
-        graph.add_edge(
-            edgeName[0],
-            edgeName[1],
-            allowedRoles = edgeData['allowedRoles'],
-            allowedPeople = edgeData['allowedPeople'])
+        graph.add_edge(edgeName[0], edgeName[1])
+
+        allowedRoles = edgeData.get('allowedRoles', [])
+        if allowedRoles:
+            graph[edgeName[0]][edgeName[1]]['allowedRoles'] = allowedRoles
+
+        allowedPeople = edgeData.get('allowedPeople', [])
+        if allowedPeople:
+            graph[edgeName[0]][edgeName[1]]['allowedPeople'] = allowedPeople
         
     return graph
 
-async def showGraph(graph: nx.Graph):
+async def showGraph(graph: nx.Graph, edgeColor: list = None):
     
+    if not edgeColor:
+        edgeColor = ['black'] * len(graph.edges)
+
     nx.draw_shell(
         graph,
         with_labels = True,
@@ -334,7 +380,8 @@ async def showGraph(graph: nx.Graph):
         node_shape = 'o',
         node_size = 4000,
         node_color = '#ffffff',
-        margins = (.3, .1))
+        margins = (.3, .1),
+        edge_color = edgeColor)
     
     graphImage = plt.gcf()
     plt.close()
@@ -344,63 +391,94 @@ async def showGraph(graph: nx.Graph):
 
     return bytesIO
 
-async def getNodeRelations(graph: nx.Graph, origin: str):
+async def getConnections(graph: nx.Graph, nodes: list, split: bool = False):
+    
+    successors = set()
+    ancestors = set()
 
-    neighbors = [node for node in graph.neighbors(origin) if graph.has_edge(node, origin)]
-    successors = [node for node in graph.successors(origin) if node not in neighbors]
-    ancestors = [node for node in graph.predecessors(origin) if node not in neighbors]
+    for node in nodes:
+        successors = successors.union(graph.successors(node))
+        ancestors = ancestors.union(graph.predecessors(node))
 
-    return ancestors, neighbors, successors
+    if split:
+        mutuals = ancestors.intersection(successors)
+        ancestors -= mutuals
+        successors -= mutuals
+        return list(ancestors), list(mutuals), list(successors)
+    
+    else: 
+        neighbors = ancestors.union(successors)
+        return list(neighbors)
 
 #Guild
-async def assertNodeCategory(guild: discord.Guild):
+async def assertPlayerCategory(guild: discord.Guild):
 
-    nodeCategory = discord.utils.get(guild.categories, name = 'nodes')
+    playerCategory = discord.utils.get(guild.categories, name = 'players')
     
-    if nodeCategory:
-        return nodeCategory
+    if playerCategory:
+        return playerCategory
     
-    return guild.create_category('nodes')
+    return guild.create_category('players')
 
 async def identifyNodeChannel(
     guildData: dict,
-    nodeChannel: discord.TextChannel = None,
-    originChannel: discord.TextChannel = None):
+    originChannelName: str = '',
+    namedChannelName: str = ''):
 
-    nodes = guildData.get('nodes', {})
+    nodes = guildData['nodes']
 
-    if not nodes: #No nodes
-        return 'noNodes'
+    if not nodes: 
+
+        embedData, _ = await embed(
+            'Easy, bronco.',
+            "You've got no nodes to work with.",
+            'Make some first with /node new.')
+
+        return embedData
     
-    elif isinstance(nodeChannel, discord.TextChannel): #Channel presented
+    elif namedChannelName:
 
-        if nodeChannel.name in nodes:
-            return nodeChannel
+        if namedChannelName in nodes:
+            return namedChannelName
         
         else:
-            return 'namedNotNode'
 
-    elif isinstance(originChannel, discord.TextChannel): #Origin channel is node?
+            embedData, _ = await embed(
+            'What?',
+            f"{namedChannelName} isn't a node channel. Did you select the wrong one?",
+            'Try calling the command again.')
+            
+            return embedData
 
-        if originChannel.name in nodes:
-            return originChannel
-        
-        else:
-            return 'channelsNotNodes'
-        
-    elif nodeChannel or originChannel: #Malformed inputs
-        
-        return 'notChannel' 
+    if originChannelName in nodes:
+        return originChannelName
     
-    else: #No inputs at all
-        return 'nothingPresented'
+    else:
+        return None
 
-async def nodeChannelsFromChannels(channels: list, guildData: dict):
+async def autocompleteNodes(ctx: discord.AutocompleteContext):
 
-    nodeChannels = [channel for channel in channels if channel.name in guildData['nodes']]
-    notNodes = len(channels) - len(nodeChannels)
+    con = db.connectToGuild()
+    guildData = db.getGuild(con, ctx.interaction.guild_id)
+    con.close()
 
-    nodesMessage = f"\n\nYou listed {notNodes} channel(s) that don't belong to any nodes." if notNodes else ''
+    if not guildData['nodes']:
+        return ['No nodes!']
+    
+    return guildData['nodes']
 
-    return nodeChannels, nodesMessage
+async def newChannel(guild: discord.guild, name: str, category: str):
 
+    neededCategory = discord.utils.get(guild.categories, name = category)
+    
+    if not neededCategory:
+        neededCategory = await guild.create_category(category)
+
+    permissions = {guild.default_role : discord.PermissionOverwrite(read_messages = False),
+    guild.me : discord.PermissionOverwrite(send_messages = True, read_messages =True)}
+    channel = await guild.create_text_channel(
+        name,
+        category = neededCategory,
+        overwrites = permissions)
+    
+    return channel

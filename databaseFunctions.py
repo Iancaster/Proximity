@@ -17,7 +17,7 @@ def newTable(connection, table):
         print(f'Error when adding table: {problem}.')
         return False
 
-def connectToGuild() -> 'connection':
+def connectToGuild():
     connection = None
     
     try:
@@ -28,7 +28,7 @@ def connectToGuild() -> 'connection':
         print(f'Error when connecting  to guild database: {problem}.')
         return None
 
-def connectToPlayer() -> 'connection':
+def connectToPlayer():
     connection = None
     
     try:
@@ -39,7 +39,7 @@ def connectToPlayer() -> 'connection':
         print(f'Error when connecting  to player database: {problem}.')
         return None
 
-def newGuildDB() -> 'connection':
+def newGuildDB():
     if os.path.isfile('guildDB.db'):
         os.remove('guildDB.db')
     
@@ -53,7 +53,10 @@ def newGuildDB() -> 'connection':
                 (locationChannelID INTEGER PRIMARY KEY,
                 title TEXT,
                 description TEXT,
-                footer TEXT);"""]
+                footer TEXT);""",
+                """CREATE TABLE members
+                (guildID INTEGER PRIMARY KEY,
+                members TEXT);""",]
 
     if isinstance(connection, sqlite3.Connection):
         print(f'New guild database created, version {sqlite3.version}.')
@@ -61,13 +64,15 @@ def newGuildDB() -> 'connection':
         newTable(connection, tables[0])
         print("Adding 'Messages' table...")
         newTable(connection, tables[1])
+        print("Adding 'Members' table...")
+        newTable(connection, tables[2])
     
     else:
         print('New guild database failed to create. No tables made.')
     
     return connection
 
-def newPlayerDB() -> 'connection':
+def newPlayerDB():
     if os.path.isfile('playerDB.db'):
         os.remove('playerDB.db')
     
@@ -75,9 +80,7 @@ def newPlayerDB() -> 'connection':
 
     table = """CREATE TABLE players
                 (playerID integer PRIMARY KEY,
-                channelID integer,
-                location text,
-                eavesdropping text);"""
+                places TEXT);"""
 
     if isinstance(connection, sqlite3.Connection):
         print(f'New players database created, version {sqlite3.version}.')
@@ -89,61 +92,8 @@ def newPlayerDB() -> 'connection':
     
     return connection
 
-#Table membership
-def newPlayer(con, playerID: int, channelID: int): 
-    cursor = con.cursor()
-    cursor.execute(f"""INSERT or REPLACE INTO players(playerID, channelID)
-              VALUES('{playerID}', '{channelID}')""")
-    con.commit()
-    print(f'Player registered, ID: {playerID}.')
-    return
-
-def deleteGuild(con, guild_id: int):
-    cursor = con.cursor()
-
-    guildData = getGuild(con, guild_id)
-
-    for nodeData in guildData['nodes'].values():
-        cursor.execute(f"""DELETE FROM messages WHERE
-                        locationChannelID = ?""", (nodeData['channelID'],))
-        
-    cursor.execute(f"""DELETE FROM guilds WHERE guildID = {guild_id}""")
-    con.commit()
-    print(f'Guild removed, ID: {guild_id}.')
-    return
-
-def deleteMessage(con, locationChannelID: int):
-    cursor = con.cursor()
-    cursor.execute(f"""DELETE FROM messages WHERE locationChannelID = {locationChannelID}""")
-        
-    con.commit()
-    print(f'Location message removed, ID: {locationChannelID}.')
-    return
-
-def deletePlayer(con, playerID: int):
-    cursor = con.cursor()
-    cursor.execute(f"""DELETE FROM players WHERE playerID = {playerID}""")
-    con.commit()
-    print(f'Player removed, ID: {playerID}.')
-    return
-
-def eraseGuildDB(con):
-    cursor = con.cursor()
-    cursor.execute("""DELETE FROM guilds""")
-    cursor.execute("""DELETE FROM messages""")
-    con.commit()
-    print('All guilds and messages removed.')
-    return
-
-def erasePlayerDB(con):
-    cursor = con.cursor()
-    cursor.execute("""DELETE FROM players""")
-    con.commit()
-    print('All players removed.')
-    return
-
-#Guild manipulation
-def getGuild(con, guild_id: int) -> 'guild_data':
+#Guilds
+def getGuild(con, guild_id: int):
 
     def returnDictionary(cursor, guild):
         fields = [column[0] for column in cursor.description]
@@ -160,22 +110,21 @@ def getGuild(con, guild_id: int) -> 'guild_data':
         con.commit()
         print(f'Guild registered, ID: {guild_id}.')
         newGuild = {
-            'guildID' : guild_id,
             'nodes' : {},
             'edges' : {}}
         return newGuild
 
     nodesUTF = base64.b64decode(guildData['nodes'])
-    nodes = nodesUTF.decode('utf-8')
-    if nodes:
-        guildData['nodes'] = json.loads(nodes)
+    nodesJSON = nodesUTF.decode('utf-8')
+    if nodesJSON:
+        guildData['nodes'] = json.loads(nodesJSON)
     else:
         guildData['nodes'] = dict()
 
     edgesUTF = base64.b64decode(guildData['edges'])
-    edges = edgesUTF.decode('utf-8')
-    if edges:
-        edgesJSON = json.loads(edges)
+    edgesJSON = edgesUTF.decode('utf-8')
+    if edgesJSON:
+        edgesJSON = json.loads(edgesJSON)
         guildData['edges'] = {}
         
         for edgeSTR, edgeData in edgesJSON.items():
@@ -187,17 +136,17 @@ def getGuild(con, guild_id: int) -> 'guild_data':
 
     return guildData
   
-def updateGuild(con, guildData = dict):
+def updateGuild(con, guildData: dict, guild_id: int):
 
     cursor = con.cursor()
-    guildID = guildData['guildID']
 
     nodes = guildData.get('nodes', {})
     nodesJSON = json.dumps(nodes)
+
     nodesUTF = nodesJSON.encode('utf-8')
     nodes64 = base64.b64encode(nodesUTF)
     cursor.execute(f"""UPDATE guilds 
-                        SET nodes = ? WHERE guildID = {guildID}""", (nodes64,))
+                        SET nodes = ? WHERE guildID = {guild_id}""", (nodes64,))
     
     edges = guildData.get('edges', {})
     edges = {str(edgeName) : edgeData for edgeName, edgeData in edges.items()}
@@ -206,17 +155,141 @@ def updateGuild(con, guildData = dict):
     edgesUTF = edgesJSON.encode('utf-8')
     edges64 = base64.b64encode(edgesUTF)
     cursor.execute(f"""UPDATE guilds 
-                        SET edges = ? WHERE guildID = {guildID}""", (edges64,))
+                        SET edges = ? WHERE guildID = {guild_id}""", (edges64,))
 
     con.commit()
     return 
   
+def deleteGuild(con, guild_id: int):
+    cursor = con.cursor()
+
+    guildData = getGuild(con, guild_id)
+
+    for nodeData in guildData['nodes'].values():
+        cursor.execute(f"""DELETE FROM messages WHERE
+                        locationChannelID = ?""", (nodeData['channelID'],))
+        
+    cursor.execute(f"""DELETE FROM guilds WHERE guildID = {guild_id}""")
+    con.commit()
+    print(f'Guild removed, ID: {guild_id}.')
+    return
+
+#Members
+def getMembers(con, guild_id: int):
+    cursor = con.cursor()
+    cursor.execute(f"""SELECT * FROM members WHERE guildID = {guild_id}""")
+    memberData = cursor.fetchone()
+
+    if not memberData:
+        cursor.execute(f"""INSERT or REPLACE INTO members(guildID, members)
+                VALUES({guild_id}, '')""")
+        con.commit()
+        print(f'Members registered, guild ID: {guild_id}.')
+        return []
+
+    members = memberData['members'].split()
+    return members
+  
+def updateMembers(con, members: list, guild_id: int):
+
+    cursor = con.cursor()
+
+    memberData = ' '.join([str(id) for id in members])
+    cursor.execute(f"""UPDATE members 
+                        SET members = ? WHERE guildID = {guild_id}""", (memberData,))
+            
+    con.commit()
+    return 
+  
+def deleteMembers(con, guild_id: int):
+    cursor = con.cursor()
+
+    members = getMembers(con, guild_id)        
+    cursor.execute(f"""DELETE FROM members WHERE guildID = {guild_id}""")
+    con.commit()
+    print(f'Members removed, guild ID: {guild_id}.')
+    return
+
+#Messages
 def newMessage(con, locationChannelID: int, title: str = '', description: str = '', footer: str = ''):
     cursor = con.cursor()
     cursor.execute(f"""INSERT or REPLACE INTO messages(locationChannelID, title, description, footer) 
                    VALUES('{locationChannelID}', '{title}', '{description}', '{footer}')""")
     con.commit()
     print(f'Channel message added, ID: {locationChannelID}.')
+    return
+
+def deleteMessage(con, locationChannelID: int):
+    cursor = con.cursor()
+    cursor.execute(f"""DELETE FROM messages WHERE locationChannelID = {locationChannelID}""")
+        
+    con.commit()
+    print(f'Location message removed, ID: {locationChannelID}.')
+    return
+
+
+#Players
+def getPlayer(con, playerID: int):
+    
+    def returnDictionary(cursor, players):
+        fields = [column[0] for column in cursor.description]
+        return {key: value for key, value in zip(fields, players)}
+
+    con.row_factory = returnDictionary
+    cursor = con.cursor()
+    cursor.execute(f"""SELECT * FROM players WHERE playerID = {playerID}""")
+    playerData = cursor.fetchone()
+
+    if not playerData:
+        cursor.execute(f"""INSERT or REPLACE INTO players(playerID, places)
+                VALUES({playerID}, zeroblob(10000))""")
+        con.commit()
+        print(f'Player registered, ID: {playerID}.')
+        return {'playerID' : playerID, 'places' : {}}
+
+    playerUTF = base64.b64decode(playerData['places'])
+    playerJSON = playerUTF.decode('utf-8')
+    if playerJSON:
+        playerData['places'] = json.loads(playerJSON)
+    else:
+        playerData['places'] = {}  
+    return playerData
+  
+def updatePlayer(con, playerData: dict, playerID: int):
+
+    cursor = con.cursor()
+
+    places = playerData.get('places', {})
+    placesJSON = json.dumps(places)
+    dataUTF = placesJSON.encode('utf-8')
+    data64 = base64.b64encode(dataUTF)
+    cursor.execute(f"""UPDATE players 
+                        SET places = ? WHERE playerID = {playerID}""", (data64,))
+    con.commit()
+    return
+
+def deletePlayer(con, playerID: int):
+    cursor = con.cursor()
+    cursor.execute(f"""DELETE FROM players WHERE playerID = {playerID}""")
+    con.commit()
+    print(f'Player removed, ID: {playerID}.')
+    return
+
+
+#Mass actions
+def eraseGuildDB(con):
+    cursor = con.cursor()
+    cursor.execute("""DELETE FROM guilds""")
+    cursor.execute("""DELETE FROM messages""")
+    con.commit()
+    print('All guilds and messages removed.')
+    return
+
+def erasePlayerDB(con):
+    cursor = con.cursor()
+    cursor.execute("""DELETE FROM players""")
+    con.commit()
+    print('All players removed.')
     return
 
 def getAllGuilds(con):
@@ -241,40 +314,6 @@ def getAllMessages(con):
     cursor.execute("SELECT * FROM messages")
     return cursor.fetchall()
 
-#Player manipulation
-def getPlayer(con, playerID: int) -> 'player_data':
-
-    def returnDictionary(cursor, guild):
-        fields = [column[0] for column in cursor.description]
-        return {key: value for key, value in zip(fields, guild)}
-
-    con.row_factory = returnDictionary
-    cursor = con.cursor()
-    cursor.execute(f"""SELECT * FROM players WHERE playerID = {playerID}""")
-    return cursor.fetchone()
-  
-def updatePlayer(con,
-    playerID: int,
-    channelID: int = 0,
-    location: str = '',
-    eavesdropping: str = ''):
-
-    cursor = con.cursor()
-    if channelID:
-        cursor.execute(f"""UPDATE players
-                    SET channelID = {channelID} WHERE playerID = {playerID}""")
-
-    if location:
-        cursor.execute(f"""UPDATE players
-                    SET location = {location} WHERE playerID = {playerID}""")
-        
-    if eavesdropping:
-        cursor.execute(f"""UPDATE players
-                    SET eavesdropping = {eavesdropping} WHERE playerID = {playerID}""")
-        
-    con.commit()
-    return 
-
 def getAllPlayers(con):
     
     def returnDictionary(cursor, guild):
@@ -285,3 +324,19 @@ def getAllPlayers(con):
     cursor = con.cursor()
     cursor.execute("SELECT * FROM players")
     return cursor.fetchall()
+
+#Shorthand
+def gd(guild_id):
+
+    con = connectToGuild()
+    guildData = getGuild(con, guild_id)
+    con.close()
+    return guildData
+
+def ml(guild_id):
+
+    con = connectToGuild()
+    memberList = getMembers(con, guild_id)
+    con.close()
+    return memberList
+
