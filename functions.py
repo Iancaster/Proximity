@@ -3,6 +3,7 @@ import databaseFunctions as db
 import networkx as nx
 from io import BytesIO
 import matplotlib.pyplot as plt
+from discord.utils import get_or_fetch
 
 
 #Dialogues
@@ -25,7 +26,7 @@ async def embed(
             file = discord.MISSING
 
         case thumb if imageDetails[1] == 'thumb':
-            file = discord.File(f'assets/imagery/{imageDetails[0]}', filename='image.png')
+            file = discord.File(imageDetails[0], filename='image.png')
             embed.set_thumbnail(url='attachment://image.png')
         
         case full if imageDetails[1] == 'full':
@@ -99,7 +100,7 @@ async def addEdges(callback, ancestors: list, neighbors: list, successors: list,
 async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = None, refresh: callable = None):
 
     memberSelect = discord.ui.Select(
-        placeholder = 'Which people to add?',
+        placeholder = 'Which people?',
         select_type = discord.ComponentType.user_select,
         min_values = 0,
         max_values = maxUsers)
@@ -115,6 +116,30 @@ async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = N
 
     view.add_item(memberSelect)
     return view, memberSelect
+
+async def addPlayers(view: discord.ui.View, playersDict: dict, maxUsers: int, callback: callable = None, refresh: callable = None):
+
+    playerSelect = discord.ui.Select(
+        placeholder = 'Which players to add?',
+        min_values = 0,
+        max_values = maxUsers)
+
+    for playerID, playerName in playersDict.items():
+        playerSelect.add_option(
+            label = playerName,
+            value = playerID)
+
+    if callback:
+        playerSelect.callback = callback
+    else:
+        async def peopleChosen(interaction: discord.Interaction):
+            embed = await refresh()
+            await interaction.response.edit_message(embed = embed)
+            return
+        playerSelect.callback = peopleChosen
+
+    view.add_item(playerSelect)
+    return view, playerSelect
 
 async def addClear(view: discord.ui.View, callback: callable):
 
@@ -223,6 +248,40 @@ async def addNodes(view: discord.ui.View, nodes: list, callback: callable = None
     view.add_item(nodeSelect)
     return view, nodeSelect
 
+async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
+
+    view = discord.ui.View()
+
+    if leftCallback:
+        left = discord.ui.Button(
+            label = '<',
+            style = discord.ButtonStyle.secondary)
+        left.callback = leftCallback
+        view.add_item(left)
+    
+    else:
+        left = discord.ui.Button(
+            label = '-',
+            style = discord.ButtonStyle.secondary,
+            disabled = True)
+        view.add_item(left)
+        
+    if rightCallback:
+        right = discord.ui.Button(
+            label = '>',
+            style = discord.ButtonStyle.secondary)
+        right.callback = rightCallback
+        view.add_item(right)
+
+    else:
+        right = discord.ui.Button(
+            label = 'Done',
+            style = discord.ButtonStyle.secondary)
+        right.callback = closeDialogue
+        view.add_item(right)
+
+    return view
+
 #Formatting
 async def listWords(words: list):
 
@@ -281,6 +340,8 @@ async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
 
 async def discordify(text: str):
 
+    if not text:
+        return ''
     spacelessText = '-'.join(text.split())
     discordified = ''.join(character.lower() for character in spacelessText if character.isalnum() or character == '-')
 
@@ -467,7 +528,7 @@ async def autocompleteNodes(ctx: discord.AutocompleteContext):
     
     return guildData['nodes']
 
-async def newChannel(guild: discord.guild, name: str, category: str):
+async def newChannel(guild: discord.guild, name: str, category: str, allowedPerson: discord.Member = None):
 
     neededCategory = discord.utils.get(guild.categories, name = category)
     
@@ -476,9 +537,21 @@ async def newChannel(guild: discord.guild, name: str, category: str):
 
     permissions = {guild.default_role : discord.PermissionOverwrite(read_messages = False),
     guild.me : discord.PermissionOverwrite(send_messages = True, read_messages =True)}
+
+    if allowedPerson:
+        permissions.update({allowedPerson : discord.PermissionOverwrite(send_messages = True, read_messages = True)})
     channel = await guild.create_text_channel(
         name,
         category = neededCategory,
         overwrites = permissions)
     
     return channel
+
+async def deleteChannel(guild: discord.guild, channelID: int):
+
+    try:
+        channel = await get_or_fetch(guild, 'channel', channelID)
+        await channel.delete()
+        return True
+    except:
+        return False

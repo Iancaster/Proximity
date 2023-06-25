@@ -176,6 +176,13 @@ def deleteGuild(con, guild_id: int):
 
 #Members
 def getMembers(con, guild_id: int):
+
+    def returnDictionary(cursor, guild):
+        fields = [column[0] for column in cursor.description]
+        return {key: value for key, value in zip(fields, guild)}
+
+    con.row_factory = returnDictionary
+
     cursor = con.cursor()
     cursor.execute(f"""SELECT * FROM members WHERE guildID = {guild_id}""")
     memberData = cursor.fetchone()
@@ -187,7 +194,7 @@ def getMembers(con, guild_id: int):
         print(f'Members registered, guild ID: {guild_id}.')
         return []
 
-    members = memberData['members'].split()
+    members = [int(member) for member in memberData['members'].split()]
     return members
   
 def updateMembers(con, members: list, guild_id: int):
@@ -245,23 +252,26 @@ def getPlayer(con, playerID: int):
                 VALUES({playerID}, zeroblob(10000))""")
         con.commit()
         print(f'Player registered, ID: {playerID}.')
-        return {'playerID' : playerID, 'places' : {}}
+        return {}
 
     playerUTF = base64.b64decode(playerData['places'])
     playerJSON = playerUTF.decode('utf-8')
     if playerJSON:
-        playerData['places'] = json.loads(playerJSON)
+        playerData = json.loads(playerJSON)
     else:
-        playerData['places'] = {}  
+        playerData = {}  
     return playerData
   
 def updatePlayer(con, playerData: dict, playerID: int):
 
+    if not playerData:
+        deletePlayer(con, playerID)
+        return
+
     cursor = con.cursor()
 
-    places = playerData.get('places', {})
-    placesJSON = json.dumps(places)
-    dataUTF = placesJSON.encode('utf-8')
+    dataJSON = json.dumps(playerData)
+    dataUTF = dataJSON.encode('utf-8')
     data64 = base64.b64encode(dataUTF)
     cursor.execute(f"""UPDATE players 
                         SET places = ? WHERE playerID = {playerID}""", (data64,))

@@ -100,7 +100,7 @@ graph = makeGraph(guildData)
 #bytesIO = showGraph(graph)
 
 from timeit import timeit
-print(timeit(lambda: oldFind(graph, ['second'], False), number = 10000))
+print(timeit(lambda: db.gd(1114005940392439899), number = 1))
 
 
 #neighbors = graph.neighbors('room')
