@@ -4,14 +4,34 @@ from discord.ext import commands, tasks
 from discord.utils import get_or_fetch, get
 import functions as fn
 import databaseFunctions as db
+import asyncio
 
-updatedGuilds = [1114005940392439899]
+updatedGuilds = set()
+needingUpdate = set()
 directListeners = {}
 indirectListeners = {}
 
+# only run the listener update for guilds not in needingUpdate and then add them to updatedGuilds
+# and 
+
 def pg(guild_id: int):
-    if guild_id in updatedGuilds:
-        updatedGuilds.remove(guild_id)
+    if updatedGuilds:
+        updatedGuilds.discard(guild_id)
+    needingUpdate.add(guild_id)
+    return
+
+async def relay(msg: discord.Message):
+
+    if not msg.guild or msg.author.id == 1114004384926421126:
+        return
+
+    if msg.guild.id not in updatedGuilds:
+        nonlocal needingUpdate
+        needingUpdate.add(msg.guild.id)
+        while msg.guild.id not in updatedGuilds:
+            print(f'Waiting for updated listeners in server: {msg.guild.name}.')
+            await asyncio.sleep(2)
+    
     return
 
 class nodeCommands(commands.Cog):
@@ -1667,7 +1687,7 @@ class playerCommands(commands.Cog):
                 embed, _ = await fn.embed(
                     'Who?',
                     "You didn't select anyone to add.",
-                    'You can call the command again specify someone.')
+                    'You can call the command again and specify someone.')
                 await interaction.followup.edit_message(
                     message_id = interaction.message.id,
                     embed = embed,
@@ -1678,7 +1698,7 @@ class playerCommands(commands.Cog):
                 embed, _ = await fn.embed(
                     'Where?',
                     "You didn't select anywhere to put the new player(s).",
-                    'You can call the command again specify a node.')
+                    'You can call the command again and specify a node.')
                 await interaction.followup.edit_message(
                     message_id = interaction.message.id,
                     embed = embed,
@@ -1799,7 +1819,7 @@ class playerCommands(commands.Cog):
                 embed, _ = await fn.embed(
                     'Who?',
                     "You didn't select anyone to remove.",
-                    'You can call the command again specify someone.')
+                    'You can call the command again and specify someone.')
                 await interaction.followup.edit_message(
                     message_id = interaction.message.id,
                     embed = embed,
@@ -1971,7 +1991,7 @@ class playerCommands(commands.Cog):
                 description += 'which node?'
 
             embed, _ = await fn.embed(
-                'Teleport players?',
+                'Teleport player(s)?',
                 description,
                 "Just tell me where to put who.")
             return embed
@@ -1980,22 +2000,13 @@ class playerCommands(commands.Cog):
 
             await interaction.response.defer()
 
-            if not addPeople.values:
-                embed, _ = await fn.embed(
-                    'Who?',
-                    "You didn't select anyone to teleport.",
-                    'You can call the command again specify someone.')
-                await interaction.followup.edit_message(
-                    message_id = interaction.message.id,
-                    embed = embed,
-                    view = None)
-                return
+            nonlocal guildData
 
             if not addNodes.values:
                 embed, _ = await fn.embed(
                     'Where?',
                     "You didn't select anywhere to move the player(s).",
-                    'You can call the command again specify a node.')
+                    'You can call the command again and specify a node.')
                 await interaction.followup.edit_message(
                     message_id = interaction.message.id,
                     embed = embed,
@@ -2004,51 +2015,82 @@ class playerCommands(commands.Cog):
                 
             nodeName = addNodes.values[0]
 
-            con = db.connectToPlayer()
-            nonPlayers = []
+            nonMemberMentions = []
+            teleportingIDs = []
             for person in addPeople.values:
-                playerData = db.getPlayer(con, person.id)
 
-                if not playerData.get(str(interaction.guild_id), None):
-                    nonPlayers += person.mention
-                    continue
+                if person.id in members:
+                    teleportingIDs.append(person.id)
+                
+                else:
+                    nonMemberMentions.append(person.mention)
 
-                playerData[str(interaction.guild_id)] = {
-                    'channelID' : newPlayerChannel.id,
-                    'locationName' : nodeName}
-                db.updatePlayer(con, playerData, person.id)
-                newPlayerIDs.append(person.id)
+            description = ''
+            if teleportingIDs:
+                teleportingMentions = [f'<@{ID}>' for ID in teleportingIDs]
+                description += f"• Teleported {await fn.listWords(teleportingMentions)} to \
+                    <#{guildData['nodes'][nodeName]['channelID']}>."
+
+                if nonMemberMentions:
+                    description += f"\n• Didn't teleport {await fn.listWords(nonMemberMentions)} because they're not players."
+            
+            else:
+                description = "• You didn't select any players to teleport."
+                if nonMemberMentions:
+                    description += f" You did select {await fn.listWords(nonMemberMentions)}, but they're not players."
+
+                embed, _ = await fn.embed(
+                    'Who?',
+                    description,
+                    'You can call the command again and specify some players.')
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)
+                return
+
+            con = db.connectToPlayer()
+            teleports = {}
+            for ID in teleportingIDs:
+                playerData = db.getPlayer(con, ID)
+
+                oldLocation = playerData[str(interaction.guild_id)]['locationName']
+                alreadyTeleporting = teleports.get(oldLocation, [])
+                alreadyTeleporting.append(ID)
+                teleports[oldLocation] = alreadyTeleporting
+
+                playerData[str(interaction.guild_id)]['locationName'] = nodeName
+
+                db.updatePlayer(con, playerData, ID)
             con.close()
 
-            #Add the players to the guild nodes as occupants
+            print(f'Teleports is {teleports}')
+            #Remove players from old locations
             con = db.connectToGuild()
             guildData = db.getGuild(con, interaction.guild_id)
+            for oldLocation, teleportedIDs in teleports.items():
+                priorOccupants = guildData['nodes'][oldLocation]['occupants']
+
+                for ID in teleportedIDs:
+                    priorOccupants.remove(ID)
+
+                guildData['nodes'][oldLocation]['occupants'] = priorOccupants
+                if not priorOccupants:
+                    guildData['nodes'][oldLocation].pop('occupants')
+            
+            #Add players to new location
             priorOccupants = guildData['nodes'][nodeName].get('occupants', [])
-            guildData['nodes'][nodeName]['occupants'] = priorOccupants + newPlayerIDs
+            guildData['nodes'][nodeName]['occupants'] = priorOccupants + teleportingIDs
             db.updateGuild(con, guildData, interaction.guild_id)
 
-            #Add new players to guild member list
-            members = db.getMembers(con, interaction.guild_id)
-            members += newPlayerIDs
-            db.updateMembers(con, members, interaction.guild_id)
-            con.close()
+            #Inform node channel and all direct listeners
 
             pg(interaction.guild_id)
 
-            description = ''
-            if newPlayerIDs:
-                newPlayerMentions = [f'<@{playerID}>' for playerID in newPlayerIDs]
-                description += f"Successfully added {await fn.listWords(newPlayerMentions)} to this server,\
-                    starting their journey at <#{guildData['nodes'][nodeName]['channelID']}>."
-
-            if existingPlayers:
-                description += f"\n\nYou provided {existingPlayers} person(s) that are already in,\
-                    so they got skipped. They're all players now, either way."          
-
             embed, _ = await fn.embed(
-                'New player results.',
+                'Teleport results.',
                 description,
-                'The more the merrier.')
+                'Woosh.')
             await interaction.followup.edit_message(
                 message_id = interaction.message.id,
                 embed = embed,
@@ -2056,11 +2098,11 @@ class playerCommands(commands.Cog):
             return
 
         view = discord.ui.View()
-        view, addPeople = fn.addPeople(view, ctx.guild.member_count, refresh = refreshEmbed)
-        view, addNodes = fn.addNodes(view, guildData['nodes'].keys(), refresh = refreshEmbed, manyNodes = False)
+        view, addPeople = await fn.addPeople(view, ctx.guild.member_count, refresh = refreshEmbed)
+        view, addNodes = await fn.addNodes(view, guildData['nodes'].keys(), refresh = refreshEmbed, manyNodes = False)
         view, submit = await fn.addSubmit(view, teleportPlayers)
         view, cancel = await fn.addCancel(view)
-        embed, _ = await refreshEmbed()
+        embed = await refreshEmbed()
         await ctx.respond(embed = embed, view = view)
         return
 
@@ -2401,23 +2443,23 @@ class guildCommands(commands.Cog):
         if ancestors:
             ancestorMentions = [f"<#{guildData['nodes'][ancestor]['channelID']}>" for ancestor in ancestors]
             if len(ancestors) > 1:
-                description += f"There are one-way routes from (<-) {ancestorMentions}. "
+                description += f"There are one-way routes from (<-) {await fn.listWords(ancestorMentions)}. "
             else:
-                description += f"There's a one-way route from (<-) {ancestorMentions}. "
+                description += f"There's a one-way route from (<-) {ancestorMentions[0]}. "
 
         if successors:
             successorMentions = [f"<#{guildData['nodes'][successor]['channelID']}>" for successor in successors]
             if len(successors) > 1:
-                description += f"There are one-way routes to (->) {successorMentions}. "
+                description += f"There are one-way routes to (->) {await fn.listWords(successorMentions)}. "
             else:
-                description += f"There's a one-way route to (->) {successorMentions}. "
+                description += f"There's a one-way route to (->) {successorMentions[0]}. "
 
         if mutuals:
             mutualMentions = [f"<#{guildData['nodes'][mutual]['channelID']}>" for mutual in mutuals]
             if len(mutuals) > 1:
-                description += f"There's ways to {mutualMentions} from here. "
+                description += f"There's ways to {await fn.listWords(mutualMentions)} from here. "
             else:
-                description += f"There's a way to get to {mutualMentions} from here. "
+                description += f"There's a way to get to {mutualMentions[0]} from here. "
         
         if not (ancestors or mutuals or successors):
             description += "There's no way in or out of here."
@@ -2425,10 +2467,29 @@ class guildCommands(commands.Cog):
         embed, _ = await fn.embed(
             'Looking around...',
             description,
-            'You can eavesdrop on any location nearby from here.')
+            'You can eavesdrop on a nearby location.')
         await ctx.respond(embed = embed)
         return
  
+    @commands.Cog.listener()
+    async def on_guild_remove(
+        self,
+        guild: discord.Guild):
+
+        con = db.connectToGuild()
+        db.deleteGuild(con, guild.id)
+        con.close()
+
+        pg(guild.id)
+        return
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+
+        await relay(message)
+
+        return
+
 def setup(prox):
 
     prox.add_cog(nodeCommands(prox), override = True)
