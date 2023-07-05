@@ -3,7 +3,7 @@ import databaseFunctions as db
 import networkx as nx
 from io import BytesIO
 import matplotlib.pyplot as plt
-from discord.utils import get_or_fetch
+from discord.utils import get_or_fetch, get
 
 
 #Dialogues
@@ -51,7 +51,7 @@ async def closeDialogue(interaction: discord.Interaction):
  
 async def nullResponse(interaction: discord.Interaction):
 
-    await interaction.response.defer()
+    await interaction.response.edit_message()
     return #get fucked lmao
 
 async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = None, refresh: callable = None):
@@ -76,7 +76,7 @@ async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = No
 
 async def addEdges(callback, ancestors: list, neighbors: list, successors: list, view: discord.ui.View, delete: bool = True):
 
-    action = 'delete' if delete else 'change whitelists'
+    action = 'delete' if delete else 'review whitelists'
 
     edgeSelect = discord.ui.Select(
         placeholder = f'Which edges to {action}?',
@@ -85,13 +85,16 @@ async def addEdges(callback, ancestors: list, neighbors: list, successors: list,
     edgeSelect.callback = callback
 
     for ancestor in ancestors:
-        edgeSelect.add_option(label = f'<- {ancestor}')
+        edgeSelect.add_option(label = f'<- {ancestor}',
+                                value = ancestor)
 
     for neighbor in neighbors:
-        edgeSelect.add_option(label = f'<-> {neighbor}')
+        edgeSelect.add_option(label = f'<-> {neighbor}',
+                                value = neighbor)
     
     for successor in successors:
-        edgeSelect.add_option(label = f'-> {successor}')
+        edgeSelect.add_option(label = f'-> {successor}',
+                                value = successor)
 
     view.add_item(edgeSelect)
 
@@ -117,17 +120,30 @@ async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = N
     view.add_item(memberSelect)
     return view, memberSelect
 
-async def addPlayers(view: discord.ui.View, playersDict: dict, maxUsers: int, callback: callable = None, refresh: callable = None):
+async def addPlayers(view: discord.ui.View, allMembers: list, playerIDs: list, onlyOne: bool = False, callback: callable = None, refresh: callable = None):
 
     playerSelect = discord.ui.Select(
-        placeholder = 'Which players to add?',
+        placeholder = 'Which players?',
         min_values = 0,
-        max_values = maxUsers)
+        max_values = 25)
 
-    for playerID, playerName in playersDict.items():
-        playerSelect.add_option(
-            label = playerName,
-            value = playerID)
+    addedMembers = 0
+    for member in allMembers:
+        if member.id in playerIDs:
+            playerSelect.add_option(
+                label = member.display_name,
+                value = str(member.id))
+            addedMembers += 1
+
+    if addedMembers == 0: 
+        playerSelect.placeholder = 'No players to select.'
+        playerSelect.add_option(label = 'No players!')
+        playerSelect.disabled = True
+        playerSelect.max_values = 1
+    elif onlyOne:
+        playerSelect.max_values = 1
+    else:
+        playerSelect.max_values = addedMembers
 
     if callback:
         playerSelect.callback = callback
@@ -248,6 +264,30 @@ async def addNodes(view: discord.ui.View, nodes: list, callback: callable = None
     view.add_item(nodeSelect)
     return view, nodeSelect
 
+async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = None):
+
+    if not nodes:
+        nodeSelect = discord.ui.Select(
+            placeholder = 'No places you can access.',
+            disabled = True)
+        nodeSelect.add_option(
+            label = 'Nothing to choose.')
+        view.add_item(nodeSelect)
+        return view, nodeSelect
+
+    nodeSelect = discord.ui.Select(placeholder = 'Which place?')
+    if callback:
+        nodeSelect.callback = callback
+    else:
+        nodeSelect.callback = nullResponse
+
+    for node in nodes:
+        nodeSelect.add_option(
+            label = node)
+    
+    view.add_item(nodeSelect)
+    return view, nodeSelect
+
 async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
     view = discord.ui.View()
@@ -316,10 +356,10 @@ async def formatWhitelist(allowedRoles: list = [], allowedPeople: list = []):
     peopleMentions = [f'<@{personID}>' for personID in allowedPeople]
 
     if allowedRoles and not allowedPeople:
-        return f'Only people with these roles are allowed into this node: ({await listWords(roleMentions)}).'
+        return f'Only people with these roles are allowed through this place: ({await listWords(roleMentions)}).'
 
     elif allowedPeople and not allowedRoles:
-        return f'Only these people are allowed into this node: ({await listWords(peopleMentions)}).'
+        return f'Only these people are allowed through this place: ({await listWords(peopleMentions)}).'
 
     if allowedRoles:
         rolesDescription = f'any of these roles: ({await listWords(roleMentions)})'
@@ -358,6 +398,24 @@ async def whitelistsSimilar(components: list):
 
     return True
 
+async def mentionNodes(nodes: dict):
+
+    mentionsList =  [f"<#{node['channelID']}>" for node in nodes.values()]
+    
+    return await listWords(mentionsList)
+    
+async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors: list):
+
+    description = ''
+    for ancestor in ancestors:
+        description += f"\n<- <#{nodes[ancestor]['channelID']}>"
+    for neighbor in neighbors:
+        description += f"\n<-> <#{nodes[neighbor]['channelID']}>"        
+    for successor in successors:
+        description += f"\n-> <#{nodes[successor]['channelID']}>"
+
+    return description
+
 #Nodes
 async def newNode(channelID: int, allowedRoles: list = [], allowedPeople: list = []):
     
@@ -371,10 +429,14 @@ async def newNode(channelID: int, allowedRoles: list = [], allowedPeople: list =
     
     return node
 
-async def nodesFromNames(nodeNames: list, guildNodes: dict):
+async def getOccupants(nodes: dict):
 
-    return {node : guildNodes[node] for node in nodeNames if node in guildNodes}
+    return {name : data['occupants'] for name, data in nodes.items() if data.get('occupants', False)}
 
+async def filterNodes(nodes: dict, nodeNames: list):
+
+    return {name : nodes[name] for name in nodeNames if name in nodes}
+    
 #Edges
 async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowedPeople: list = []):
     
@@ -388,6 +450,19 @@ async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowe
     
     return edge
 
+async def colorEdges(graph: nx.Graph, originName: str, coloredNeighbors: list, color: str):
+
+    edgeColors = []
+    for origin, destination in graph.edges:
+        if origin in coloredNeighbors and destination == originName:
+            edgeColors.append(color)
+        elif origin == originName and destination in coloredNeighbors:
+            edgeColors.append(color)
+        else:
+            edgeColors.append('black')
+
+    return edgeColors
+    
 #Graph
 async def makeGraph(guildData: dict):
     graph = nx.DiGraph()
@@ -425,10 +500,7 @@ async def makeGraph(guildData: dict):
         
     return graph
 
-async def showGraph(graph: nx.Graph, edgeColor: list = None):
-    
-    if not edgeColor:
-        edgeColor = ['black'] * len(graph.edges)
+async def showGraph(graph: nx.Graph, edgeColor = 'black'):
 
     nx.draw_shell(
         graph,
@@ -472,21 +544,16 @@ async def getConnections(graph: nx.Graph, nodes: list, split: bool = False):
         return list(neighbors)
 
 #Guild
-async def assertPlayerCategory(guild: discord.Guild):
+async def assertCategory(guild: discord.Guild, name: str):
 
-    playerCategory = discord.utils.get(guild.categories, name = 'players')
+    category = get(guild.categories, name = name)
     
-    if playerCategory:
-        return playerCategory
-    
-    return guild.create_category('players')
+    return category if category else await guild.create_category(name)
 
 async def identifyNodeChannel(
-    guildData: dict,
+    nodes: dict,
     originChannelName: str = '',
     namedChannelName: str = ''):
-
-    nodes = guildData['nodes']
 
     if not nodes: 
 
@@ -519,39 +586,134 @@ async def identifyNodeChannel(
 
 async def autocompleteNodes(ctx: discord.AutocompleteContext):
 
-    con = db.connectToGuild()
-    guildData = db.getGuild(con, ctx.interaction.guild_id)
-    con.close()
+    guildData = db.gd(ctx.interaction.guild_id)
 
     if not guildData['nodes']:
         return ['No nodes!']
     
     return guildData['nodes']
 
-async def newChannel(guild: discord.guild, name: str, category: str, allowedPerson: discord.Member = None):
-
-    neededCategory = discord.utils.get(guild.categories, name = category)
+async def newChannel(guild: discord.guild, name: str, category: discord.CategoryChannel, allowedPerson: discord.Member = None):
     
-    if not neededCategory:
-        neededCategory = await guild.create_category(category)
-
     permissions = {guild.default_role : discord.PermissionOverwrite(read_messages = False),
     guild.me : discord.PermissionOverwrite(send_messages = True, read_messages =True)}
 
     if allowedPerson:
         permissions.update({allowedPerson : discord.PermissionOverwrite(send_messages = True, read_messages = True)})
+
     channel = await guild.create_text_channel(
         name,
-        category = neededCategory,
+        category = category,
         overwrites = permissions)
     
     return channel
 
-async def deleteChannel(guild: discord.guild, channelID: int):
+async def deleteChannel(channels: list, channelID: int):
 
-    try:
-        channel = await get_or_fetch(guild, 'channel', channelID)
-        await channel.delete()
+    channel = get(channels, id = channelID)
+    await channel.delete()
+    return 
+
+#Checks
+async def nodeExists(nodes: dict, name: str, interaction: discord.Interaction):
+
+    if name in nodes:
+        embedData, _ = await embed(
+            'Already exists.',
+            f"There's already a <#{nodes[name]['channelID']}>. Rename it with `/node review` or use a new name for this one.",
+            'Try calling the command again.')        
+        await interaction.followup.edit_message(message_id = interaction.message.id, embed = embedData, view = None)
         return True
-    except:
-        return False
+    
+    return False
+
+async def noNodes(nodes, interaction: discord.Interaction, singular: bool = False):
+
+    if not nodes:
+
+        if singular:
+            embedData, _ = await embed(
+                'No nodes!',
+                "Please select a valid node first.",
+                'Try calling the command again.')
+        else:
+            embedData, _ = await embed(
+                'No nodes!',
+                "You've got to select some.",
+                'Try calling the command again.')        
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embedData,
+            view = None,
+            attachments = [])
+        return True
+    
+    return False
+
+async def noEdges(edges, interaction: discord.Interaction):
+
+    if not edges:
+
+        embedData, _ = await embed(
+            'No edges!',
+            "You've got to select some.",
+            'Try calling the command again.')        
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id, 
+            embed = embedData, 
+            view = None,
+            attachments = [])
+        return True
+    
+    return False
+
+async def noPeople(values, interaction: discord.Interaction):
+
+    if not values:
+        embedData, _ = await embed(
+            'Who?',
+            "You didn't select anyone.",
+            'You can call the command again and specify someone.')
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embedData,
+            view = None)
+        return True
+
+    return False
+
+async def noChanges(test, interaction: discord.Interaction):
+
+    if not test:
+        embedData, _ = await embed(
+            'Sucess?',
+            "You didn't make any changes.",
+            "Unsure what the point of that was.")
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embedData,
+            view = None,
+            attachments = [])
+        return True
+
+    return False
+
+async def hasWhitelist(components):
+
+    for component in components:
+        if component.get('allowedRoles', False) or component.get('allowedPeople', False):
+            return True
+    
+    return False
+
+async def notPlayer(ctx: discord.ApplicationContext, members: list):
+
+    if ctx.author.id not in members:
+        embedData, _ = await embed(
+            'Easy there.',
+            "You're not a player in this server, so you're not able to do this.",
+            'You can ask the server owner to make you a player?')
+        await ctx.respond(embed = embedData)
+        return True
+
+    return False
