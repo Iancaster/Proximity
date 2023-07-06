@@ -11,6 +11,7 @@ intents = discord.Intents.none()
 intents.guilds = True
 intents.guild_messages = True
 intents.members = True
+intents.message_content = True
 prox = discord.Bot(intents = intents, owner_id = 985699127742582846)
 
 @prox.listen()
@@ -24,30 +25,5 @@ async def on_connect():
 
     return
 
-# Built-In
-@prox.command(
-    name = 'reload',
-    description = 'Refreshes and enables all cogs.',
-    checks = [commands.is_owner().predicate],
-    guild_only = True)
-async def reload(ctx: discord.ApplicationContext):
-    
-    await loadCogs()
-
-    await ctx.respond('Commands reloaded successfully, author.', ephemeral = True)
-    
-    return
-
-async def loadCogs():
-
-    if 'proxCommands' in prox.extensions:
-        prox.reload_extension('proxCommands')
-    
-    else:
-        prox.load_extension('proxCommands')
-        
-    return
-
 prox.load_extension('proxCommands')
-
 prox.run('MTExNDAwNDM4NDkyNjQyMTEyNg.GDXRZV.yUSnxv3Ak6Ws3GdN0QzrZj50ln-znrS7SdoBGs')

@@ -264,7 +264,7 @@ async def addNodes(view: discord.ui.View, nodes: list, callback: callable = None
     view.add_item(nodeSelect)
     return view, nodeSelect
 
-async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = None):
+async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = None, refresh: callable = None):
 
     if not nodes:
         nodeSelect = discord.ui.Select(
@@ -279,7 +279,12 @@ async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = 
     if callback:
         nodeSelect.callback = callback
     else:
-        nodeSelect.callback = nullResponse
+        async def nodesChosen(interaction: discord.Interaction):
+            embed = await refresh()
+            await interaction.response.edit_message(embed = embed)
+            return
+        nodeSelect.callback = nodesChosen
+
 
     for node in nodes:
         nodeSelect.add_option(
@@ -417,9 +422,10 @@ async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors:
     return description
 
 #Nodes
-async def newNode(channelID: int, allowedRoles: list = [], allowedPeople: list = []):
+async def newNode(channel: discord.TextChannel, allowedRoles: list = [], allowedPeople: list = []):
     
-    node = {'channelID' : channelID}
+    node = {'channelID' : channel.id}
+    await channel.create_webhook(name = 'Proximity')
 
     if allowedRoles:
         node['allowedRoles'] = allowedRoles
@@ -605,14 +611,27 @@ async def newChannel(guild: discord.guild, name: str, category: discord.Category
         name,
         category = category,
         overwrites = permissions)
+    await channel.create_webhook(name = 'Proximity')
     
     return channel
 
 async def deleteChannel(channels: list, channelID: int):
 
     channel = get(channels, id = channelID)
-    await channel.delete()
-    return 
+    if channel:
+        await channel.delete()
+    return channel
+
+async def waitForRefresh(interaction: discord.Interaction):
+
+    embedData, _ = await embed(
+        'Moving...',
+        'Getting into position.',
+        'This will only be a moment.')
+    await interaction.response.edit_message(
+        embed = embedData,
+        view = None)
+    return
 
 #Checks
 async def nodeExists(nodes: dict, name: str, interaction: discord.Interaction):

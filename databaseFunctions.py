@@ -92,6 +92,14 @@ def newPlayerDB():
     
     return connection
 
+def countRows(con, tableName):
+
+    cursor = con.cursor()
+    cursor.execute(f"""SELECT COUNT(*) FROM {tableName}""")
+    rowCount = cursor.fetchone()[0]
+
+    return rowCount
+
 #Guilds
 def getGuild(con, guild_id: int):
 
@@ -350,3 +358,10 @@ def ml(guild_id):
     con.close()
     return memberList
 
+def mag(guild_id):
+
+    con = connectToGuild()
+    guildData = getGuild(con, guild_id)
+    memberList = getMembers(con, guild_id)
+    con.close()
+    return guildData, memberList

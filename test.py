@@ -99,10 +99,36 @@ graph = makeGraph(guildData)
 
 #bytesIO = showGraph(graph)
 
-from timeit import timeit
-print(timeit(lambda: db.gd(1114005940392439899), number = 1))
+# from timeit import timeit
+# print(timeit(lambda: db.gd(1114005940392439899), number = 1))
+
+guildData = {}
+guildData['nodes'] = {'the-living-room' : {}}
+guildData['edges'] = {('the-kitchen', 'the-dining-room'): {}, ('the-dining-room', 'the-kitchen'): {}, ('the-living-room', 'the-dining-room'): {}, ('the-dining-room', 'the-living-room'): {}, ('the-living-room', 'the-bedroom'): {}, ('the-bedroom', 'the-living-room'): {}}
+for oldName, newName in {'the-living-room' : 'the-living-room22'}.items():
+
+    guildData['nodes'][newName] = guildData['nodes'].pop(oldName)
+
+    correctedEdges = {}
+    
+    for origin, destination in list(guildData['edges']):
+        if origin == oldName:
+            guildData['edges'][(newName, destination)] = guildData['edges'].pop((origin, destination))
+        if destination == oldName:
+            guildData['edges'][(origin, newName)] = guildData['edges'].pop((origin, destination))
+
+print(guildData['edges'])
 
 
 #neighbors = graph.neighbors('room')
 #nodeInfo = graph.nodes[node]
 
+
+                for origin, destination in subgraph.edges:
+
+                    if origin in affectedNeighbors and destination == originName:
+                        editedEdges[(origin, destination)]  = {}
+                    elif destination in affectedNeighbors and origin == originName:
+                        editedEdges[(destination, origin)] = {}
+
+                        Laughably inefficient, pls benchmark just how bad this is
