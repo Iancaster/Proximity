@@ -1404,7 +1404,8 @@ class serverCommands(commands.Cog):
         misnomerNodeMentions = []
         incorrectWebhooks = []
 
-        nodesCategory = await fn.assertCategory(ctx.guild, 'nodes')
+        if guildData['nodes']:
+            nodesCategory = await fn.assertCategory(ctx.guild, 'nodes')
         for nodeName, nodeData in guildData['nodes'].items(): #Fix node issues
 
             if nodeData['channelID'] not in channelIDs: #Node was deleted in server only
@@ -1493,7 +1494,8 @@ class serverCommands(commands.Cog):
         noChannelMentions = []
         missingPlayers = []
         wrongWebhooks = []
-        playerCategory = await fn.assertCategory(ctx.guild, 'players')
+        if members:
+            playerCategory = await fn.assertCategory(ctx.guild, 'players')
         for member in list(members): #Identify player issues
 
             playerData = db.getPlayer(playerCon, member)
@@ -1784,7 +1786,6 @@ class playerCommands(commands.Cog):
                     continue
 
                 newPlayerChannel = await fn.newChannel(interaction.guild, person.name, playerCategory, person)
-                await newPlayerChannel.create_webhook(name = 'Proximity')
                 embed, _ = await fn.embed(
                     f'Welcome.',
                     f"""This is your very own channel, {person.mention}.
@@ -2875,7 +2876,7 @@ class guildCommands(commands.Cog):
 
         description = f"Move from #{serverData['locationName']}"
         userNodes = None
-        selectedNode = None
+        selectedNode = node if node else None
 
         async def refreshMessage():
 
@@ -2897,7 +2898,7 @@ class guildCommands(commands.Cog):
                 fullDescription += f' to **#{selectedNode}**?'
                 view, submit = await fn.addSubmit(view, submitDestination)
                 view, cancel = await fn.addCancel(view)
-            elif node:
+            else:
                 fullDescription += f'? Where would you like to go?'
 
             embed, _ = await fn.embed(

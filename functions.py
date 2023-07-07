@@ -5,7 +5,6 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 from discord.utils import get_or_fetch, get
 
-
 #Dialogues
 async def embed(
     title: str = 'No Title',
