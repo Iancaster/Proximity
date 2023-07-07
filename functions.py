@@ -4,6 +4,7 @@ import networkx as nx
 from io import BytesIO
 import matplotlib.pyplot as plt
 from discord.utils import get_or_fetch, get
+from functools import lru_cache
 
 
 #Dialogues
@@ -54,6 +55,7 @@ async def nullResponse(interaction: discord.Interaction):
     await interaction.response.edit_message()
     return #get fucked lmao
 
+@lru_cache
 async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = None, refresh: callable = None):
 
     roleSelect = discord.ui.Select(
@@ -100,6 +102,7 @@ async def addEdges(callback, ancestors: list, neighbors: list, successors: list,
 
     return view, edgeSelect
 
+@lru_cache
 async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = None, refresh: callable = None):
 
     memberSelect = discord.ui.Select(
@@ -157,6 +160,7 @@ async def addPlayers(view: discord.ui.View, allMembers: list, playerIDs: list, o
     view.add_item(playerSelect)
     return view, playerSelect
 
+@lru_cache
 async def addClear(view: discord.ui.View, callback: callable):
 
     clear = discord.ui.Button(
@@ -167,6 +171,7 @@ async def addClear(view: discord.ui.View, callback: callable):
 
     return view, clear
 
+@lru_cache
 async def addSubmit(view: discord.ui.View, callback: callable):
 
     submit = discord.ui.Button(
@@ -177,6 +182,7 @@ async def addSubmit(view: discord.ui.View, callback: callable):
 
     return view, submit
 
+@lru_cache
 async def addEvilConfirm(view: discord.ui.View, callback: callable):
 
     evilConfirm = discord.ui.Button(
@@ -187,6 +193,7 @@ async def addEvilConfirm(view: discord.ui.View, callback: callable):
 
     return view, evilConfirm
 
+@lru_cache
 async def addCancel(view: discord.ui.View):
 
     cancel = discord.ui.Button(
@@ -197,6 +204,7 @@ async def addCancel(view: discord.ui.View):
 
     return view, cancel
 
+@lru_cache
 async def addNameModal(view: discord.ui.View, refresh: callable):
 
     modal = discord.ui.Modal(title = 'Choose a new name?')
@@ -293,6 +301,7 @@ async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = 
     view.add_item(nodeSelect)
     return view, nodeSelect
 
+@lru_cache
 async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
     view = discord.ui.View()
@@ -425,7 +434,6 @@ async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors:
 async def newNode(channel: discord.TextChannel, allowedRoles: list = [], allowedPeople: list = []):
     
     node = {'channelID' : channel.id}
-    await channel.create_webhook(name = 'Proximity')
 
     if allowedRoles:
         node['allowedRoles'] = allowedRoles
@@ -455,7 +463,7 @@ async def newEdge(origin: str, destination: str, allowedRoles: list = [], allowe
         edge['allowedPeople'] = allowedPeople
     
     return edge
-
+    
 async def colorEdges(graph: nx.Graph, originName: str, coloredNeighbors: list, color: str):
 
     edgeColors = []
@@ -506,6 +514,7 @@ async def makeGraph(guildData: dict):
         
     return graph
 
+@lru_cache
 async def showGraph(graph: nx.Graph, edgeColor = 'black'):
 
     nx.draw_shell(
@@ -548,6 +557,63 @@ async def getConnections(graph: nx.Graph, nodes: list, split: bool = False):
     else: 
         neighbors = ancestors.union(successors)
         return list(neighbors)
+
+async def filterMap(guildData: dict, roleIDs: list, userID: int, origin: str):
+
+    graph = nx.DiGraph()
+
+    acceptedNodes = set()
+
+    for nodeName, nodeData in guildData['nodes'].items():
+
+        if nodeName == origin:
+            graph.add_node(nodeName)
+            acceptedNodes.add(nodeName)
+            continue
+
+        allowedPeople = nodeData.get('allowedPeople', [])
+        allowedRoles = nodeData.get('allowedRoles')
+
+        if not allowedPeople and not allowedRoles:
+            graph.add_node(nodeName)
+            acceptedNodes.add(nodeName)
+            continue
+
+        if userID in allowedPeople:
+            graph.add_node(nodeName)
+            acceptedNodes.add(nodeName)
+            continue
+
+        for roleID in roleIDs:
+            if roleID in allowedRoles:
+                graph.add_node(nodeName)
+                acceptedNodes.add(nodeName)
+                continue
+
+    for edgeName, edgeData in guildData['edges'].items():
+
+        if edgeName[0] in acceptedNodes and edgeName[1] in acceptedNodes:
+            pass
+        else:
+            continue
+
+        allowedPeople = edgeData.get('allowedPeople', [])
+        allowedRoles = edgeData.get('allowedRoles')
+
+        if not allowedPeople and not allowedRoles:
+            graph.add_edge(edgeName[0], edgeName[1])
+            continue
+
+        if userID in allowedPeople:
+            graph.add_edge(edgeName[0], edgeName[1])
+            continue
+
+        for roleID in roleIDs:
+            if roleID in allowedRoles:
+                graph.add_edge(edgeName[0], edgeName[1])
+                continue
+    
+    return nx.ego_graph(graph, origin, radius = 99)
 
 #Guild
 async def assertCategory(guild: discord.Guild, name: str):
@@ -599,6 +665,26 @@ async def autocompleteNodes(ctx: discord.AutocompleteContext):
     
     return guildData['nodes']
 
+async def autocompleteMap(ctx: discord.AutocompleteContext):
+
+    guildData = db.gd(ctx.interaction.guild_id)
+    con = db.connectToPlayer()
+    playerData = db.getPlayer(con, ctx.interaction.user.id)
+    serverData = playerData.get(str(ctx.interaction.guild_id), None)
+
+    if not serverData:
+        return ['For players only!']
+
+    accessibleNodes = await filterMap(guildData,
+        [role.id for role in ctx.interaction.user.roles],
+        ctx.interaction.user.id,
+        serverData['locationName'])
+
+    if not accessibleNodes:
+        return ['No where you can go.']
+    
+    return accessibleNodes.nodes
+
 async def newChannel(guild: discord.guild, name: str, category: discord.CategoryChannel, allowedPerson: discord.Member = None):
     
     permissions = {guild.default_role : discord.PermissionOverwrite(read_messages = False),
@@ -631,6 +717,18 @@ async def waitForRefresh(interaction: discord.Interaction):
     await interaction.response.edit_message(
         embed = embedData,
         view = None)
+    return
+
+async def loading(interaction: discord.Interaction):
+
+    embedData, _ = await embed(
+        'Loading...',
+        'Recalculating listeners.',
+        'This will take less than five seconds.')
+    await interaction.response.edit_message(
+        embed = embedData,
+        view = None,
+        attachments = [])
     return
 
 #Checks
@@ -717,6 +815,7 @@ async def noChanges(test, interaction: discord.Interaction):
 
     return False
 
+@lru_cache
 async def hasWhitelist(components):
 
     for component in components:

@@ -2,10 +2,13 @@ import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from discord.utils import get_or_fetch, get
+
 import functions as fn
 import databaseFunctions as db
+
 import asyncio
 import time
+import networkx as nx
 
 global updatedGuilds, needingUpdate, directListeners, indirectListeners, proximity
 proximity = None
@@ -289,7 +292,6 @@ class nodeCommands(commands.Cog):
                     'This will remove the node(s), all its edges, and any corresponding channels.')
 
                 async def submitNodes(interaction: discord.Interaction):
-                    await interaction.response.edit_message()
                     await ctx.delete()
                     await deleteNodes(addNodes.values)
                     return
@@ -529,7 +531,6 @@ class nodeCommands(commands.Cog):
                     'This will allow you to view the nodes, their edges, and the whitelists.')
 
                 async def submitNodes(interaction: discord.Interaction):
-                    await interaction.response.edit_message()
                     await ctx.delete()
                     await reviseNodes(addNodes.values)
                     return
@@ -645,7 +646,7 @@ class edgeCommands(commands.Cog):
 
             async def submitEdges(interaction: discord.Interaction):
 
-                await interaction.response.defer()
+                await fn.loading(interaction)
                     
                 #Screen for no nodes selected
                 if await fn.noNodes(addNodes.values, interaction, True):
@@ -817,7 +818,6 @@ class edgeCommands(commands.Cog):
                     "This is just to select the origin, you'll select the destinations next.")
 
                 async def submitNodes(interaction: discord.Interaction):
-                    await interaction.response.edit_message()
                     await ctx.delete()
                     await createEdges(addNodes.values[0])
                     return
@@ -894,7 +894,7 @@ class edgeCommands(commands.Cog):
 
             async def confirmDelete(interaction: discord.Interaction):
 
-                await interaction.response.edit_message()
+                await fn.loading(interaction)
 
                 #Delete edges
                 for neighbor in deletedEdges:
@@ -979,7 +979,6 @@ class edgeCommands(commands.Cog):
                     "This is just to select the origin, you'll see the edges next.")
 
                 async def submitNodes(interaction: discord.Interaction):
-                    await interaction.response.edit_message()
                     await ctx.delete()
                     await deleteEdges(addNodes.values[0])
                     return
@@ -1214,7 +1213,6 @@ class edgeCommands(commands.Cog):
                     "This is just to select the origin, you'll see the edges next.")
 
                 async def submitNodes(interaction: discord.Interaction):
-                    await interaction.response.edit_message()
                     await ctx.delete()
                     await revisePermissions(addNodes.values[0])
                     return
@@ -1765,7 +1763,7 @@ class playerCommands(commands.Cog):
 
             nonlocal guildData
 
-            await interaction.response.defer()
+            await fn.loading(interaction)
 
             if await fn.noNodes(addNodes.values, interaction):
                 return
@@ -2729,9 +2727,8 @@ class guildCommands(commands.Cog):
 
             nonlocal selectedNode, description
 
-            if userNodes:
-                if userNodes.values:
-                    selectedNode = userNodes.values[0]
+            if userNodes.values:
+                selectedNode = userNodes.values[0]
             else:
                 selectedNode = None
 
@@ -2790,6 +2787,213 @@ class guildCommands(commands.Cog):
             view, submit = await fn.addSubmit(view, submitEavesdrop)
             view, cancel = await fn.addCancel(view)
         embed = await refreshEmbed()
+        await ctx.respond(embed = embed, view = view)
+        return
+
+    @commands.slash_command(
+        name = 'map',
+        description = 'See where you can go.',
+        guild_only = True,
+        guild_ids = [1114005940392439899])
+    async def map(
+        self,
+        ctx: discord.ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+
+        guildData, members = db.mag(ctx.guild_id)
+
+        if await fn.notPlayer(ctx, members):
+            return
+        
+        con = db.connectToPlayer()
+        playerData = db.getPlayer(con, ctx.author.id)
+        serverData = playerData[str(ctx.guild_id)]
+        con.close()
+
+        playerRoleIDs = [role.id for role in ctx.author.roles]
+
+        playerGraph = await fn.filterMap(guildData, ctx.author.roles, ctx.author.id, serverData['locationName'])
+        playerMap = await fn.showGraph(playerGraph)
+
+        embed, file = await fn.embed(
+            'Map',
+            f"Here are all the places you can reach from **{serverData['locationName']}**.\
+            You can travel along the arrows that point to where you want to go. ",
+            "Use /move to go there.",
+            (playerMap, 'full'))
+        
+        await ctx.respond(embed = embed, file = file)
+        return
+
+    @commands.slash_command(
+        name = 'move',
+        description = 'Go someplace new.',
+        guild_only = True,
+        guild_ids = [1114005940392439899])
+    async def move(
+        self,
+        ctx: discord.ApplicationContext,
+        node: discord.Option(
+            str,
+            "Name where you would like to go?",
+            autocomplete = fn.autocompleteMap,
+            required = False)):
+
+        await ctx.defer(ephemeral = True)
+
+        guildData, members = db.mag(ctx.guild_id)
+
+        if await fn.notPlayer(ctx, members):
+            return
+
+        con = db.connectToPlayer()
+        playerData = db.getPlayer(con, ctx.author.id)
+        serverData = playerData[str(ctx.guild_id)]
+        con.close()
+
+        playerRoleIDs = [role.id for role in ctx.author.roles]
+        playerGraph = await fn.filterMap(
+            guildData,
+            ctx.author.roles,
+            ctx.author.id,
+            serverData['locationName'])
+
+        description = f"Move from #{serverData['locationName']}"
+        userNodes = None
+        selectedNode = None
+
+        async def refreshMessage():
+
+            nonlocal userNodes, selectedNode
+
+            view = discord.ui.View()
+
+            fullDescription = description
+            if userNodes:
+                view.add_item(userNodes)
+                selectedNode = userNodes.values[0]
+            else:
+                view, userNodes = await fn.addUserNodes(
+                    view, 
+                    [node for node in playerGraph.nodes if node != serverData['locationName']], 
+                    callback = callRefresh)
+            
+            if selectedNode:
+                fullDescription += f' to **#{selectedNode}**?'
+                view, submit = await fn.addSubmit(view, submitDestination)
+                view, cancel = await fn.addCancel(view)
+            elif node:
+                fullDescription += f'? Where would you like to go?'
+
+            embed, _ = await fn.embed(
+                'Move?',
+                fullDescription,
+                "Bear in mind that others will notice.")
+            return embed, view
+
+        async def callRefresh(interaction: discord.Interaction):
+            embed, view = await refreshMessage()
+            await interaction.response.edit_message(embed = embed, view = view)
+            return
+
+        async def submitDestination(interaction: discord.Interaction):
+
+            await fn.waitForRefresh(interaction)
+
+            path = nx.shortest_path(playerGraph, source = serverData['locationName'], target = selectedNode)
+
+            #Inform origin occupants
+            embed, _ = await fn.embed(
+                'Departing.',
+                f"You notice {ctx.author.mention} leave, heading towards #{path[1]}.",
+                'Maybe you can follow them?')
+            await postToDirects(
+                embed, 
+                interaction.guild, 
+                guildData['nodes'][path[0]]['channelID'], 
+                serverData['channelID'])
+
+            #Inform destination occupants
+            embed, _ = await fn.embed(
+                'Arrived.',
+                f"You notice {ctx.author.mention} arrive from the direction of #{path[-2]}.",
+                'Say hello.')
+            await postToDirects(embed, 
+            interaction.guild, 
+            guildData['nodes'][path[-1]]['channelID'])
+
+            #Inform intemediary nodes + their occupants
+            for index, midwayName in enumerate(path[1:-1]): 
+                embed, _ = await fn.embed(
+                    'Passing through.',
+                    f"You notice {ctx.author.mention} come in from the direction of #{path[index]}\
+                    before continuing on their way towards #{path[index+2]}.",
+                    'Like two ships in the night.')
+                await postToDirects(embed, 
+                interaction.guild, 
+                guildData['nodes'][midwayName]['channelID'])
+
+                nodeChannel = get(interaction.guild.text_channels, name = midwayName)
+                embed, _ = await fn.embed(
+                    'Transit.',
+                    f"{ctx.author.mention} passed through here when travelling from\
+                        <#{guildData['nodes'][path[0]]['channelID']}> to\
+                        <#{guildData['nodes'][path[-1]]['channelID']}>.",
+                    'Just visiting.')
+                await nodeChannel.send(embed = embed)
+
+            visitedNodes = await fn.filterNodes(guildData['nodes'], path)
+            occupantsData = await fn.getOccupants(visitedNodes)
+
+            #Calculate who they saw on the way
+            fullMessage = []
+            for nodeName, occupantsList in occupantsData.items():
+
+                if interaction.user.id in occupantsList:
+                    occupantsList.remove(interaction.user.id)
+                if occupantsList:
+                    occupantsMention = await fn.listWords([f"<@{ID}>" for ID in occupantsList])
+                    fullMessage.append(f'{occupantsMention} in #{nodeName}')
+
+            #Inform player of who they saw and what path they took
+            if fullMessage:
+                description = f'Along the way, you saw (and were seen by) {await fn.listWords(fullMessage)}.'
+            else:
+                description = "You didn't see anyone along the way."
+
+            #Change occupants
+            con = db.connectToGuild()
+            originOccupants = guildData['nodes'][path[0]]['occupants']
+            if not originOccupants:
+                del guildData['nodes'][path[0]]['occupants']
+
+            priorOccupants = guildData['nodes'][path[-1]].get('occupants', [])
+            priorOccupants.append(ctx.author.id)
+            guildData['nodes'][path[-1]]['occupants'] = priorOccupants 
+
+            db.updateGuild(con, guildData, interaction.guild_id)
+            con.close()
+
+            #Update location and eavesdropping
+            playerCon = db.connectToPlayer()
+            playerData[str(ctx.guild_id)]['locationName'] = path[-1]
+            playerData[str(ctx.guild_id)].pop('eavesdropping', None)
+            db.updatePlayer(playerCon, playerData, ctx.author.id)
+            playerCon.close()        
+
+            await queueRefresh(interaction.guild)
+
+            embed, _ = await fn.embed(
+                'Movement',
+                description,
+                f"The path you traveled was {' -> '.join(path)}.")
+            playerChannel = get(interaction.guild.text_channels, id = serverData['channelID'])
+            await playerChannel.send(embed = embed)
+            await interaction.followup.delete_message(message_id = interaction.message.id)
+            return
+
+        embed, view = await refreshMessage()        
         await ctx.respond(embed = embed, view = view)
         return
 
