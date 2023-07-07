@@ -4,7 +4,6 @@ import networkx as nx
 from io import BytesIO
 import matplotlib.pyplot as plt
 from discord.utils import get_or_fetch, get
-from functools import lru_cache
 
 
 #Dialogues
@@ -55,7 +54,6 @@ async def nullResponse(interaction: discord.Interaction):
     await interaction.response.edit_message()
     return #get fucked lmao
 
-@lru_cache
 async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = None, refresh: callable = None):
 
     roleSelect = discord.ui.Select(
@@ -102,7 +100,6 @@ async def addEdges(callback, ancestors: list, neighbors: list, successors: list,
 
     return view, edgeSelect
 
-@lru_cache
 async def addPeople(view: discord.ui.View, maxUsers: int, callback: callable = None, refresh: callable = None):
 
     memberSelect = discord.ui.Select(
@@ -160,7 +157,6 @@ async def addPlayers(view: discord.ui.View, allMembers: list, playerIDs: list, o
     view.add_item(playerSelect)
     return view, playerSelect
 
-@lru_cache
 async def addClear(view: discord.ui.View, callback: callable):
 
     clear = discord.ui.Button(
@@ -171,7 +167,6 @@ async def addClear(view: discord.ui.View, callback: callable):
 
     return view, clear
 
-@lru_cache
 async def addSubmit(view: discord.ui.View, callback: callable):
 
     submit = discord.ui.Button(
@@ -182,7 +177,6 @@ async def addSubmit(view: discord.ui.View, callback: callable):
 
     return view, submit
 
-@lru_cache
 async def addEvilConfirm(view: discord.ui.View, callback: callable):
 
     evilConfirm = discord.ui.Button(
@@ -193,7 +187,6 @@ async def addEvilConfirm(view: discord.ui.View, callback: callable):
 
     return view, evilConfirm
 
-@lru_cache
 async def addCancel(view: discord.ui.View):
 
     cancel = discord.ui.Button(
@@ -204,7 +197,6 @@ async def addCancel(view: discord.ui.View):
 
     return view, cancel
 
-@lru_cache
 async def addNameModal(view: discord.ui.View, refresh: callable):
 
     modal = discord.ui.Modal(title = 'Choose a new name?')
@@ -301,7 +293,6 @@ async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = 
     view.add_item(nodeSelect)
     return view, nodeSelect
 
-@lru_cache
 async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
     view = discord.ui.View()
@@ -514,7 +505,6 @@ async def makeGraph(guildData: dict):
         
     return graph
 
-@lru_cache
 async def showGraph(graph: nx.Graph, edgeColor = 'black'):
 
     nx.draw_shell(
@@ -815,7 +805,6 @@ async def noChanges(test, interaction: discord.Interaction):
 
     return False
 
-@lru_cache
 async def hasWhitelist(components):
 
     for component in components:

@@ -2290,7 +2290,6 @@ class freeCommands(commands.Cog):
                 tutorialData['Locations'] += f" Right now, you're\
                 in #{serverData['locationName']}."
             
-
             await displayTutorial(interaction = interaction)
             return
         
@@ -2306,20 +2305,35 @@ class freeCommands(commands.Cog):
                 move around between them.",
                 'Nodes' : "Locations that the players\
                 can go inside are called nodes. Nodes should\
-                be about the size of a room.",
+                be about the size of a room. Use `/node new`\
+                to make them.",
                 'Edges' : "Edges are the connections between nodes.\
                 An edge just means that there is a direct path\
                 between two nodes that you can walk through. Maybe it's\
-                a doorway or a bridge.",
+                a doorway or a bridge. Use `/edge new` to connect nodes.",
                 'Graph' : "You can view a map of every node and the\
                 edges between them. That's called a 'graph'. Nodes\
                 are shown as just their name and the edges are\
-                shown as arrows between them."}
-            tutorialPictures = {
-                'The Goal' : 'assets/overview.png',
-                'Nodes' : 'assets/nodeExample.png',
-                'Edges' : 'assets/edgeExample.png',
-                'Graph' : 'assets/edgeIllustrated.png'}
+                shown as arrows between them. Look at the graph\
+                with `/server view`.",
+                'Quick Start' : "If you want an example of a graph,\
+                you can do `/server quick` to make a little house.\
+                You can clear out the graph and the player data with\
+                `/server clear`.",
+                'Players' : "Once you have somewhere to put the players,\
+                use `/player new` to add them to the game. You can also\
+                move them with `/player tp` or find them with `/player find`.",
+                'Fixing' : "If you mess with the channels, or if players leave,\
+                if might break the bot causing certain features not to work. Use\
+                `/server fix` to automatically fix common issues.",
+                'Fin' : "That's about all--you can figure the rest out. If you\
+                have any issues or improvements to suggest, just let **davidlancaster**\
+                know. Enjoy! :)"}
+            tutorialPictures = {}
+                # 'The Goal' : 'assets/overview.png',
+                # 'Nodes' : 'assets/nodeExample.png',
+                # 'Edges' : 'assets/edgeExample.png',
+                # 'Graph' : 'assets/edgeIllustrated.png'}
             
             await displayTutorial(interaction = interaction)
             return
