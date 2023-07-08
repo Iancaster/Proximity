@@ -61,7 +61,7 @@ async def relay(msg: discord.Message):
     for speakerLocation, channel in indirects:
         embed, _ = await fn.embed(
             f'Hm?',
-            f"You think you hear {msg.author.mention} in #{speakerLocation}.",
+            f"You think you hear {msg.author.mention} in **#{speakerLocation}**.",
             'Perhaps you can /move over to them.')
         await channel.send(embed = embed)
 
