@@ -479,7 +479,7 @@ class nodeCommands(commands.Cog):
 
                         for occupant in occupantList:
 
-                            playerData = db.getPlayer(con, occupant)
+                            playerData = db.getPlayer(playerCon, occupant)
                             playerData[str(interaction.guild_id)]['locationName'] = name
                             db.updatePlayer(con, playerData, occupant)
                     playerCon.close()
@@ -2481,12 +2481,14 @@ class freeCommands(commands.Cog):
         await ctx.respond(embed = embed, view = view)
         return
 
-    @tasks.loop(seconds=5.0)
+    @tasks.loop(seconds = 5.0)
     async def updateListeners(self):
 
         con = None
         if needingUpdate:
             con = db.connectToGuild()
+        # else:
+        #     print(f'No change to {len(directListeners)} directs and {len(indirectListeners)} indirects.')
 
         for guild in list(needingUpdate):
 
@@ -2583,7 +2585,6 @@ class freeCommands(commands.Cog):
                                 await addListener(nodeData['channelID'], NOchannel, True)
                             else: #Otherwise...
                                 await addIndirect(playerData['channelID'], playerData['locationName'], NOchannel)
-
 
             directListeners.update(guildListeners)
             indirectListeners.update(guildIndirects)
@@ -2964,7 +2965,7 @@ class guildCommands(commands.Cog):
             interaction.guild, 
             guildData['nodes'][path[-1]]['channelID'])
 
-            #Inform intemediary nodes + their occupants
+            #Inform intermediary nodes + their occupants
             for index, midwayName in enumerate(path[1:-1]): 
                 embed, _ = await fn.embed(
                     'Passing through.',
