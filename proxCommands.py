@@ -41,22 +41,21 @@ async def relay(msg: discord.Message):
         if eavesdropping:
             embed, _ = await fn.embed(
                 msg.author.name,
-                msg.content[:1998],
+                msg.content[:2000],
                 'You hear every word that they say.')
             await channel.send(embed = embed)
-            if len(msg.content) > 1998:
+            if len(msg.content) > 1999:
                 embed, _ = await fn.embed(
                     'Continued',
-                    msg.content[1998:],
+                    msg.content[2000:4000],
                     'And wow, is that a lot to say.')
                 await channel.send(embed = embed)
 
         else:
             webhook = (await channel.webhooks())[0]
-            await webhook.send(msg.content[:1998], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
-            if len(msg.content) > 1998:
-                await webhook.send(msg.content[1998:], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
-
+            await webhook.send(msg.content[:2000], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+            if len(msg.content) > 1999:
+                await webhook.send(msg.content[2000:4000], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
 
     indirects = indirectListeners.get(msg.channel.id, [])
     for speakerLocation, channel in indirects:
@@ -2494,6 +2493,7 @@ class freeCommands(commands.Cog):
             guildStartTime = time.time()
             
             guildData = db.getGuild(con, guild.id)
+            members = db.getMembers(con, guild.id)
             graph = await fn.makeGraph(guildData)
             guildListeners = {}
             guildIndirects = {}
@@ -2538,6 +2538,14 @@ class freeCommands(commands.Cog):
                 return serverData
 
             playerCon = db.connectToPlayer()
+            
+            for member in members:
+
+                playerData = await playerLoad(member)
+                playerChannelID = playerData['channelID']
+                directListeners.pop(playerChannelID, None)
+                indirectListeners.pop(playerChannelID, None)
+
             for nodeName, nodeData in guildData['nodes'].items():
 
                 #Get node channel
@@ -2580,10 +2588,6 @@ class freeCommands(commands.Cog):
             directListeners.update(guildListeners)
             indirectListeners.update(guildIndirects)
 
-            # shortListeners = {key : [channel.name for channel in value] for key, value in directListeners.items()}
-            # print(f'Finished directs are {shortListeners}.')
-            # shortIndirects = {key : [both[1].name for both in value] for key, value in indirectListeners.items()}
-            # print(f'Finished indirects are {shortIndirects}.')
             needingUpdate.remove(guild)
             updatedGuilds.add(guild.id)
             print(f"Updated {guild.name}'s listeners in {time.time() - guildStartTime} seconds.")
@@ -2635,19 +2639,22 @@ class guildCommands(commands.Cog):
 
         if ancestors:
             if len(ancestors) > 1:
-                description += f"There are one-way routes from (<-) **#{await fn.listWords(ancestors)}**. "
+                boldedNodes = [f"**#{node}**" for node in ancestors]
+                description += f"There are one-way routes from (<-) {await fn.listWords(boldedNodes)}. "
             else:
                 description += f"There's a one-way route from (<-) **#{ancestors[0]}**. "
 
         if successors:
             if len(successors) > 1:
-                description += f"There are one-way routes to (->) **#{await fn.listWords(successors)}**. "
+                boldedNodes = [f"**#{node}**" for node in ancestors]
+                description += f"There are one-way routes to (->) {await fn.listWords(boldedNodes)}. "
             else:
                 description += f"There's a one-way route to (->) **#{successors[0]}**. "
 
         if mutuals:
             if len(mutuals) > 1:
-                description += f"There's ways to **#{await fn.listWords(mutuals)}** from here. "
+                boldedNodes = [f"**#{node}**" for node in ancestors]
+                description += f"There's ways to {await fn.listWords(boldedNodes)} from here. "
             else:
                 description += f"There's a way to get to **#{mutuals[0]}** from here. "
         
@@ -2687,9 +2694,9 @@ class guildCommands(commands.Cog):
             occupants = guildData['nodes'][eavesdroppingNode].get('occupants', False)
             if occupants:
                 occupantMentions = await fn.listWords([f'<@{ID}>' for ID in occupants])
-                description = f"You're eavesdropping on {occupantMentions} in #{eavesdroppingNode}."
+                description = f"You're eavesdropping on {occupantMentions} in **#{eavesdroppingNode}**."
             else:
-                description = f"You're eavesdropping on #{eavesdroppingNode}, but you think nobody is there."
+                description = f"You're eavesdropping on **#{eavesdroppingNode}**, but you think nobody is there."
 
             async def stopEavesdropping(interaction: discord.Interaction):
 
@@ -2704,7 +2711,7 @@ class guildCommands(commands.Cog):
 
                 embed, _ = await fn.embed(
                     'Saw that.',
-                    f"You notice {ctx.author.mention} play it off like they weren't just listening in on #{eavesdroppingNode}.",
+                    f"You notice {ctx.author.mention} play it off like they weren't just listening in on **#{eavesdroppingNode}**.",
                     'Do with that what you will.')
                 await postToDirects(
                     embed, 
