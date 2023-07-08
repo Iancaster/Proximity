@@ -41,20 +41,29 @@ async def relay(msg: discord.Message):
         if eavesdropping:
             embed, _ = await fn.embed(
                 msg.author.name,
-                msg.content,
+                msg.content[:1998],
                 'You hear every word that they say.')
             await channel.send(embed = embed)
+            if len(msg.content) > 1998:
+                embed, _ = await fn.embed(
+                    'Continued',
+                    msg.content[1998:],
+                    'And wow, is that a lot to say.')
+                await channel.send(embed = embed)
 
         else:
             webhook = (await channel.webhooks())[0]
-            await webhook.send(msg.content, username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+            await webhook.send(msg.content[:1998], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+            if len(msg.content) > 1998:
+                await webhook.send(msg.content[1998:], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+
 
     indirects = indirectListeners.get(msg.channel.id, [])
     for speakerLocation, channel in indirects:
         embed, _ = await fn.embed(
             f'Hm?',
             f"You think you hear {msg.author.mention} in #{speakerLocation}.",
-            'This is a placeholder feature. The real version will speak the messages as a proxy.')
+            'Perhaps you can /move over to them.')
         await channel.send(embed = embed)
 
     if directs or indirects:
@@ -2291,18 +2300,19 @@ class freeCommands(commands.Cog):
             people in a location next to you to hear what's going on.",
             'Fin' : "And that's about it! Enjoy the game."}
             
-            guildData = db.gd(interaction.guild_id)
-            con = db.connectToPlayer()
-            playerData = db.getPlayer(con, interaction.user.id)
-            con.close()
-            serverData = playerData.get(str(interaction.guild_id), None)
-            if serverData:
-                tutorialData['Player Channels'] += f" You're a\
-                player in this server, so you'll use\
-                <#{serverData['channelID']}>."
-                tutorialData['Locations'] += f" Right now, you're\
-                in #{serverData['locationName']}."
-            
+            if interaction.guild_id:
+                guildData = db.gd(interaction.guild_id)
+                con = db.connectToPlayer()
+                playerData = db.getPlayer(con, interaction.user.id)
+                con.close()
+                serverData = playerData.get(str(interaction.guild_id), None)
+                if serverData:
+                    tutorialData['Player Channels'] += f" You're a\
+                    player in this server, so you'll use\
+                    <#{serverData['channelID']}>."
+                    tutorialData['Locations'] += f" Right now, you're\
+                    in #{serverData['locationName']}."
+                
             await displayTutorial(interaction = interaction)
             return
         
@@ -2624,25 +2634,22 @@ class guildCommands(commands.Cog):
         ancestors, mutuals, successors = await fn.getConnections(graph, [nodeName], True)
 
         if ancestors:
-            ancestorMentions = [f"<#{guildData['nodes'][ancestor]['channelID']}>" for ancestor in ancestors]
             if len(ancestors) > 1:
-                description += f"There are one-way routes from (<-) {await fn.listWords(ancestorMentions)}. "
+                description += f"There are one-way routes from (<-) **#{await fn.listWords(ancestors)}**. "
             else:
-                description += f"There's a one-way route from (<-) {ancestorMentions[0]}. "
+                description += f"There's a one-way route from (<-) **#{ancestors[0]}**. "
 
         if successors:
-            successorMentions = [f"<#{guildData['nodes'][successor]['channelID']}>" for successor in successors]
             if len(successors) > 1:
-                description += f"There are one-way routes to (->) {await fn.listWords(successorMentions)}. "
+                description += f"There are one-way routes to (->) **#{await fn.listWords(successors)}**. "
             else:
-                description += f"There's a one-way route to (->) {successorMentions[0]}. "
+                description += f"There's a one-way route to (->) **#{successors[0]}**. "
 
         if mutuals:
-            mutualMentions = [f"<#{guildData['nodes'][mutual]['channelID']}>" for mutual in mutuals]
             if len(mutuals) > 1:
-                description += f"There's ways to {await fn.listWords(mutualMentions)} from here. "
+                description += f"There's ways to **#{await fn.listWords(mutuals)}** from here. "
             else:
-                description += f"There's a way to get to {mutualMentions[0]} from here. "
+                description += f"There's a way to get to **#{mutuals[0]}** from here. "
         
         if not (ancestors or mutuals or successors):
             description += "There's no way in or out of here."
