@@ -366,7 +366,7 @@ class nodeCommands(commands.Cog):
 
                 fullDescription = intro
                 if name:
-                    fullDescription += f', renaming to {name}.'
+                    fullDescription += f', renaming to #{name}.'
                 fullDescription += description
                 
                 if clearing:
@@ -407,7 +407,7 @@ class nodeCommands(commands.Cog):
 
             async def submitNode(interaction: discord.Interaction):
 
-                await interaction.response.defer()
+                await fn.loading(interaction)
 
                 nonlocal name
 
@@ -461,9 +461,11 @@ class nodeCommands(commands.Cog):
                             guildData['nodes'][nodeName].pop('allowedPeople', None)
                     
                 if name:
+                    #Rename node 
                     guildData['nodes'][name] = guildData['nodes'].pop(nodeNames[0])
                     description += f"\n• Renamed {nodeNames[0]} to <#{firstNodeData['channelID']}>."
 
+                    #Correct locationName in player data
                     playerCon = db.connectToPlayer()
                     for occupantList in occupantData.values():
 
@@ -474,11 +476,21 @@ class nodeCommands(commands.Cog):
                             db.updatePlayer(con, playerData, occupant)
                     playerCon.close()
                     
+                    #Rename channel
                     nodeChannel = get(interaction.guild.text_channels, id = firstNodeData['channelID'])
                     await nodeChannel.edit(name = name)
 
+                    #Rename edges
+                    for origin, destination in list(guildData['edges']):
+                        if origin == nodeNames[0]:
+                            guildData['edges'][(name, destination)] = guildData['edges'].pop((origin, destination))
+                        if destination == nodeNames[0]:
+                            guildData['edges'][(origin, name)] = guildData['edges'].pop((origin, destination))
+
                 db.updateGuild(con, guildData, interaction.guild_id)
                 con.close()        
+            
+                await queueRefresh(interaction.guild)
 
                 embed, _ = await fn.embed(
                     'Edited.',
