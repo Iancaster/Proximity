@@ -2548,7 +2548,7 @@ class freeCommands(commands.Cog):
                 directListeners.pop(playerChannelID, None)
                 indirectListeners.pop(playerChannelID, None)
 
-            for nodeName, nodeData in guildData['nodes'].items():
+            for nodeName, nodeData in guildData['nodes'].items(): #For every node in the graph
 
                 #Get node channel
                 nodeChannelID = nodeData['channelID']
@@ -2564,6 +2564,8 @@ class freeCommands(commands.Cog):
 
                     playerChannel = await channelLoad(playerData['channelID'])
                     await addListener(nodeData['channelID'], playerChannel) #Add occupant as listeners to own node
+
+                    
 
                     for occupant in nodeData['occupants']: #For every occupant...
 
@@ -2631,9 +2633,9 @@ class guildCommands(commands.Cog):
         nodeData['occupants'].remove(ctx.author.id)
         if nodeData['occupants']:
             occupantMentions = [f'<@{occupant}>' for occupant in nodeData['occupants']]
-            description += f"There's {await fn.listWords(occupantMentions)} with you inside <#{nodeData['channelID']}>. "
+            description += f"There's {await fn.listWords(occupantMentions)} with you inside **#{nodeName}**."
         else:
-            description += f"You're by yourself inside <#{nodeData['channelID']}>. "
+            description += f"You're by yourself inside **#{nodeName}**. "
 
         graph = await fn.makeGraph(guildData)
         ancestors, mutuals, successors = await fn.getConnections(graph, [nodeName], True)
@@ -2654,7 +2656,7 @@ class guildCommands(commands.Cog):
 
         if mutuals:
             if len(mutuals) > 1:
-                boldedNodes = [f"**#{node}**" for node in ancestors]
+                boldedNodes = [f"**#{node}**" for node in mutuals]
                 description += f"There's ways to {await fn.listWords(boldedNodes)} from here. "
             else:
                 description += f"There's a way to get to **#{mutuals[0]}** from here. "
@@ -2751,14 +2753,14 @@ class guildCommands(commands.Cog):
                 fullList = []
                 for neighborNodeName, occupants in occupiedNeighbors.items():
                     occupantMentions = await fn.listWords([f'<@{ID}>' for ID in occupants])
-                    fullList.append(f'{occupantMentions} in #{neighborNodeName}')
+                    fullList.append(f'{occupantMentions} in **#{neighborNodeName}**')
                 description += f'{await fn.listWords(fullList)}. '
                 unoccupiedNeighbors = [neighbor for neighbor in neighbors if neighbor not in occupiedNeighbors]
                 if unoccupiedNeighbors:
                     hashedUnoccupied =  await fn.listWords([f'#{neighbor}' for neighbor in unoccupiedNeighbors]) 
                     description += f"You can also listen in on {hashedUnoccupied}, but it sounds like nobody is in there."
             else:
-                hashedNeighbors = [f'#{neighbor}' for neighbor in neighbors]
+                hashedNeighbors = [f'**#{neighbor}**' for neighbor in neighbors]
                 description = f"You're able to listen in on {await fn.listWords(hashedNeighbors)} from here,\
                     but you don't hear anyone over there. "
         else:
@@ -2776,7 +2778,7 @@ class guildCommands(commands.Cog):
 
             fullDescription = description
             if selectedNode:
-                fullDescription = f'Eavesdrop on #{selectedNode}?'
+                fullDescription = f'Eavesdrop on **#{selectedNode}**?'
 
             embed, _ = await fn.embed(
                 'Eavesdrop?',
@@ -2809,13 +2811,13 @@ class guildCommands(commands.Cog):
 
             embed, _ = await fn.embed(
                 'Sneaky.',
-                f"You notice {ctx.author.mention} start to listen in on #{userNodes.values[0]}.",
+                f"You notice {ctx.author.mention} start to listen in on **#{userNodes.values[0]}**.",
                 'Do with that what you will.')
             await postToDirects(embed, interaction.guild, guildData['nodes'][nodeName]['channelID'], serverData['channelID'])
 
             embed, _ = await fn.embed(
                 'Listening close...',
-                f"Let's hear what's going on over there in #{userNodes.values[0]}, shall we?",
+                f"Let's hear what's going on over there in **#{userNodes.values[0]}**, shall we?",
                 "Be mindful that people can see that you're doing this.")
             await interaction.followup.edit_message(
                 message_id = interaction.message.id,
@@ -2901,9 +2903,9 @@ class guildCommands(commands.Cog):
             ctx.author.id,
             serverData['locationName'])
 
-        description = f"Move from #{serverData['locationName']}"
+        description = f"Move from **#{serverData['locationName']}**"
         userNodes = None
-        selectedNode = node if node else None
+        selectedNode = node if node and node != serverData['locationName'] else None
 
         async def refreshMessage():
 
@@ -2945,6 +2947,50 @@ class guildCommands(commands.Cog):
 
             path = nx.shortest_path(playerGraph, source = serverData['locationName'], target = selectedNode)
 
+            graph = await fn.makeGraph(guildData)
+            allAdjacents = await fn.getConnections(graph, path)
+            nonPathAdjacents = [nodeName for nodeName in allAdjacents if nodeName not in path]
+            nonPathAdjNodes = await fn.filterNodes(guildDatanonPathAdjacents)
+            occupiedAdj = await fn.getOccupants(nonPathAdjNodes)
+
+            playerCon = db.connectToPlayer()
+            for nodeName, occupantsList in occupiedAdj:
+                for occupant in occupantsList:
+                    playerData = db.getPlayer(playerCon, occupant)
+                    serverData = playerData[str(interaction.guild_id)]
+                    eavesDroppingName = serverData.get('eavesdropping', None)
+                    if eavesDroppingName in path:
+                        whichPart = path.index(eavesDroppingName)
+                        eavesdropperChannel = get(interaction.guild.text_channels, id = serverData['channelID'])
+
+                        match whichPart:
+
+                            case 0:
+                                embed, _ = await fn.embed(
+                                    'Someone got moving.',
+                                    f"You can hear someone in **#{path[whichPart]}** start\
+                                    to go towards **#{path[whichPart + 1]}**.",
+                                    'Who could it be?')
+                                await eavesdropperChannel.send(embed = embed)
+
+
+                            case halfway if whichPart < len(path):
+                                embed, _ = await fn.embed(
+                                    'Someone passed through.',
+                                    f"You can hear someone go through **#{path[whichPart]}**,\
+                                    from **#{path[whichPart - 1]}** to **#{path[whichPart + 1]}**.",
+                                    'On the move.')
+                                await eavesdropperChannel.send(embed = embed)
+
+
+                            case ending if whichPart == len(path) - 1:
+                                embed, _ = await fn.embed(
+                                    'Someone stopped by.',
+                                    f"You can hear someone come from **#{path[whichPart - 1]}**\
+                                    and stop at **#{path[whichPart + 1]}**.",
+                                    'Wonder why they chose here.')
+                                await eavesdropperChannel.send(embed = embed)
+
             #Inform origin occupants
             embed, _ = await fn.embed(
                 'Departing.',
@@ -2959,7 +3005,7 @@ class guildCommands(commands.Cog):
             #Inform destination occupants
             embed, _ = await fn.embed(
                 'Arrived.',
-                f"You notice {ctx.author.mention} arrive from the direction of #{path[-2]}.",
+                f"You notice {ctx.author.mention} arrive from the direction of **#{path[-2]}**.",
                 'Say hello.')
             await postToDirects(embed, 
             interaction.guild, 
@@ -2969,8 +3015,8 @@ class guildCommands(commands.Cog):
             for index, midwayName in enumerate(path[1:-1]): 
                 embed, _ = await fn.embed(
                     'Passing through.',
-                    f"You notice {ctx.author.mention} come in from the direction of #{path[index]}\
-                    before continuing on their way towards #{path[index+2]}.",
+                    f"You notice {ctx.author.mention} come in from the direction of **#{path[index]}**\
+                    before continuing on their way towards **#{path[index+2]}**.",
                     'Like two ships in the night.')
                 await postToDirects(embed, 
                 interaction.guild, 
