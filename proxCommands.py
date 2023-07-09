@@ -102,8 +102,7 @@ class nodeCommands(commands.Cog):
     node = SlashCommandGroup(
         name = 'node',
         description = 'Manage the nodes of your graph.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @node.command(
         name = 'new',
@@ -368,7 +367,8 @@ class nodeCommands(commands.Cog):
 
             async def refreshEmbed():
 
-                nonlocal name
+                nonlocal name, firstNodeData
+
                 if len(nodeNames) == 1:
                     name = await fn.discordify(addNameModal.value)
 
@@ -393,9 +393,9 @@ class nodeCommands(commands.Cog):
                             {await fn.formatWhitelist(firstNodeData.get('allowedRoles', []), firstNodeData.get('allowedPeople', []))}"
             
                     else:
-                        if await fn.whitelistsSimilar(revisingNodes.values()):
+                        if await fn.whitelistsSimilar(list(revisingNodes.values())):
                             fullDescription += f"\n• Whitelists: Every node has the same whitelist-\
-                            \"{await fn.formatWhitelist(firstNodedata.get('allowedRoles', []), firstNodedata.get('allowedPeople', []))}"
+                            \"{await fn.formatWhitelist(firstNodeData.get('allowedRoles', []), firstNodeData.get('allowedPeople', []))}"
                         else:
                             fullDescription += f'\n• Whitelists: Multiple different whitelists.'
 
@@ -572,8 +572,7 @@ class edgeCommands(commands.Cog):
     edge = SlashCommandGroup(
         name = 'edge',
         description = 'Manage edges between nodes.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @edge.command(
         name = 'new',
@@ -1252,8 +1251,7 @@ class serverCommands(commands.Cog):
     server = SlashCommandGroup(
         name = 'server',
         description = 'Manage the server as a whole.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @server.command(
         name = 'clear',
@@ -1429,14 +1427,13 @@ class serverCommands(commands.Cog):
         for nodeName, nodeData in guildData['nodes'].items(): #Fix node issues
 
             if nodeData['channelID'] not in channelIDs: #Node was deleted in server only
-                ghostNodeNames.append(nodeName)
 
-                newNodeChannel = await fn.newChannel(ctx.guild, node, nodesCategory)
+                newNodeChannel = await fn.newChannel(ctx.guild, nodeName, nodesCategory)
                 ghostNodeMentions.append(newNodeChannel.mention)
-                guildData['nodes'][node]['channelID'] = newNodeChannel.id
+                guildData['nodes'][nodeName]['channelID'] = newNodeChannel.id
 
-                whitelist = await fn.formatWhitelist(guildData['nodes'][node].get('allowedRoles', []),
-                    guildData['nodes'][node].get('allowedPeople', []))
+                whitelist = await fn.formatWhitelist(guildData['nodes'][nodeName].get('allowedRoles', []),
+                    guildData['nodes'][nodeName].get('allowedPeople', []))
                 embed, _ = await fn.embed(
                 'Cool, new node...again.',
                 f"**Important!** Don't mess with the settings for this channel! \
@@ -1743,8 +1740,7 @@ class playerCommands(commands.Cog):
     player = SlashCommandGroup(
         name = 'player',
         description = "Manage players.",
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @player.command(
         name = 'new',
@@ -2608,8 +2604,7 @@ class guildCommands(commands.Cog):
     @commands.slash_command(
         name = 'look',
         description = 'Look around your location.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
     async def look(
         self,
         ctx: discord.ApplicationContext):
@@ -2643,23 +2638,23 @@ class guildCommands(commands.Cog):
         if ancestors:
             if len(ancestors) > 1:
                 boldedNodes = [f"**#{node}**" for node in ancestors]
-                description += f"There are one-way routes from (<-) {await fn.listWords(boldedNodes)}. "
+                description += f" There are one-way routes from (<-) {await fn.listWords(boldedNodes)}. "
             else:
-                description += f"There's a one-way route from (<-) **#{ancestors[0]}**. "
+                description += f" There's a one-way route from (<-) **#{ancestors[0]}**. "
 
         if successors:
             if len(successors) > 1:
-                boldedNodes = [f"**#{node}**" for node in ancestors]
-                description += f"There are one-way routes to (->) {await fn.listWords(boldedNodes)}. "
+                boldedNodes = [f"**#{node}**" for node in successors]
+                description += f" There are one-way routes to (->) {await fn.listWords(boldedNodes)}. "
             else:
-                description += f"There's a one-way route to (->) **#{successors[0]}**. "
+                description += f" There's a one-way route to (->) **#{successors[0]}**. "
 
         if mutuals:
             if len(mutuals) > 1:
                 boldedNodes = [f"**#{node}**" for node in mutuals]
-                description += f"There's ways to {await fn.listWords(boldedNodes)} from here. "
+                description += f" There's ways to {await fn.listWords(boldedNodes)} from here. "
             else:
-                description += f"There's a way to get to **#{mutuals[0]}** from here. "
+                description += f" There's a way to get to **#{mutuals[0]}** from here. "
         
         if not (ancestors or mutuals or successors):
             description += "There's no way in or out of here."
@@ -2674,8 +2669,7 @@ class guildCommands(commands.Cog):
     @commands.slash_command(
         name = 'eavesdrop',
         description = 'Listen in on a nearby location.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
     async def eavesdrop(
         self,
         ctx: discord.ApplicationContext):
@@ -2837,8 +2831,7 @@ class guildCommands(commands.Cog):
     @commands.slash_command(
         name = 'map',
         description = 'See where you can go.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
     async def map(
         self,
         ctx: discord.ApplicationContext):
@@ -2873,8 +2866,7 @@ class guildCommands(commands.Cog):
     @commands.slash_command(
         name = 'move',
         description = 'Go someplace new.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
     async def move(
         self,
         ctx: discord.ApplicationContext,
@@ -2945,16 +2937,20 @@ class guildCommands(commands.Cog):
 
             await fn.waitForRefresh(interaction)
 
-            path = nx.shortest_path(playerGraph, source = serverData['locationName'], target = selectedNode)
+            nonlocal serverData, playerData
+
+            path = nx.shortest_path(playerGraph,
+                source = serverData['locationName'],
+                target = selectedNode)
 
             graph = await fn.makeGraph(guildData)
             allAdjacents = await fn.getConnections(graph, path)
             nonPathAdjacents = [nodeName for nodeName in allAdjacents if nodeName not in path]
-            nonPathAdjNodes = await fn.filterNodes(guildDatanonPathAdjacents)
+            nonPathAdjNodes = await fn.filterNodes(guildData['nodes'], nonPathAdjacents)
             occupiedAdj = await fn.getOccupants(nonPathAdjNodes)
 
             playerCon = db.connectToPlayer()
-            for nodeName, occupantsList in occupiedAdj:
+            for nodeName, occupantsList in occupiedAdj.items():
                 for occupant in occupantsList:
                     playerData = db.getPlayer(playerCon, occupant)
                     serverData = playerData[str(interaction.guild_id)]
@@ -2994,7 +2990,7 @@ class guildCommands(commands.Cog):
             #Inform origin occupants
             embed, _ = await fn.embed(
                 'Departing.',
-                f"You notice {ctx.author.mention} leave, heading towards #{path[1]}.",
+                f"You notice {ctx.author.mention} leave, heading towards **#{path[1]}**.",
                 'Maybe you can follow them?')
             await postToDirects(
                 embed, 
@@ -3009,7 +3005,8 @@ class guildCommands(commands.Cog):
                 'Say hello.')
             await postToDirects(embed, 
             interaction.guild, 
-            guildData['nodes'][path[-1]]['channelID'])
+            guildData['nodes'][path[-1]]['channelID'],
+            serverData['channelID'])
 
             #Inform intermediary nodes + their occupants
             for index, midwayName in enumerate(path[1:-1]): 
@@ -3025,10 +3022,10 @@ class guildCommands(commands.Cog):
                 nodeChannel = get(interaction.guild.text_channels, name = midwayName)
                 embed, _ = await fn.embed(
                     'Transit.',
-                    f"{ctx.author.mention} passed through here when travelling from\
-                        <#{guildData['nodes'][path[0]]['channelID']}> to\
-                        <#{guildData['nodes'][path[-1]]['channelID']}>.",
-                    'Just visiting.')
+                    f"{ctx.author.mention} passed through here when traveling from\
+                        **#{path[0]}>** to\
+                        **#{path[-1]}>**.",
+                    f"They went from {' -> '.join(path)}.")
                 await nodeChannel.send(embed = embed)
 
             visitedNodes = await fn.filterNodes(guildData['nodes'], path)
@@ -3042,7 +3039,7 @@ class guildCommands(commands.Cog):
                     occupantsList.remove(interaction.user.id)
                 if occupantsList:
                     occupantsMention = await fn.listWords([f"<@{ID}>" for ID in occupantsList])
-                    fullMessage.append(f'{occupantsMention} in #{nodeName}')
+                    fullMessage.append(f'{occupantsMention} in **#{nodeName}**')
 
             #Inform player of who they saw and what path they took
             if fullMessage:
@@ -3072,6 +3069,7 @@ class guildCommands(commands.Cog):
 
             await queueRefresh(interaction.guild)
 
+            #Tell player
             embed, _ = await fn.embed(
                 'Movement',
                 description,
