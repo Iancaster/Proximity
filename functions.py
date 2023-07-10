@@ -402,12 +402,22 @@ async def whitelistsSimilar(components: list):
 
     return True
 
-async def mentionNodes(nodes: dict):
+async def mentionNodes(nodeValues: list):
 
-    mentionsList =  [f"<#{node['channelID']}>" for node in nodes.values()]
+    mentionsList =  [f"<#{node['channelID']}>" for node in nodeValues]
     
     return await listWords(mentionsList)
+
+async def boldNodes(nodeNames: list):
     
+    boldList =  [f"**#{name}**" for name in nodeNames]
+    
+    return await listWords(boldList)
+
+async def mentionPlayers(IDs: list):
+
+    return (await listWords([f'<@{ID}>' for ID in IDs]))
+
 async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors: list):
 
     description = ''
@@ -420,6 +430,34 @@ async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors:
 
     return description
 
+async def determineWhitelist(
+    clearing: bool,
+    rolesValues: list,
+    playerValues: list,
+    componentsValues: list):
+
+    if clearing:
+        return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
+            "to use the old whitelist, or if you select any roles or players below, to use that."
+
+    if rolesValues or playerValues:
+        allowedRoles = [role.id for role in rolesValues]
+        return "\n• New whitelist(s)-- will overwrite the old whitelist: " + \
+            f"{await formatWhitelist(allowedRoles, playervalues)}"
+
+    firstComponent = list(componentsValues)[0]
+
+    if len(componentsValues) == 1:
+        return "\n• Whitelist: " + \
+            f"{await formatWhitelist(firstComponent.get('allowedRoles', []), firstComponent.get('allowedPeople', []))}"
+
+    if await whitelistsSimilar(list(revisingNodes.values())):
+        return "\n• Whitelists: Every part has the same whitelist-" + \
+            f"{await formatWhitelist(firstNodeData.get('allowedRoles', []), firstNodeData.get('allowedPeople', []))}"
+
+    else:
+        return '\n• Whitelists: Multiple different whitelists.'
+    
 #Nodes
 async def newNode(channel: discord.TextChannel, allowedRoles: list = [], allowedPeople: list = []):
     
@@ -436,6 +474,30 @@ async def newNode(channel: discord.TextChannel, allowedRoles: list = [], allowed
 async def getOccupants(nodes: dict):
 
     return {name : data['occupants'] for name, data in nodes.items() if data.get('occupants', False)}
+
+async def getUnifiedOccupants(nodeValues: list):
+
+    occupants = []
+    {occupants.extend(nodeData.get('occupants', [])) for nodeData in nodeValues}
+    return occupants
+
+async def removeOccupant(guildData: dict, nodeName: str, occupantID: int):
+
+    existingOccs = guildData['nodes'][nodeName]['occupants']
+    existingOccs.remove(occupantID)
+
+    if not existingOccs:
+        del guildData['nodes'][nodeName]['occupants']
+    else:
+        guildData['nodes'][nodeName]['occupants'] = existingOccs
+
+    return guildData
+
+async def addOccupants(guildData: dict, nodeName: str, occupantIDs: list):
+
+    existingOccs = guildData['nodes'][nodeName].setdefault('occupants', [])
+    existingOccs.extend(occupantIDs)
+    return guildData
 
 async def filterNodes(nodes: dict, nodeNames: list):
 
@@ -823,3 +885,18 @@ async def notPlayer(ctx: discord.ApplicationContext, members: list):
         return True
 
     return False
+
+async def noCopies(test, embed: discord.Embed, interaction: discord.Interaction):
+
+    if test:
+        await interaction.delete_original_response()
+
+    else:
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embed,
+            view = None)
+
+    return
+
+    

@@ -3,46 +3,6 @@ import matplotlib.pyplot as plt
 import databaseFunctions as db
 import io
 
-def findConnections(graph: nx.Graph, nodes: list, split: bool = False):
-    
-    successors = set()
-    ancestors = set()
-
-    for node in nodes:
-        successors = successors.union(graph.successors(node))
-        ancestors = ancestors.union(graph.predecessors(node))
-
-    neighbors = ancestors.union(successors)
-
-    if split:
-        ancestors -= neighbors
-        successors -= neighbors
-        return list(ancestors), list(neighbors), list(successors)
-    
-    else: 
-        return list(neighbors)
-
-def oldFind(graph: nx.Graph, nodes: list, split = False):
-    bidirectional = set()
-    predecessors = set()
-    ancestors = set()
-    
-    for node in nodes:
-        bidirectional.update([n for n in graph.neighbors(node) if graph.has_edge(n, node)])
-        predecessors.update(graph.predecessors(node))
-        ancestors.update(graph.successors(node))
-    
-    if split:
-        bidirectional -= set(nodes)
-        predecessors -= bidirectional
-        ancestors -= bidirectional
-        return list(bidirectional), list(predecessors), list(ancestors)
-    else:
-        connected_nodes = bidirectional | predecessors | ancestors
-        return list(connected_nodes)
-
-    return ancestors, neighbors, successors
-
 def makeGraph(guildData: dict):
     graph = nx.DiGraph()
 
@@ -87,8 +47,6 @@ def showGraph(graph: nx.Graph):
 
     return
 
-
-
 #con = db.connectToGuild()
 guildData = {'guildID': 1114005940392439899, 'nodes': {'really long name': {'channelID': 1116244275718541314, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}, 'second': {'channelID': 1116244294597087333, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}, 'third': {'channelID': 1116251961457647636, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}, 'fourth': {'channelID': 1116252005804019823, 'allowedRoles': [], 'allowedPeople': [], 'occupants': []}, 'fifth': {'channelID': 1116252036254666812, 'allowedRoles': [], 'allowedPeople': [], 'occupants': 
 []}}, 'edges': {('second', 'third'): {'allowedRoles': [], 'allowedPeople': []}, ('third', 'second'): {'allowedRoles': [], 'allowedPeople': []}, ('second', 'really long name'): {'allowedRoles': [], 'allowedPeople': []}, ('really long name', 'second'): {'allowedRoles': [], 'allowedPeople': []}, ('fourth', 'third'): {'allowedRoles': [], 'allowedPeople': []}, ('third', 'fourth'): {'allowedRoles': [], 'allowedPeople': []}, ('really long name', 'fifth'): {'allowedRoles': [], 'allowedPeople': []}, ('fifth', 'really long name'): {'allowedRoles': [], 'allowedPeople': []}, ('really long name', 'third'): {'allowedRoles': [], 'allowedPeople': []}, ('third', 'really long name'): {'allowedRoles': [], 'allowedPeople': []}, ('fifth', 'fourth'): {'allowedRoles': [], 'allowedPeople': []}, ('fourth', 'fifth'): {'allowedRoles': [], 'allowedPeople': []}}}
@@ -97,38 +55,26 @@ guildData = {'guildID': 1114005940392439899, 'nodes': {'really long name': {'cha
 graph = makeGraph(guildData)
 #plt.show()
 
+import re
+
+def find_matches():
+    pattern = r"await fn\.embed = "
+
+    try:
+        with open('commands.txt', 'r') as file:
+            content = file.read()
+
+        matches = re.findall(pattern, content)
+        return matches
+
+    except FileNotFoundError:
+        print("The 'commands.txt' file was not found.")
+
+# Call the function to find matches
+result = find_matches()
+print(f'Matches are: {result}')
+
 #bytesIO = showGraph(graph)
 
 # from timeit import timeit
 # print(timeit(lambda: db.gd(1114005940392439899), number = 1))
-
-guildData = {}
-guildData['nodes'] = {'the-living-room' : {}}
-guildData['edges'] = {('the-kitchen', 'the-dining-room'): {}, ('the-dining-room', 'the-kitchen'): {}, ('the-living-room', 'the-dining-room'): {}, ('the-dining-room', 'the-living-room'): {}, ('the-living-room', 'the-bedroom'): {}, ('the-bedroom', 'the-living-room'): {}}
-for oldName, newName in {'the-living-room' : 'the-living-room22'}.items():
-
-    guildData['nodes'][newName] = guildData['nodes'].pop(oldName)
-
-    correctedEdges = {}
-    
-    for origin, destination in list(guildData['edges']):
-        if origin == oldName:
-            guildData['edges'][(newName, destination)] = guildData['edges'].pop((origin, destination))
-        if destination == oldName:
-            guildData['edges'][(origin, newName)] = guildData['edges'].pop((origin, destination))
-
-print(guildData['edges'])
-
-
-#neighbors = graph.neighbors('room')
-#nodeInfo = graph.nodes[node]
-
-
-                for origin, destination in subgraph.edges:
-
-                    if origin in affectedNeighbors and destination == originName:
-                        editedEdges[(origin, destination)]  = {}
-                    elif destination in affectedNeighbors and origin == originName:
-                        editedEdges[(destination, origin)] = {}
-
-                        Laughably inefficient, pls benchmark just how bad this is
