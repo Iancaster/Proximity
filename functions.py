@@ -76,7 +76,13 @@ async def addRoles(view: discord.ui.View, maxRoles: int, callback: callable = No
     view.add_item(roleSelect)
     return view, roleSelect
 
-async def addEdges(callback, ancestors: list, neighbors: list, successors: list, view: discord.ui.View, delete: bool = True):
+async def addEdges(
+        ancestors: list, 
+        neighbors: list, 
+        successors: list, 
+        view: discord.ui.View, 
+        delete: bool = True,
+        callback: callable = None):
 
     action = 'delete' if delete else 'review whitelists'
 
@@ -443,7 +449,7 @@ async def determineWhitelist(
 
     if clearing:
         return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
-            "to use the old whitelist, or if you select any roles or players below, to use that."
+            " to use the old whitelist, or if you select any roles or players below, to use that."
 
     if rolesValues or playerValues:
         allowedRoles = [role.id for role in rolesValues]

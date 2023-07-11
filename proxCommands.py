@@ -948,7 +948,8 @@ class edgeCommands(commands.Cog):
 
             async def refreshFile(interaction: discord.Interaction):   
                 await updateFile()
-                await interaction.response.edit_message(file = discord.File(graphImage, filename = 'image.png'))
+                await interaction.response.edit_message(
+                    file = discord.File(graphImage, filename = 'image.png'))
                 return
 
             async def confirmDelete(interaction: discord.Interaction):
@@ -1079,10 +1080,9 @@ class edgeCommands(commands.Cog):
             originMention = f"<#{guildData['nodes'][originName]['channelID']}>"
 
             graph = await fn.makeGraph(guildData)
-            ancestors, neighbors, successors = await fn.getConnections(graph, [originName], True)
-            allNeighbors = ancestors + neighbors + successors
+            ancestors, mutuals, successors = await fn.getConnections(graph, [originName], True)
             edgeData = [graph.edges[edge] for edge in (graph.in_edges(originName) or graph.out_edges(originName))]
-            if not allNeighbors:
+            if not edgeData:
                 embed, _ = await fn.embed(
                     'No edges.',
                     f'{originMention} has no edges of which to modify the whitelists.',
@@ -1090,75 +1090,61 @@ class edgeCommands(commands.Cog):
                 await ctx.respond(embed = embed, ephemeral = True)
                 return
 
-            subgraph = graph.subgraph(allNeighbors + [originName])
-            description = f'• Selected node: {originMention}\n• Neighbors:'
+            subgraph = nx.ego_graph(graph, originName, radius = 99)
+            description = f'• Selected node: {originMention}'
 
-            description += await fn.formatEdges(guildData['nodes'], ancestors, neighbors, successors)
             hasWhitelist = await fn.hasWhitelist(edgeData)
 
             clearing = False
+            graphImage = None
 
             async def refreshEmbed():
 
                 fullDescription = description
 
                 if addEdges.values:
-                    selectedAncestors = [ancestor for ancestor in ancestors if ancestor in addEdges.values]
-                    selectedNeighbors = [neighbor for neighbor in neighbors if neighbor in addEdges.values]
-                    selectedSuccessors = [successor for successor in successors if successor in addEdges.values]
-                    fullDescription += f"\n• Selected Edges: {await fn.formatEdges(guildData['nodes'], selectedAncestors, selectedNeighbors, selectedSuccessors)}."                      
+                    fullDescription += f"\n• Selected Edges: See below."                      
                 else:
                     fullDescription += '\n• Selected Edges: None yet. Use the dropdown below to pick one or more.'
                     
-                if clearing:
-                    fullDescription += f"\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again\
-                        to use the pre-existing whitelist (or the whitelist composed of what's below, if any\
-                        roles or people are specified)."
+                fullDescription += await fn.determineWhitelist(
+                    clearing,
+                    addRoles.values,
+                    addPlayers.values,
+                    edgeData)
                 
-                else:
-                    if addRoles.values or addPlayers.values:
-                        allowedRoles = [role.id for role in addRoles.values]
-                        fullDescription += f"\n• New whitelist(s)-- will overwrite any previous whitelist: \
-                            {await fn.formatWhitelist(allowedRoles, addPlayers.values)}"
-
-                    elif not addEdges.values:
-                        fullDescription += f"\n• Whitelist: Selected edges will have their whitelists shown here."
-
-                    elif len(addEdges.values) == 1:
-                        fullDescription += f"\n• Whitelist: \
-                            {await fn.formatWhitelist(edgeData[0].get('allowedRoles', []), edgeData[0].get('allowedPeople', []))}"
-                    
-                    else:
-                        if await fn.whitelistsSimilar(edgeData):
-                            fullDescription += f"\n• Whitelists: Every edge has the same whitelist-\
-                            \"{await fn.formatWhitelist(edgeData[0].get('allowedRoles', []), edgeData[0].get('allowedPeople', []))}\""
-                        else:
-                            fullDescription += f'\n• Whitelists: Multiple different whitelists.'
-
                 edgeColors = await fn.colorEdges(subgraph, originName, addEdges.values, 'blue')
                 graphImage = await fn.showGraph(subgraph, edgeColors)
-                embed, file = await fn.embed(
+                embed, _ = await fn.embed(
                     'Change whitelists?',
                     fullDescription,
                     'This can always be reversed.',
                     (graphImage, 'full'))
 
-                return embed, file
+                return embed
 
-            async def callRefresh(interaction: discord.Interaction):
+            async def updateFile():
 
-                await interaction.response.defer()
-                embed, file = await refreshEmbed()
-                await interaction.followup.edit_message(
-                    message_id = interaction.message.id,
-                    embed = embed)
+                nonlocal graphImage
                 
+                edgeColors = await fn.colorEdges(subgraph, originName, addEdges.values, 'blue')
+                graphImage = await fn.showGraph(subgraph, edgeColors)
+                return
+            
+            async def refreshMessage(interaction: discord.Interaction):
+                
+                await updateFile()
+                embed = await refreshEmbed()
+                await interaction.response.edit_message(
+                    embed = embed,
+                    file = discord.File(graphImage, filename = 'image.png'))
+
                 return
             
             async def clearWhitelist(interaction: discord.Interaction):
                 nonlocal clearing
                 clearing = not clearing
-                embed, _ = await refreshEmbed()
+                embed = await refreshEmbed()
                 await interaction.response.edit_message(embed = embed)
                 return 
 
@@ -1210,10 +1196,10 @@ class edgeCommands(commands.Cog):
 
                 #Inform neighbors occupants and neighbor nodes
                 neighborNodes = await fn.filterNodes(guildData['nodes'], addEdges.values)
-                neighborMentions = await fn.mentionNodes(neighborNodes)
+                neighborMentions = await fn.mentionNodes(neighborNodes.values())
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"You feel like the way to {originMention} changed somehow.",
+                    f"You feel like the way to **#{originName}** changed somehow.",
                     'Will it be easier to travel through, or harder?')
                 nodeEmbed, _ = await fn.embed(
                     f'Edge with {originMention} changed.',
@@ -1249,20 +1235,22 @@ class edgeCommands(commands.Cog):
                 return
 
             view = discord.ui.View()
-            view, addEdges = await fn.addEdges(callRefresh, ancestors, neighbors, successors, view, False)
-            view, addRoles = await fn.addRoles(view, len(ctx.guild.roles), callback = callRefresh)
-            view, addPlayers = await fn.addPlayers(view, ctx.guild.members, members, callback = callRefresh)
+            view, addEdges = await fn.addEdges(ancestors, mutuals, successors, view, False, callback = refreshMessage)
+            view, addRoles = await fn.addRoles(view, len(ctx.guild.roles), refresh = refreshEmbed)
+            view, addPlayers = await fn.addPlayers(view, ctx.guild.members, members, refresh = refreshEmbed)
             view, submit = await fn.addSubmit(view, confirmEdges)
             if hasWhitelist:
                 view, clear = await fn.addClear(view, clearWhitelist)
             view, cancel = await fn.addCancel(view)
-            embed, file = await refreshEmbed()
+            embed = await refreshEmbed()
+            await updateFile()
 
             await ctx.respond(embed = embed,
-            file = file,
-            view = view,
-            ephemeral = True)
+                file = discord.File(graphImage, filename='image.png'),
+                view = view,
+                ephemeral = True)
             return
+    
 
         result = await fn.identifyNodeChannel(guildData['nodes'], ctx.channel.name, origin)
         match result:
