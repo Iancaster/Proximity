@@ -69,8 +69,8 @@ async def relay(msg: discord.Message):
             'Perhaps you can /move over to them.')
         await channel.send(embed = embed)
 
-    if directs or indirects:
-        await msg.add_reaction('✔️')   
+    # if directs or indirects:
+    #     await msg.add_reaction('✔️')   
         
     return
 
@@ -130,16 +130,20 @@ class nodeCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+        con = db.connectToGuild()
+        members = db.getMembers(con, ctx.guild_id)
+        con.close()
 
-        name = await fn.discordify(name)
+        submittedName = await fn.discordify(name)
+        name = submittedName if submittedName else 'new-node'
 
         async def refreshEmbed():
 
             nonlocal name
             
             if nameSelect.value:
-                name = await fn.discordify(nameSelect.value)
+                submittedName = await fn.discordify(nameSelect.value)
+                name = submittedName if submittedName else name
 
             allowedRoles = [role.id for role in addRoles.values]
             description = f'Whitelist: {await fn.formatWhitelist(allowedRoles, addPlayers.values)}'
@@ -157,6 +161,10 @@ class nodeCommands(commands.Cog):
 
             con = db.connectToGuild()
             guildData = db.getGuild(con, interaction.guild_id)
+
+            nonlocal name
+            submittedName = await fn.discordify(name)
+            name = submittedName if submittedName else name
 
             if await fn.nodeExists(guildData['nodes'], name, interaction):
                 return
@@ -244,10 +252,12 @@ class nodeCommands(commands.Cog):
                         view = None)
                     return
 
-                #Inform occupants of neighbor nodes that the node is deleted now
+                #Inform neighbor nodes and occupants that the node is deleted now
                 graph = await fn.makeGraph(guildData)
                 boldDeleting = await fn.boldNodes(deletingNodes.keys())
-                for neighbor in await fn.getConnections(graph, deletingNodes.keys()): 
+                neighbors = await fn.getConnections(graph, deletingNodes.keys())
+                neighbors = [neighbor for neighbor in neighbors if neighbor not in deletingNodes]
+                for neighbor in neighbors:
                     embed, _ = await fn.embed(
                         'Misremembered?',
                         f"Could you be imagining {boldDeleting}? Strangely, there's no trace.",
@@ -257,6 +267,15 @@ class nodeCommands(commands.Cog):
                         interaction.guild, 
                         guildData['nodes'][neighbor]['channelID'],
                         onlyOccs = True)
+                    
+                    embed, _ = await fn.embed(
+                        'Neighbor node(s) deleted.',
+                        f'Deleted {boldDeleting}--this node now has fewer neighbors.',
+                        "I'm sure it's for the best.")
+                    neighborChannel = get(
+                        interaction.guild.text_channels,
+                        id = guildData['nodes'][neighbor]['channelID'])
+                    await neighborChannel.send(embed = embed)
 
                 #Delete unoccupied nodes and their edges
                 for nodeName in deletingNodes:
@@ -386,7 +405,8 @@ class nodeCommands(commands.Cog):
                 nonlocal name
 
                 if len(nodeNames) == 1:
-                    name = await fn.discordify(addNameModal.value)
+                    submittedName = await fn.discordify(addNameModal.value)
+                    name = submittedName if submittedName else name
 
                 fullDescription = intro
                 if name:
@@ -612,24 +632,24 @@ class edgeCommands(commands.Cog):
 
                 if addNodes.values:
                     destinations = await fn.filterNodes(guildData['nodes'], addNodes.values)
-                    destinationMentions = await fn.mentionNodes(destinations)
+                    destinationMentions = await fn.mentionNodes(destinations.values())
                     description += f'\n• Destination(s): {destinationMentions}.'
                 else:
                     description += f"\n• Destination(s): None yet! Add some nodes to draw an edge to."
 
                 allowedRoles = [role.id for role in addRoles.values]
-                description += f"\n• Whitelist: {await fn.formatWhitelist(allowedRoles, [int(ID) for ID in addPlayers.values])}"
+                description += f"\n• Whitelist: {await fn.formatWhitelist(allowedRoles, addPlayers.values)}"
 
                 match directionality:
                     case 0:
-                        description += f'\n• Directionality: These connections are **one-way** (<-) from\
-                        the destination(s) to {originMention}.'
+                        description += "\n• Directionality: These connections are **one-way** (<-) from" + \
+                            f" the destination(s) to {originMention}."
                     case 1:
-                        description += f'\n• Directionality: **Two-way** (<->), people will be able to travel\
-                        back and forth between {originMention} and the destination(s).'
+                        description += "\n• Directionality: **Two-way** (<->), people will be able to travel" + \
+                            f" back and forth between {originMention} and the destination(s)."
                     case 2:
-                        description += f'\n• Directionality: These connections are **one-way** (->) from\
-                        {originMention} to the destination(s).'
+                        description += "\n• Directionality: These connections are **one-way** (->) from" + \
+                            f" {originMention} to the destination(s)."
 
                 if overwrites:
                     description += f"\n• **Overwriting** edges. Old edges will be erased where new one are laid."
@@ -664,7 +684,6 @@ class edgeCommands(commands.Cog):
 
                 await fn.loading(interaction)
                     
-                #Screen for no nodes selected
                 if await fn.noNodes(addNodes.values, interaction, True):
                     return
 
@@ -674,7 +693,7 @@ class edgeCommands(commands.Cog):
                     for destination in destinations.keys():
                         firstEdge = guildData['edges'].pop((originName, destination), None)
                         secondEdge = guildData['edges'].pop((destination, originName), None)
-                        if firstEdge or secondEdge:
+                        if firstEdge != None or secondEdge != None:
                             existingEdges += 1
                 else:
                     for destination in list(destinations.keys()):
@@ -691,14 +710,15 @@ class edgeCommands(commands.Cog):
                     if overwrites:
                         description += f'\n• Overwrote {existingEdges} edge(s).'
                     else:
-                        description += f'\n• Skipped {existingEdges} edge(s) because the nodes were already connected. Enable overwriting to ignore.'
+                        description += f"\n• Skipped {existingEdges} edge(s) because" + \
+                            f" the nodes were already connected. Enable overwriting to ignore."
                 
                 #Screen for no available nodes
                 if not destinations:
                     embed, _ = await fn.embed(
-                        'Hm.',
+                        'Ope.',
                         description,
-                        "And that's all that you gave.")
+                        'Or you can connect nodes that has no edge between them yet.')
                     await interaction.followup.edit_message(
                         message_id = interaction.message.id,
                         embed = embed,
@@ -727,69 +747,78 @@ class edgeCommands(commands.Cog):
                 guildData['edges'].update(newEdges)
                 db.updateGuild(con, guildData, interaction.guild_id)
                 con.close()
+
                 await queueRefresh(interaction.guild)
                     
                 #Inform neighbors occupants and neighbor nodes
-                destinationMentions = await fn.mentionNodes(destinations)
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"You notice a way to get between this place and {originMention}. Has that always been there?",
+                    f"You notice a way to get between this place and **#{originName}**. Has that always been there?",
                     'And if so, has it always been like that?')
                 nodeEmbed, _ = await fn.embed(
                     'Edge created.',
                     f'Created an edge between here and {originMention}.',
                     'You can view its details with /node review.')
                 for data in destinations.values():
-                    await postToDirects(playersEmbed, interaction.guild, data['channelID'])
+                    await postToDirects(
+                        playersEmbed, 
+                        interaction.guild, 
+                        data['channelID'],
+                        onlyOccs = True)
                     nodeChannel = get(interaction.guild.text_channels, id = data['channelID'])
                     await nodeChannel.send(embed = nodeEmbed)
 
                 #Inform edited node occupants
+                boldDestinations = await fn.boldNodes(destinations.values())
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"You notice that this place is connected to {destinationMentions}. Something about that seems new.",
+                    f"You notice that this place is connected to {boldDestinations}. Something about that seems new.",
                     "Perhaps you're only imagining it.")         
-                await postToDirects(playersEmbed, interaction.guild, guildData['nodes'][originName]['channelID'])
+                await postToDirects(
+                    playersEmbed, 
+                    interaction.guild, 
+                    guildData['nodes'][originName]['channelID'],
+                    onlyOccs = True)
 
                 #Inform own node
-                description += f'• Connected {originMention}'
+                description += f'\n• Connected {originMention}'
                 match directionality:
                     case 0:
-                        description += ' <- from '
+                        description += ' from <- '
                     case 1:
                         description += ' <-> back and forth to '
                     case 2:
-                        description += ' -> to '
+                        description += ' to -> '
+                destinationMentions = await fn.mentionNodes(destinations.values())
                 description += f'{destinationMentions}.'
                 
                 if addRoles.values:
-                    description += '\n• Imposed the role restrictions on the whitelist.'
                     allowedRoles =  [role.id for role in addRoles.values]
                     for edgeName in newEdges.keys():
                         newEdges[edgeName]['allowedRoles'] = allowedRoles
 
                 if addPlayers.values:
-                    description += '\n• Imposed the person restrictions on the whitelist.'
                     for edgeName in newEdges.keys():
                         newEdges[edgeName]['allowedPeople'] = [int(ID) for ID in addPlayers.values]
 
-                description += 'You can view the graph with `/server view`, or view\
-                the edges of specific nodes with `/node review`.'
+                if addRoles.values or addPlayers.values:
+                    description += f'\n• Imposed the whitelist: {await fn.formatWhitelist(allowedRoles, addPlayers.values)}'
                 
+                graph = await fn.makeGraph(guildData)
+                subgraph = nx.ego_graph(graph, originName, radius = 99)
+                graphView = await fn.showGraph(subgraph)
                 embed, file = await fn.embed(
                     'New edge results.',
                     description,
-                    'I hope you like it.')        
+                    'You can view all the nodes and edges with /server view.',
+                    (graphView, 'full'))        
                 nodeChannel = get(interaction.guild.text_channels, id = origin['channelID'])
-                await nodeChannel.send(embed = embed)
+                await nodeChannel.send(embed = embed, file = file)
 
-                if interaction.channel.name in destinations or interaction.channel.name == originName:
-                    await interaction.delete_original_response()
-                else:
+                if interaction.channel.name not in destinations and interaction.channel.name != originName:
                     await interaction.followup.edit_message(
                         message_id = interaction.message.id,
-                        embed = embed,
-                        view = None)    
+                        embed = embed)    
                 return
 
             view = discord.ui.View()
@@ -813,7 +842,6 @@ class edgeCommands(commands.Cog):
 
             view, cancel = await fn.addCancel(view)
             embed = await refreshEmbed()
-                
             await ctx.respond(embed = embed, view = view, ephemeral = True)
             return
 
@@ -866,8 +894,8 @@ class edgeCommands(commands.Cog):
             originMention = f"<#{guildData['nodes'][originName]['channelID']}>"
 
             graph = await fn.makeGraph(guildData)
-            ancestors, neighbors, successors = await fn.getConnections(graph, [originName], True)
-            allNeighbors = ancestors + neighbors + successors
+            ancestors, mutuals, successors = await fn.getConnections(graph, [originName], True)
+            allNeighbors = ancestors + mutuals + successors
             if not allNeighbors:
                 embed, _ = await fn.embed(
                     'No edges.',
@@ -877,20 +905,35 @@ class edgeCommands(commands.Cog):
                 return
 
             subgraph = graph.subgraph(allNeighbors + [originName])
-            description = f'{originMention} has the following connections:'
-
-            description += await fn.formatEdges(guildData['nodes'], ancestors, neighbors, successors)
+            description = f'{originMention} has the following connections'
 
             deletedEdges = []
             graphImage = None
 
             async def refreshEmbed():
 
-                embed, file = await fn.embed(
+                fullDescription = description
+
+                if not deletedEdges:
+                    fullDescription += ':'
+                else:
+                    deletingAncestors = [ancestor for ancestor in ancestors if ancestor in addEdges.values]
+                    deletingMutuals = [mutual for mutual in mutuals if mutual in addEdges.values]
+                    deletingSuccessors = [successor for successor in successors if successor in addEdges.values]
+
+                    fullDescription += ", but you'll be deleting the following:" + \
+                        await fn.formatEdges(
+                            guildData['nodes'],
+                            deletingAncestors,
+                            deletingMutuals,
+                            deletingSuccessors)
+
+                embed, _ = await fn.embed(
                     'Delete edge(s)?',
-                    description,
+                    fullDescription,
                     'This cannot be reversed.',
                     (graphImage, 'full'))
+                
                 return embed
 
             async def updateFile():
@@ -912,9 +955,7 @@ class edgeCommands(commands.Cog):
 
                 await fn.loading(interaction)
 
-                #Delete edges
                 for neighbor in deletedEdges:
-
                     guildData['edges'].pop((neighbor, originName), None)
                     guildData['edges'].pop((originName, neighbor), None)
 
@@ -925,30 +966,39 @@ class edgeCommands(commands.Cog):
                 await queueRefresh(interaction.guild)
 
                 deletedNeighbors = await fn.filterNodes(guildData['nodes'], deletedEdges)
-                deletedMentions = await fn.mentionNodes(deletedNeighbors)
 
                 #Inform neighbors occupants and neighbor nodes
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"The path between here and {originMention} just closed.",
+                    f"The path between here and **#{originName}** just closed.",
                     'Just like that...')
                 nodeEmbed, _ = await fn.embed(
                     'Edge deleted.',
                     f'Removed an edge between here and {originMention}.',
-                    'You can view the remaing edges with /node review.')
+                    'You can view the remaining edges with /node review.')
                 for data in deletedNeighbors.values():
-                    await postToDirects(playersEmbed, interaction.guild, data['channelID'])
+                    await postToDirects(
+                        playersEmbed, 
+                        interaction.guild, 
+                        data['channelID'],
+                        onlyOccs = True)
                     nodeChannel = get(interaction.guild.text_channels, id = data['channelID'])
                     await nodeChannel.send(embed = nodeEmbed)
 
                 #Inform edited node occupants
+                boldDeleted = await fn.boldNodes(addEdges.values)
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"This place just lost access to {deletedMentions}.",
+                    f"This place just lost access to {boldDeleted}.",
                     "Will that path ever be restored?")         
-                await postToDirects(playersEmbed, interaction.guild, guildData['nodes'][originName]['channelID'])
+                await postToDirects(
+                    playersEmbed, 
+                    interaction.guild, 
+                    guildData['nodes'][originName]['channelID'],
+                    onlyOccs = True)
 
                 #Inform own node            
+                deletedMentions = await fn.mentionNodes(deletedNeighbors.values())
                 embed, _ = await fn.embed(
                     'Edges deleted.',
                     f'Removed the edges to {deletedMentions}. Talk about cutting ties.',
@@ -957,25 +1007,27 @@ class edgeCommands(commands.Cog):
                 await nodeChannel.send(embed = embed)
 
                 if interaction.channel.name == originName:
-                    await ctx.delete()
+                    await interaction.followup.delete_message(message_id = interaction.message.id)
                 else:
-                    await ctx.edit(
+                    await interaction.followup.edit_message(
+                        message_id = interaction.message.id,
                         embed = embed,
+                        attachments = [],
                         view = None)    
                 return
 
             view = discord.ui.View()
-            view, addEdges = await fn.addEdges(refreshFile, ancestors, neighbors, successors, view)
-            view, evilConfirm = await fn.addEvilConfirm(view, confirmDelete)
+            view, addEdges = await fn.addEdges(refreshFile, ancestors, mutuals, successors, view)
+            view, confirm = await fn.addEvilConfirm(view, confirmDelete)
             view, cancel = await fn.addCancel(view)
 
             await updateFile()
             embed = await refreshEmbed()
 
             await ctx.respond(embed = embed,
-            file = discord.File(graphImage, filename='image.png'),
-            view = view,
-            ephemeral = True)
+                file = discord.File(graphImage, filename='image.png'),
+                view = view,
+                ephemeral = True)
             return
 
         result = await fn.identifyNodeChannel(guildData['nodes'], ctx.channel.name, origin)
@@ -1053,7 +1105,7 @@ class edgeCommands(commands.Cog):
                 if addEdges.values:
                     selectedAncestors = [ancestor for ancestor in ancestors if ancestor in addEdges.values]
                     selectedNeighbors = [neighbor for neighbor in neighbors if neighbor in addEdges.values]
-                    selectedSuccessors = [successor for neighbor in successors if successor in addEdges.values]
+                    selectedSuccessors = [successor for successor in successors if successor in addEdges.values]
                     fullDescription += f"\n• Selected Edges: {await fn.formatEdges(guildData['nodes'], selectedAncestors, selectedNeighbors, selectedSuccessors)}."                      
                 else:
                     fullDescription += '\n• Selected Edges: None yet. Use the dropdown below to pick one or more.'
@@ -1289,6 +1341,8 @@ class serverCommands(commands.Cog):
             edgeCount += 1
  
         async def deleteData(interaction: discord.Interaction):
+
+            await interaction.response.defer()
             
             for nodeData in guildData['nodes'].values():
                 await fn.deleteChannel(interaction.guild.text_channels, nodeData['channelID'])
@@ -1303,10 +1357,14 @@ class serverCommands(commands.Cog):
             for memberID in members:
                 playerData = db.getPlayer(playerCon, memberID)
 
+                playerChannelID = playerData[str(interaction.guild_id)]['channelID']
                 await fn.deleteChannel(
                     interaction.guild.text_channels, 
-                    playerData[str(interaction.guild_id)]['channelID'])
-            
+                    playerChannelID)
+                
+                directListeners.pop(playerChannelID, None)
+                indirectListeners.pop(playerChannelID, None)
+
                 del playerData[str(interaction.guild_id)]
                 db.updatePlayer(playerCon, playerData, memberID)
             playerCon.close()
@@ -1317,11 +1375,17 @@ class serverCommands(commands.Cog):
             
             embed, _ = await fn.embed(
                 'See you.',
-                'The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
-                    "\n• All location messages.\n• All edges.\n• All player info and their channels.',
+                "The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
+                    "\n• All location messages.\n• All edges.\n• All player info and their channels.",
                 'You can always make them again if you change your mind.')
 
-            await interaction.response.edit_message(embed = embed, view = None)
+            try:
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)            
+            except:
+                pass
             return
 
         view = discord.ui.View()
@@ -1330,7 +1394,7 @@ class serverCommands(commands.Cog):
         embed, _ = await fn.embed(
         'Delete all data?',
         f"You're about to delete {len(guildData['nodes'])} nodes" + \
-            f"and {edgeCount} edges, alongside player data for {len(members)} people.",
+            f" and {edgeCount} edges, alongside player data for {len(members)} people.",
         'This will also delete associated channels from the server.')
 
         await ctx.respond(embed = embed, view = view)
@@ -1369,9 +1433,7 @@ class serverCommands(commands.Cog):
                 return
 
             #If something provided
-            connections = await fn.getConnections(graph, [centerName])
-            connections.append(centerName)
-            subgraph = graph.subgraph(connections)
+            subgraph = nx.ego_graph(graph, centerName, radius = 99)
             graphView = await fn.showGraph(subgraph)
 
             nodeMention = f"<#{guildData['nodes'][centerName]['channelID']}>"
@@ -1522,7 +1584,7 @@ class serverCommands(commands.Cog):
                 lastLocation = serverData['locationName']
                 lastKnownLocation = guildData['nodes'].get(lastLocation, None)
                 if lastKnownLocation:
-                    occupants = guildData['nodes'][lastLocatioPn].get('occupants', None)
+                    occupants = guildData['nodes'][lastLocation].get('occupants', None)
                     if occupants:
                         guildData['nodes']['locationName']['occupants'].pop(member)
                         if not guildData['nodes']['locationName']['occupants']:
@@ -1539,7 +1601,7 @@ class serverCommands(commands.Cog):
 
                 newPlayerChannel = await fn.newChannel(ctx.guild, player.display_name, playerCategory, player)
                 playerData[str(ctx.guild_id)]['channelID'] = newPlayerChannel.id
-                db.updatePlayer(con, playerData, playerID)
+                db.updatePlayer(con, playerData, member)
 
                 locationName = playerData[str(ctx.guild_id)]['locationName']
                 
@@ -2012,26 +2074,24 @@ class playerCommands(commands.Cog):
             if player in members:
                 playerIDs = [player.id]
             else:
-                embedData, _ = await embed(
+                embed, _ = await embed(
                     f'{player.mention}?',
                     "But they aren't a player.",
                     'So how can they be located?')
-                await interaction.followup.edit_message(
-                    message_id = interaction.message.id,
-                    embed = embedData,
+                await ctx.edit(
+                    embed = embed,
                     view = None)
                 return
         else:
             playerIDs = members
                 
         description = ''
-        locations = {}
 
         occupiedNodes = await fn.getOccupants(guildData['nodes'])
         for nodeName, occupantIDs in occupiedNodes.items():
             occupantMentions = [f'<@{occupantID}>' for occupantID in occupantIDs if occupantID in playerIDs]
             if occupantMentions:
-                description += f"\nC <#{guildData['nodes'][nodeName]['channelID']}>: {await fn.listWords(occupantMentions)}"
+                description += f"\n• <#{guildData['nodes'][nodeName]['channelID']}>: {await fn.listWords(occupantMentions)}"
                 
         if not description:
             description = "• No players found. That's a big problem. Run `/server fix`."
@@ -2588,7 +2648,7 @@ class freeCommands(commands.Cog):
         if con:
 
             import json
-            printableListeners = {speakerID : [channel.name for channel, eavesdropping in listeners] 
+            printableListeners = {speakerID : [channel.name for channel, _ in listeners] 
                 for speakerID, listeners in directListeners.items()}
             print(f"Direct listeners: {json.dumps(printableListeners, indent = 4)}")
 #            print(f"Indirect listeners: {json.dumps(indirectListeners, indent = 4)}")
@@ -3089,7 +3149,7 @@ class guildCommands(commands.Cog):
         for memberID in members:
             playerData = db.getPlayer(con, memberID)
 
-            await fn.deleteChannel(guild.text_channels, playerData[str(guild_id)]['channelID'])
+            await fn.deleteChannel(guild.text_channels, playerData[str(guild.id)]['channelID'])
         
             del playerData[str(guild.id)]
             db.updatePlayer(con, playerData, memberID)

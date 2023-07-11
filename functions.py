@@ -45,7 +45,10 @@ async def closeDialogue(interaction: discord.Interaction):
         'Window closed.',
         'Feel free to call the command again.')
 
-    await interaction.response.edit_message(embed = embedData, attachments = [], view = None)
+    await interaction.response.edit_message(
+        embed = embedData, 
+        attachments = [], 
+        view = None)
     return   
  
 async def nullResponse(interaction: discord.Interaction):
@@ -386,10 +389,12 @@ async def discordify(text: str):
 
     if not text:
         return ''
-    spacelessText = '-'.join(text.split())
-    discordified = ''.join(character.lower() for character in spacelessText if character.isalnum() or character == '-')
+    
+    sanitized = ''.join(character.lower() for character in \
+                        text if (character.isalnum() or character.isspace() or character == '-'))
+    spaceless = '-'.join(sanitized.split())
 
-    return discordified[:15]
+    return spaceless[:15]
 
 async def whitelistsSimilar(components: list):
 
@@ -443,7 +448,7 @@ async def determineWhitelist(
     if rolesValues or playerValues:
         allowedRoles = [role.id for role in rolesValues]
         return "\n• New whitelist(s)-- will overwrite the old whitelist: " + \
-            f"{await formatWhitelist(allowedRoles, playervalues)}"
+            f"{await formatWhitelist(allowedRoles, playerValues)}"
 
     firstComponent = list(componentsValues)[0]
 
@@ -451,9 +456,11 @@ async def determineWhitelist(
         return "\n• Whitelist: " + \
             f"{await formatWhitelist(firstComponent.get('allowedRoles', []), firstComponent.get('allowedPeople', []))}"
 
-    if await whitelistsSimilar(list(revisingNodes.values())):
+    if await whitelistsSimilar(list(componentsValues)):
         return "\n• Whitelists: Every part has the same whitelist-" + \
-            f"{await formatWhitelist(firstNodeData.get('allowedRoles', []), firstNodeData.get('allowedPeople', []))}"
+            await formatWhitelist(
+                firstComponent.get('allowedRoles', []), \
+                firstComponent.get('allowedPeople', []))
 
     else:
         return '\n• Whitelists: Multiple different whitelists.'
