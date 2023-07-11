@@ -6,7 +6,7 @@ import time
 
 bootTime = time.time()
 
-# Setup test tet
+# Setup
 intents = discord.Intents.none()
 intents.guilds = True
 intents.guild_messages = True
