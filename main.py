@@ -22,7 +22,6 @@ async def on_connect():
         status = discord.Status.online)
     
     print(f'{prox.user.name} woke up in {time.time() - bootTime} seconds.')
-
     return
 
 prox.load_extension('proxCommands')
