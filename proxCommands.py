@@ -2639,7 +2639,7 @@ class freeCommands(commands.Cog):
             printableListeners = {speakerID : [channel.name for channel, _ in listeners] 
                 for speakerID, listeners in directListeners.items()}
             print(f"Direct listeners: {json.dumps(printableListeners, indent = 4)}")
-#            print(f"Indirect listeners: {json.dumps(indirectListeners, indent = 4)}")
+            #print(f"Indirect listeners: {json.dumps(indirectListeners, indent = 4)}")
 
             con.close()
 
