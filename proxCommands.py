@@ -57,9 +57,17 @@ async def relay(msg: discord.Message):
 
         else:
             webhook = (await channel.webhooks())[0]
-            await webhook.send(msg.content[:2000], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+            files = [attachment.to_file() for attachment in msg.attachments]
+            await webhook.send(
+                msg.content[:2000], 
+                username = msg.author.display_name, 
+                avatar_url = msg.author.avatar.url,
+                files = files)
             if len(msg.content) > 1999:
-                await webhook.send(msg.content[2000:4000], username = msg.author.display_name, avatar_url = msg.author.avatar.url)
+                await webhook.send(
+                    msg.content[2000:4000], 
+                    username = msg.author.display_name, 
+                    avatar_url = msg.author.avatar.url)
 
     indirects = indirectListeners.get(msg.channel.id, [])
     for speakerLocation, channel in indirects:
@@ -99,11 +107,11 @@ async def postToDirects(
             continue
 
         try:
-            webhook = (await channel.webhooks())[0]
-            await webhook.send(embed = embed)
+            await channel.send(embed = embed)
         except: #Whenever this triggers it is NOT probably fine, don't fall for it Gray
             print(f"Tried to send a message to a channel without its webhook," + \
-                f" #{channel.name} within {channel.guild.name}. It's probably fine.")
+                f" #{channel.name} within {channel.guild.name}. It's probably fine.", \
+                file = sys.stderr)
 
     return
 
@@ -495,7 +503,7 @@ class nodeCommands(commands.Cog):
                     #Rename node 
                     renamedData = guildData['nodes'].pop(nodeNames[0])
                     guildData['nodes'][name] = renamedData
-                    description += f"\n• Renamed {nodeNames[0]} to <#{renamedData['channelID']}>."
+                    description += f"\n• Renamed **#{nodeNames[0]}** to <#{renamedData['channelID']}>."
 
                     #Correct locationName in player data
                     playerCon = db.connectToPlayer()
@@ -769,7 +777,7 @@ class edgeCommands(commands.Cog):
                     await nodeChannel.send(embed = nodeEmbed)
 
                 #Inform edited node occupants
-                boldDestinations = await fn.boldNodes(destinations.values())
+                boldDestinations = await fn.boldNodes(destinations.keys())
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
                     f"You notice that this place is connected to {boldDestinations}. Something about that seems new.",
@@ -1002,7 +1010,7 @@ class edgeCommands(commands.Cog):
                 deletedMentions = await fn.mentionNodes(deletedNeighbors.values())
                 embed, _ = await fn.embed(
                     'Edges deleted.',
-                    f'Removed the edges to {deletedMentions}. Talk about cutting ties.',
+                    f'Removed the edge(s) to {deletedMentions}.',
                     'You can always make some new ones with /edge new.')   
                 nodeChannel = get(interaction.guild.text_channels, name = originName)
                 await nodeChannel.send(embed = embed)
@@ -1018,7 +1026,7 @@ class edgeCommands(commands.Cog):
                 return
 
             view = discord.ui.View()
-            view, addEdges = await fn.addEdges(refreshFile, ancestors, mutuals, successors, view)
+            view, addEdges = await fn.addEdges(ancestors, mutuals, successors, view, callback = refreshFile)
             view, confirm = await fn.addEvilConfirm(view, confirmDelete)
             view, cancel = await fn.addCancel(view)
 
@@ -1103,16 +1111,24 @@ class edgeCommands(commands.Cog):
                 fullDescription = description
 
                 if addEdges.values:
-                    fullDescription += f"\n• Selected Edges: See below."                      
+                    fullDescription += f"\n• Selected Edges: See below."   
+                    components = []
+                    for destination in addEdges.values:
+                        toNeighbor = guildData['edges'].get((originName, destination), {})
+                        fromNeighbor = guildData['edges'].get((destination, originName), {})
+                        toNeighbor.update(fromNeighbor)
+                        components.append(toNeighbor)
+
+                    fullDescription += await fn.determineWhitelist(
+                        clearing,
+                        addRoles.values,
+                        addPlayers.values,
+                        components)                   
+                
                 else:
                     fullDescription += '\n• Selected Edges: None yet. Use the dropdown below to pick one or more.'
-                    
-                fullDescription += await fn.determineWhitelist(
-                    clearing,
-                    addRoles.values,
-                    addPlayers.values,
-                    edgeData)
-                
+                    fullDescription += '\n• Whitelist: Selected edges will have their whitelists appear here.'
+                                    
                 edgeColors = await fn.colorEdges(subgraph, originName, addEdges.values, 'blue')
                 graphImage = await fn.showGraph(subgraph, edgeColors)
                 embed, _ = await fn.embed(
@@ -1163,9 +1179,9 @@ class edgeCommands(commands.Cog):
                 for destination in addEdges.values:
                     toNeighbor = guildData['edges'].pop((originName, destination), None)
                     fromNeighbor = guildData['edges'].pop((destination, originName), None)
-                    if isinstance(toNeighbor, dict):
+                    if toNeighbor != None:
                         editedEdges[(originName, destination)] = {}
-                    if isinstance(fromNeighbor, dict):
+                    if fromNeighbor != None:
                         editedEdges[(destination, originName)] = {}
                 
                 if clearing:
@@ -1206,16 +1222,24 @@ class edgeCommands(commands.Cog):
                     description,
                     'You can view its details with /edge allow.')
                 for neighbor in neighborNodes.values():
-                    await postToDirects(playersEmbed, interaction.guild, neighbor['channelID'])
+                    await postToDirects(
+                        playersEmbed, 
+                        interaction.guild, 
+                        neighbor['channelID'],
+                        onlyOccs = True)
                     nodeChannel = get(interaction.guild.text_channels, id = neighbor['channelID'])
                     await nodeChannel.send(embed = nodeEmbed)
 
                 #Inform edited node occupants
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
-                    f"You notice that the're been in change in the way this place is connected to {neighborMentions}.",
+                    f"You notice that there's been in change in the way this place is connected to {neighborMentions}.",
                     "Perhaps you're only imagining it.")         
-                await postToDirects(playersEmbed, interaction.guild, guildData['nodes'][originName]['channelID'])
+                await postToDirects(
+                    playersEmbed, 
+                    interaction.guild, 
+                    guildData['nodes'][originName]['channelID'],
+                    onlyOccs = True)
 
                 #Inform own node                
                 embed, _ = await fn.embed(
@@ -1251,7 +1275,6 @@ class edgeCommands(commands.Cog):
                 ephemeral = True)
             return
     
-
         result = await fn.identifyNodeChannel(guildData['nodes'], ctx.channel.name, origin)
         match result:
             case isMessage if isinstance(result, discord.Embed):
@@ -1330,37 +1353,15 @@ class serverCommands(commands.Cog):
  
         async def deleteData(interaction: discord.Interaction):
 
-            await interaction.response.defer()
-            
-            for nodeData in guildData['nodes'].values():
-                await fn.deleteChannel(interaction.guild.text_channels, nodeData['channelID'])
-                directListeners.pop(nodeData['channelID'], None)
+            await fn.loading(interaction)
 
-            con = db.connectToGuild()
-            db.deleteGuild(con, interaction.guild_id)
-            db.deleteMembers(con, interaction.guild_id)
-            con.close()
+            global directListeners, indirectListeners
 
-            playerCon = db.connectToPlayer()
-            for memberID in members:
-                playerData = db.getPlayer(playerCon, memberID)
+            directListeners, indirectListeners = await fn.deleteServer(
+                interaction.guild,
+                directListeners,
+                indirectListeners)
 
-                playerChannelID = playerData[str(interaction.guild_id)]['channelID']
-                await fn.deleteChannel(
-                    interaction.guild.text_channels, 
-                    playerChannelID)
-                
-                directListeners.pop(playerChannelID, None)
-                indirectListeners.pop(playerChannelID, None)
-
-                del playerData[str(interaction.guild_id)]
-                db.updatePlayer(playerCon, playerData, memberID)
-            playerCon.close()
-
-            for categoryName in ['nodes', 'players']:
-                nodeCategory = get(interaction.guild.categories, name = categoryName)
-                await nodeCategory.delete() if nodeCategory else None
-            
             embed, _ = await fn.embed(
                 'See you.',
                 "The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
@@ -1488,6 +1489,7 @@ class serverCommands(commands.Cog):
                 await newNodeChannel.send(embed = embed)
                 continue
 
+            newName = None
             if nodeName not in channelNames: #Node was renamed in server only
                 
                 nodeChannel = get(ctx.guild.text_channels, id = guildData['nodes'][nodeName]['channelID'])
@@ -1502,8 +1504,12 @@ class serverCommands(commands.Cog):
                         guildData['edges'][(newName, destination)] = guildData['edges'].pop((origin, destination))
                     if destination == oldName:
                         guildData['edges'][(origin, newName)] = guildData['edges'].pop((origin, destination))
-        
-            nodeChannel = get(ctx.guild.text_channels, id = guildData['nodes'][nodeName]['channelID'])
+            
+
+            if newName:
+                nodeChannel = get(ctx.guild.text_channels, id = guildData['nodes'][newName]['channelID'])
+            else:
+                nodeChannel = get(ctx.guild.text_channels, id = guildData['nodes'][nodeName]['channelID'])
             nodeWebhooks = await nodeChannel.webhooks()
             if len(nodeWebhooks) != 1:
 
@@ -1535,19 +1541,19 @@ class serverCommands(commands.Cog):
         noEntrances -= noAccess
 
         if noAccess:
-            noAccessMentions = [f"<#{guildData['nodes'][node]['channelID']}>" for node in noAccess]
-            description += f'\n• The following nodes have no edges for entry or exit, meaning \
-                **players can only come or go through** `/player tp`**:** {await fn.listWords(noAccessMentions)}.'
+            noAccessMentions = await fn.mentionNodes([guildData['nodes'][node] for node in noAccess])
+            description += "\n• The following nodes have no edges for entry or exit, meaning" + \
+                f" **players can only come or go through** `/player tp`**:** {noAccessMentions}."
 
         if noExits:
-            noExitsMentions = [f"<#{guildData['nodes'][node]['channelID']}>" for node in noExits]
-            description += f'\n• The following nodes have no edges for exiting, meaning \
-                **players can get trapped:** {await fn.listWords(noExitsMentions)}.'
+            noExitsMentions = await fn.mentionNodes([guildData['nodes'][node] for node in noExits])
+            description += "\n• The following nodes have no edges for exiting, meaning" + \
+                f" **players can get trapped:** {noExitsMentions}."
 
         if noEntrances:
-            noEntrancesMentions = [f"<#{guildData['nodes'][node]['channelID']}>" for node in noEntrances]
-            description += f'\n• The following nodes have no edges as entrances, meaning \
-                **players will never enter:** {await fn.listWords(noEntrancesMentions)}.'
+            noEntrancesMentions = await fn.mentionNodes([guildData['nodes'][node] for node in noEntrances])
+            description += "\n• The following nodes have no edges as entrances, meaning" + \
+                f" **players will never enter:** {noEntrancesMentions}."
 
         con = db.connectToGuild()
         playerCon = db.connectToPlayer()
@@ -1595,15 +1601,15 @@ class serverCommands(commands.Cog):
                 
                 embed, _ = await fn.embed(
                     f'Welcome.',
-                    f"""This is your very own channel, again, {player.mention}.
-                    • Speak to others by just talking in this chat. Anyone who can hear you\
-                    will see your messages pop up in their own player channel.
-                    • You can `/look` around. You're at **{locationName}** right now.
-                    • Do `/map` to see the other places you can go.
-                    • ...And `/move` to go there. .
-                    • You can`/eavesdrop` on people nearby room.
-                    • Other people can't see your `/commands`.
-                    • Tell the host not to accidentally delete your channel again.""",
+                    f"This is your very own channel, again, {player.mention}." + \
+                    "\n• Speak to others by just talking in this chat. Anyone who can hear you" + \
+                    " will see your messages pop up in their own player channel." + \
+                    f"\n• You can `/look` around. You're at **{locationName}** right now." + \
+                    "\n• Do `/map` to see the other places you can go." + \
+                    "\n• ...And `/move` to go there." + \
+                    "\n• You can`/eavesdrop` on people nearby room." + \
+                    "\n• Other people can't see your `/commands`." + \
+                    "\n• Tell the host not to accidentally delete your channel again.",
                     'You can always type /help to get more help.')
                 await newPlayerChannel.send(embed = embed)
             
@@ -1625,24 +1631,24 @@ class serverCommands(commands.Cog):
         await queueRefresh(ctx.guild)
 
         if noChannelMentions:
-            description += f'\n• The following players got back their deleted player channels:\
-                {await fn.listWords(noChannelMentions)}.'
+            description += "\n• The following players got back their deleted player channels:" + \
+                f" {await fn.listWords(noChannelMentions)}."
 
         if missingPlayers:
-            description += f'\n• Deleted data and any remaining player channelsfor {len(missingPlayers)}\
-            players who left the server without ever being officially removed as players. My best guess\
-            for the name(s) of those who left is {await fn.listWords(missingPlayers)}.'
+            description += f"\n• Deleted data and any remaining player channelsfor {len(missingPlayers)}" + \
+                " players who left the server without ever being officially removed as players. My best guess" + \
+                f" for the name(s) of those who left is {await fn.listWords(missingPlayers)}."
 
         if wrongWebhooks:
-            description += f'\n• Fixed the webhook(s) for the following player channel(s):\
-            {await fn.listWords(wrongWebhooks)}.' 
+            description += "\n• Fixed the webhook(s) for the following player channel(s):" + \
+                f" {await fn.listWords(wrongWebhooks)}."
      
         if not description:
-            description += "Congratulations! This server has no detectable issues.\
-            \n• All nodes have a channel, weren't renamed improperly, and have their\
-            webhooks intact.\n• Every node has at least one way in and out.\n• No\
-            players left the server and left behind data or a channel.\n• Every player\
-            has a channel of their own, with those webhooks intact too."
+            description += "Congratulations! This server has no detectable issues." + \
+                "\n• There are no nodes missing a channel, none have been renamed" + \
+                " improperly, and none are missing their webhook.\n• No dead end nodes" + \
+                " or isolated nodes.\n• No players left the server and left behind data" + \
+                " or a channel.\n• No players missing a channel or their webhook."
 
         embed, _ = await fn.embed(
         f'Server fix',
@@ -1660,10 +1666,7 @@ class serverCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        con = db.connectToGuild()
-        guildData = db.getGuild(con, ctx.guild_id)
-        members = db.getMembers(con, ctx.guild_id)
-        con.close()
+        guildData, members = db.mag(ctx.guild_id)
 
         embed = discord.Embed(
             title = 'Debug details',
@@ -1679,13 +1682,28 @@ class serverCommands(commands.Cog):
             guildDescription += f"\n{index}. <#{nodeData['channelID']}>: "
             allowedRoles = nodeData.get('allowedRoles', [])
             allowedPeople = nodeData.get('allowedPeople', [])
-            guildDescription += f'\n-- Whitelist: {await fn.formatWhitelist(allowedRoles, allowedPeople)}'
+            if allowedRoles or allowedPeople:
+                guildDescription += f'\n-- Whitelist: {await fn.formatWhitelist(allowedRoles, allowedPeople)}'
             occupants = nodeData.get('occupants', [])
             if occupants:
                 occupantMentions = [f'<@{occupant}>' for occupant in occupants]
                 guildDescription += f'\n-- Occupants: {await fn.listWords(occupantMentions)}'
 
-        guildDescription += f"\n• Edges: {guildData['edges']}"
+        directionalityCount = {}
+        for origin, destination in guildData['edges'].keys():
+            oldCount = directionalityCount.setdefault((destination, origin), 0)
+            directionalityCount[(origin, destination)] = oldCount + 1
+
+        for origin, destination in directionalityCount.keys():
+
+            count = directionalityCount.get((origin, destination), 0)
+            match count:
+                case 0:
+                    pass
+                case 1:
+                    guildDescription += f"\n• {origin} -> {destination}"
+                case 2:
+                    guildDescription += f"\n• {origin} <-> {destination}"
 
         embed.add_field(
             name = 'Server Data: guilds.guilds.db',
@@ -1826,62 +1844,64 @@ class playerCommands(commands.Cog):
 
             await fn.loading(interaction)
 
+            newPlayers = [person for person in addPeople.values if person.id not in members]
+
             if await fn.noNodes(addNodes.values, interaction):
                 return
 
-            if await fn.noPeople(addPeople.values, interaction):
+            if await fn.noPeople(newPlayers, interaction):
                 return
                 
             nodeName = addNodes.values[0]    
-            con = db.connectToPlayer()
-
-            existingPlayers = 0
-            newPlayerIDs = []
+            playerCon = db.connectToPlayer()
             playerCategory = await fn.assertCategory(interaction.guild, 'players')
-            for person in addPeople.values:
-
-                if person.id in members:
-                    existingPlayers += 1
-                    continue
+            for person in newPlayers:
 
                 newPlayerChannel = await fn.newChannel(interaction.guild, person.name, playerCategory, person)
                 embed, _ = await fn.embed(
                     f'Welcome.',
-                    f"""This is your very own channel, {person.mention}.
-                    • Speak to others by just talking in this chat. Anyone who can hear you\
-                    will see your messages pop up in their own player channel.
-                    • You can `/look` around. You're at <#{guildData['nodes'][nodeName]['channelID']}> right now.
-                    • Do `/map` to see the other places you can go.
-                    • ...And `/move` to go there. .
-                    • You can`/eavesdrop` on people nearby room.
-                    • Other people can't see your `/commands`.""",
+                    f"This is your very own channel, {person.mention}." + \
+                    "\n• Speak to others by just talking in this chat. Anyone who can hear you" + \
+                        "will see your messages pop up in their own player channel." + \
+                    f"\n• You can `/look` around. You're at **#{nodeName}** right now." + \
+                    "\n• Do `/map` to see the other places you can go." + \
+                    "\n• ...And `/move` to go there." + \
+                    "\n• You can`/eavesdrop` on people nearby room." + \
+                    "\n• Other people can't ever see your `/commands`.",
                     'You can always type /help to get more help.')
                 await newPlayerChannel.send(embed = embed)
 
-                playerData = db.getPlayer(con, person.id)
+                playerData = db.getPlayer(playerCon, person.id)
                 playerData[str(interaction.guild_id)] = {
                     'channelID' : newPlayerChannel.id,
                     'locationName' : nodeName}
-                db.updatePlayer(con, playerData, person.id)
-                newPlayerIDs.append(person.id)
+                db.updatePlayer(playerCon, playerData, person.id)
                 members.append(person.id)
-
-            con.close()
+            playerCon.close()
 
             #Add the players to the guild nodes as occupants
             con = db.connectToGuild()
             guildData = db.getGuild(con, interaction.guild_id)
-            priorOccupants = guildData['nodes'][nodeName].get('occupants', [])
-            guildData['nodes'][nodeName]['occupants'] = priorOccupants + newPlayerIDs
+            playerIDs = [player.id for player in newPlayers]
+            guildData = await fn.addOccupants(
+                guildData, 
+                nodeName, 
+                playerIDs)
             db.updateGuild(con, guildData, interaction.guild_id)
+            db.updateMembers(con, members, interaction.guild_id)
+            con.close()
 
             #Inform the node occupants
-            playerMentions = await fn.listWords([f'<@{ID}>' for ID in newPlayerIDs])
+            playerMentions = await fn.mentionPlayers(playerIDs)
             playersEmbed, _ = await fn.embed(
                 'A fresh face.',
                 f"{playerMentions} is here.",
                 'Perhaps you should greet them.')         
-            await postToDirects(playersEmbed, interaction.guild, guildData['nodes'][nodeName]['channelID'])
+            await postToDirects(
+                playersEmbed, 
+                interaction.guild, 
+                guildData['nodes'][nodeName]['channelID'],
+                onlyOccs = True)
 
             #Inform own node                
             embed, _ = await fn.embed(
@@ -1891,20 +1911,15 @@ class playerCommands(commands.Cog):
             nodeChannel = get(interaction.guild.text_channels, id = guildData['nodes'][nodeName]['channelID'])
             await nodeChannel.send(embed = embed)
 
-            #Add new players to guild member list
-            db.updateMembers(con, members, interaction.guild_id)
-            con.close()
-
             await queueRefresh(interaction.guild)
 
-            description = ''
-            if newPlayerIDs:
-                description += f"Successfully added {playerMentions} to this server,\
-                    starting their journey at <#{guildData['nodes'][nodeName]['channelID']}>."
+            description = f"Successfully added {playerMentions} to this server," + \
+                    f" starting their journey at <#{guildData['nodes'][nodeName]['channelID']}>."
 
+            existingPlayers = len(addPeople.values) - len(newPlayers)
             if existingPlayers:
-                description += f"\n\nYou provided {existingPlayers} person(s) that are already in,\
-                    so they got skipped. They're all players now, either way."          
+                description += f"\n\nYou provided {existingPlayers} person(s) that are already in," + \
+                    " so they got skipped. They're all players now, either way."          
 
             embed, _ = await fn.embed(
                 'New player results.',
@@ -1945,12 +1960,12 @@ class playerCommands(commands.Cog):
                 playerMentions = [f'<@{player}>' for player in addPlayers.values]
                 description = f'Remove {await fn.listWords(playerMentions)} from the game?'
             else:
-                description = "For all the players you list, this command will:\
-                \n• Delete their player channel(s).\n• Remove them as occupants in\
-                the locations they're in.\n• Remove their ability to play, returning\
-                them to the state they were in before they were added as a player.\
-                \n\nIt will not:\n• Kick or ban them from the server.\n• Delete their\
-                messages."
+                description = "For all the players you list, this command will:" + \
+                "\n• Delete their player channel(s).\n• Remove them as occupants in" + \
+                " the locations they're in.\n• Remove their ability to play, returning" + \
+                " them to the state they were in before they were added as a player." + \
+                "\n\nIt will not:\n• Kick or ban them from the server.\n• Delete their" + \
+                " messages."
 
             embed, _ = await fn.embed(
                 'Delete player(s)?',
@@ -2350,7 +2365,7 @@ class freeCommands(commands.Cog):
                         " player in this server, so you'll use" + \
                         f" <#{serverData['channelID']}>."
                     tutorialData['Locations'] += f" Right now, you're" + \
-                        f" in #{serverData['locationName']}."
+                        f" in **#{serverData['locationName']}**."
                 
             await displayTutorial(interaction = interaction)
             return
@@ -2635,11 +2650,10 @@ class freeCommands(commands.Cog):
 
         if con:
 
-            import json
-            printableListeners = {speakerID : [channel.name for channel, _ in listeners] 
-                for speakerID, listeners in directListeners.items()}
-            print(f"Direct listeners: {json.dumps(printableListeners, indent = 4)}")
-            #print(f"Indirect listeners: {json.dumps(indirectListeners, indent = 4)}")
+            #import json
+            #printableListeners = {speakerID : [channel.name for channel, _ in listeners] 
+            #    for speakerID, listeners in directListeners.items()}
+            #print(f"Direct listeners: {json.dumps(printableListeners, indent = 4)}")
 
             con.close()
 
@@ -2686,22 +2700,22 @@ class guildCommands(commands.Cog):
 
         if ancestors:
             if len(ancestors) > 1:
-                boldedNodes = [f"**#{node}**" for node in ancestors]
-                description += f" There are one-way routes from (<-) {await fn.listWords(boldedNodes)}. "
+                boldedNodes = await fn.boldNodes(ancestors)
+                description += f" There are one-way routes from (<-) {boldedNodes}. "
             else:
                 description += f" There's a one-way route from (<-) **#{ancestors[0]}**. "
 
         if successors:
             if len(successors) > 1:
-                boldedNodes = [f"**#{node}**" for node in successors]
-                description += f" There are one-way routes to (->) {await fn.listWords(boldedNodes)}. "
+                boldedNodes = await fn.boldNodes(successors)
+                description += f" There are one-way routes to (->) {boldedNodes}. "
             else:
                 description += f" There's a one-way route to (->) **#{successors[0]}**. "
 
         if mutuals:
             if len(mutuals) > 1:
-                boldedNodes = [f"**#{node}**" for node in mutuals]
-                description += f" There's ways to {await fn.listWords(boldedNodes)} from here. "
+                boldedNodes = await fn.boldNodes(mutuals)
+                description += f" There's ways to {boldedNodes} from here. "
             else:
                 description += f" There's a way to get to **#{mutuals[0]}** from here. "
         
@@ -2763,7 +2777,8 @@ class guildCommands(commands.Cog):
                     embed, 
                     interaction.guild, 
                     guildData['nodes'][serverData['locationName']]['channelID'], 
-                    serverData['channelID'])
+                    serverData['channelID'],
+                    onlyOccs = True)
 
                 embed, _ = await fn.embed(
                     'All done.',
@@ -2800,15 +2815,15 @@ class guildCommands(commands.Cog):
                 description += f'{await fn.listWords(fullList)}. '
                 unoccupiedNeighbors = [neighbor for neighbor in neighbors if neighbor not in occupiedNeighbors]
                 if unoccupiedNeighbors:
-                    hashedUnoccupied =  await fn.listWords([f'#{neighbor}' for neighbor in unoccupiedNeighbors]) 
-                    description += f"You can also listen in on {hashedUnoccupied}, but it sounds like nobody is in there."
+                    boldedUnoccupied = await fn.boldNodes(unoccupiedNeighbors)
+                    description += f"You can also listen in on {boldedUnoccupied}, but it sounds like nobody is in there."
             else:
-                hashedNeighbors = [f'**#{neighbor}**' for neighbor in neighbors]
-                description = f"You're able to listen in on {await fn.listWords(hashedNeighbors)} from here,\
-                    but you don't hear anyone over there. "
+                boldedNeighbors = await fn.boldNodes(neighbors)
+                description = f"You're able to listen in on {boldedNeighbors} from here," + \
+                    " but you don't hear anyone over there. "
         else:
-            description = "If there was someplace nearby, you could listen in on it, but \
-            there's nowhere nearby here. Wait, does that mean you're stuck here?"
+            description = "If there was someplace nearby, you could listen in on it, but" + \
+                " there's nowhere nearby here. Wait, does that mean you're stuck here?"
 
         async def refreshEmbed():
 
@@ -2899,13 +2914,17 @@ class guildCommands(commands.Cog):
 
         playerRoleIDs = [role.id for role in ctx.author.roles]
 
-        playerGraph = await fn.filterMap(guildData, ctx.author.roles, ctx.author.id, serverData['locationName'])
+        playerGraph = await fn.filterMap(
+            guildData, 
+            ctx.author.roles, 
+            ctx.author.id, 
+            serverData['locationName'])
         playerMap = await fn.showGraph(playerGraph)
 
         embed, file = await fn.embed(
             'Map',
-            f"Here are all the places you can reach from **#{serverData['locationName']}**.\
-            You can travel along the arrows that point to where you want to go. ",
+            f"Here are all the places you can reach from **#{serverData['locationName']}**." + \
+                " You can travel along the arrows that point to where you want to go. ",
             "Use /move to go there.",
             (playerMap, 'full'))
         
@@ -3028,8 +3047,8 @@ class guildCommands(commands.Cog):
                         case ending if whichPart == len(path) - 1:
                             embed, _ = await fn.embed(
                                 'Someone stopped by.',
-                                f"You can hear someone come from **#{path[whichPart - 1]}**\
-                                and stop at **#{path[whichPart + 1]}**.",
+                                f"You can hear someone come from **#{path[whichPart - 1]}**" +
+                                    f" and stop at **#{path[whichPart + 1]}**.",
                                 'Wonder why they chose here.')
                             await eavesdropperChannel.send(embed = embed)
             playerCon.close()
@@ -3072,9 +3091,8 @@ class guildCommands(commands.Cog):
                 nodeChannel = get(interaction.guild.text_channels, name = midwayName)
                 embed, _ = await fn.embed(
                     'Transit.',
-                    f"{interaction.user.mention} passed through here when traveling from\
-                        **#{path[0]}>** to\
-                        **#{path[-1]}>**.",
+                    f"{interaction.user.mention} passed through here when traveling from" + \
+                        f"**#{path[0]}>** to + **#{path[-1]}**.",
                     f"They went from {' -> '.join(path)}.")
                 await nodeChannel.send(embed = embed)
 
@@ -3098,7 +3116,7 @@ class guildCommands(commands.Cog):
 
             #Change occupants
             con = db.connectToGuild()
-            guildData = await fn.addOccupant(guildData, path[-1], interaction.user.id)
+            guildData = await fn.addOccupants(guildData, path[-1], [interaction.user.id])
             db.updateGuild(con, guildData, interaction.guild_id)
             con.close()
 
@@ -3129,23 +3147,13 @@ class guildCommands(commands.Cog):
     async def on_guild_remove(
         self,
         guild: discord.Guild):
+ 
+        global directListeners, indirectListeners
 
-        con = db.connectToGuild()
-        members = db.getMembers(con, guild.id)
-
-        playerCon = db.connectToPlayer()
-        for memberID in members:
-            playerData = db.getPlayer(con, memberID)
-
-            await fn.deleteChannel(guild.text_channels, playerData[str(guild.id)]['channelID'])
-        
-            del playerData[str(guild.id)]
-            db.updatePlayer(con, playerData, memberID)
-        playerCon.close()
-
-        db.deleteGuild(con, guild.id)
-        db.deleteMembers(con, guild.id)
-        con.close()
+        directListeners, indirectListeners = await fn.deleteServer(
+            guild,
+            directListeners,
+            indirectListeners)
 
         if needingUpdate:
             needingUpdate.discard(guild)

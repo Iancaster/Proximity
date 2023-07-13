@@ -636,7 +636,7 @@ async def filterMap(guildData: dict, roleIDs: list, userID: int, origin: str):
             continue
 
         allowedPeople = nodeData.get('allowedPeople', [])
-        allowedRoles = nodeData.get('allowedRoles')
+        allowedRoles = nodeData.get('allowedRoles', [])
 
         if not allowedPeople and not allowedRoles:
             graph.add_node(nodeName)
@@ -795,6 +795,44 @@ async def loading(interaction: discord.Interaction):
         attachments = [])
     return
 
+async def deleteServer(
+    guild: discord.Guild, 
+    directListeners: dict, 
+    indirectListeners: dict):
+
+    con = db.connectToGuild()
+    guildData = db.getGuild(con, guild.id)
+    members = db.getMembers(con, guild.id)
+    db.deleteGuild(con, guild.id)
+    db.deleteMembers(con, guild.id)
+    con.close()
+
+    for nodeData in guildData['nodes'].values():
+        await deleteChannel(guild.text_channels, nodeData['channelID'])
+        directListeners.pop(nodeData['channelID'], None)
+
+    playerCon = db.connectToPlayer()
+    for memberID in members:
+        playerData = db.getPlayer(playerCon, memberID)
+
+        playerChannelID = playerData[str(guild.id)]['channelID']
+        await deleteChannel(
+            guild.text_channels, 
+            playerChannelID)
+        
+        directListeners.pop(playerChannelID, None)
+        indirectListeners.pop(playerChannelID, None)
+
+        del playerData[str(guild.id)]
+        db.updatePlayer(playerCon, playerData, memberID)
+    playerCon.close()
+
+    for categoryName in ['nodes', 'players']:
+        nodeCategory = get(guild.categories, name = categoryName)
+        await nodeCategory.delete() if nodeCategory else None
+
+    return directListeners, indirectListeners
+
 #Checks
 async def nodeExists(nodes: dict, name: str, interaction: discord.Interaction):
 
@@ -853,8 +891,8 @@ async def noPeople(values, interaction: discord.Interaction):
     if not values:
         embedData, _ = await embed(
             'Who?',
-            "You didn't select anyone.",
-            'You can call the command again and specify someone.')
+            "You didn't select any valid people.",
+            'You can call the command again and specify someone new.')
         await interaction.followup.edit_message(
             message_id = interaction.message.id,
             embed = embedData,
@@ -867,7 +905,7 @@ async def noChanges(test, interaction: discord.Interaction):
 
     if not test:
         embedData, _ = await embed(
-            'Sucess?',
+            'Success?',
             "You didn't make any changes.",
             "Unsure what the point of that was.")
         await interaction.followup.edit_message(

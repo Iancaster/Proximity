@@ -53,28 +53,8 @@ guildData = {'guildID': 1114005940392439899, 'nodes': {'really long name': {'cha
 #guildData = db.getGuild(con, 1114005940392439899)
 #con.close()
 graph = makeGraph(guildData)
-#plt.show()
-
-import re
-
-def find_matches():
-    pattern = r"await fn\.embed = "
-
-    try:
-        with open('commands.txt', 'r') as file:
-            content = file.read()
-
-        matches = re.findall(pattern, content)
-        return matches
-
-    except FileNotFoundError:
-        print("The 'commands.txt' file was not found.")
-
-# Call the function to find matches
-result = find_matches()
-print(f'Matches are: {result}')
 
 #bytesIO = showGraph(graph)
 
-# from timeit import timeit
-# print(timeit(lambda: db.gd(1114005940392439899), number = 1))
+from timeit import timeit
+print(timeit(lambda: db.gd(1114005940392439899), number = 1))
