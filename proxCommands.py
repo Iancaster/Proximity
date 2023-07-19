@@ -228,7 +228,7 @@ class nodeCommands(commands.Cog):
         node: discord.Option(
             str,
             'Call this command in a node (or name it) to narrow it down.',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -259,9 +259,9 @@ class nodeCommands(commands.Cog):
                     return
 
                 #Inform neighbor nodes and occupants that the node is deleted now
-                neighbors = await guildData.neighbors(deletingNodes.keys())
+                neighborNames = await guildData.neighbors(deletingNodes.keys())
                 boldDeleting = await oop.Format.bold(deletingNodes.keys())
-                for neighbor in neighbors:
+                for name in neighborNames:
                     embed, _ = await fn.embed(
                         'Misremembered?',
                         f"Could you be imagining {boldDeleting}? Strangely, there's no trace.",
@@ -269,7 +269,7 @@ class nodeCommands(commands.Cog):
                     await postToDirects(
                         embed, 
                         interaction.guild, 
-                        neighbor.channelID,
+                        guildData.nodes[name].channelID,
                         onlyOccs = True)
                     
                     embed, _ = await fn.embed(
@@ -278,13 +278,13 @@ class nodeCommands(commands.Cog):
                         "I'm sure it's for the best.")
                     neighborChannel = get(
                         interaction.guild.text_channels,
-                        id = neighbor.channelID)
+                        id = guildData.nodes[name].channelID)
                     await neighborChannel.send(embed = embed)
 
                 #Delete nodes and their edges
                 for name, node in deletingNodes.items():
 
-                    for neighbor in node.neighbors.keys():
+                    for neighbor in list(node.neighbors.keys()):
                         await guildData.deleteEdge(name, neighbor)
 
                     await guildData.deleteNode(name, ctx.guild.text_channels)
@@ -360,7 +360,7 @@ class nodeCommands(commands.Cog):
         node: discord.Option(
             str,
             'Either call this command inside a node or name it here.',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -379,9 +379,9 @@ class nodeCommands(commands.Cog):
               
             neighbors = await guildData.neighbors(revisingNodes.keys())
             if neighbors:
-                subgraph = await guildData.toGraph(neighbors + nodeNames)
-                description += '\n• Edges: See below.'
-                graphView = (await fn.showGraph(subgraph), 'full')
+                localNodes = await guildData.filterNodes(list(neighbors) + nodeNames)
+                subgraph = await guildData.toGraph(localNodes)
+                graphView = (await guildData.toMap(subgraph), 'full')
             else:
                 description += '\n• Edges: No other nodes are connected to the selected node(s).'
                 graphView = None
@@ -541,7 +541,7 @@ class nodeCommands(commands.Cog):
         return
 
     @commands.Cog.listener()
-    async def on_guild_channel_delete(
+    async def on_guild_channel_delete( #Make this remake channels if they were an occupied node
         self,
         channel):
 
@@ -567,15 +567,19 @@ class nodeCommands(commands.Cog):
         foundNode = False
         for name, node in guildData.nodes.items():
             if beforeChannel.id == node.channelID:
-                renamedNode = guildData.nodes.pop(beforeChannel.name)
+                renamedNode = guildData.nodes.pop(beforeChannel.name, None)
+
+                if not renamedNode: #Node was renamed by Prox itself, phew
+                    return
+
                 guildData.nodes[afterChannel.name] = renamedNode
                 foundNode = True
                 break
             
-        if foundNode == False:
+        if foundNode == False: #Channel wasn't even a node channel
             return
 
-        for node in guildData.nodes.values():
+        for node in guildData.nodes.values(): #Fix the edges too
             for neighbor in list(node.neighbors):
                 if neighbor == oldName:
                     node.neighbors[afterChannel.name] = node.neighbors.pop(beforeChannel.name)
@@ -602,7 +606,7 @@ class edgeCommands(commands.Cog):
         origin: discord.Option(
             str,
             'Either call this command inside a node or name it here.',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -675,9 +679,11 @@ class edgeCommands(commands.Cog):
                         view.overwriting):
 
                         existingEdges += 1
-                    
-                    else:
-                        newNeighbors.add(destination)
+
+                        if not view.overwriting:        
+                            continue
+
+                    newNeighbors.add(destination)
 
                 if len(newNeighbors) == 0:
                     embed, _ = await fn.embed(
@@ -750,7 +756,7 @@ class edgeCommands(commands.Cog):
                 #Produce map of new edges
                 graph = await guildData.toGraph()
                 subgraph = nx.ego_graph(graph, originName, radius = 99)
-                graphView = await fn.showGraph(subgraph)
+                graphView = await guildData.toMap(subgraph)
                 embed, file = await fn.embed(
                     'New edge results.',
                     description,
@@ -815,7 +821,7 @@ class edgeCommands(commands.Cog):
         origin: discord.Option(
             str,
             'Either call this command inside a node or name it here.',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -1001,7 +1007,7 @@ class edgeCommands(commands.Cog):
         origin: discord.Option(
             str,
             'Either call this command inside a node or name it here.',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -1306,7 +1312,7 @@ class serverCommands(commands.Cog):
         node: discord.Option(
             str,
             'Specify a node to highlight?',
-            autocomplete = fn.autocompleteNodes,
+            autocomplete = oop.Auto.nodes,
             required = False)):
         
         await ctx.defer(ephemeral = True)
@@ -1315,30 +1321,29 @@ class serverCommands(commands.Cog):
 
         async def viewEgo(guildData: dict, centerName: str = None):
 
-            graph = await guildData.toDict()
-
             #Nothing provided
             if not centerName:
-                graphView = await guildData.toDict()
+                map = await guildData.toMap()
                 embed, file = await fn.embed(
                     'Complete graph',
                     'Here is a view of every node and edge.',
                     'To view only a single node and its neighbors, use /server view #node.',
-                    (graphView, 'full'))
+                    (map, 'full'))
 
                 await ctx.respond(embed = embed, file = file, ephemeral = True)
                 return
 
             #If something provided
-            subgraph = nx.ego_graph(graph, centerName, radius = 99)
-            graphView = await fn.showGraph(subgraph)
+            center = guildData.nodes[centerName]
+            included = center.neighbors.keys() + [centerName]
+            graph = await guildData.toGraph(included)
+            map = await guildData.toMap(graph)
 
-            nodeMention = f"<#{guildData['nodes'][centerName]['channelID']}>"
             embed, file = await fn.embed(
-                f"{nodeMention}'s neighbors",
+                f"{center.mention}'s neighbors",
                 "Here is the node, plus any neighbors.",
                 'To view every node and edge, call /server view without the #node.',
-                (graphView, 'full'))
+                (map, 'full'))
 
             await ctx.respond(embed = embed, file = file, ephemeral = True)
             return
@@ -2992,7 +2997,7 @@ class guildCommands(commands.Cog):
         node: discord.Option(
             str,
             "Name where you would like to go?",
-            autocomplete = fn.autocompleteMap,
+            autocomplete = oop.Auto.map,
             required = False)):
 
         await ctx.defer(ephemeral = True)

@@ -4,8 +4,10 @@ from discord.utils import get
 import functions as fn
 import databaseFunctions as db
 
-import attr, base64, pickle, sqlite3
+import attr, base64, pickle, sqlite3, math
 import networkx as nx
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 @attr.s
 class Format:
@@ -87,7 +89,7 @@ class Format:
         return await cls.words([node.mention for node in nodes])
 
 @attr.s(auto_attribs = True)
-class Player():
+class Player:
     id: int = attr.ib(default = 0)
     guildID: int = attr.ib(default = 0)
     
@@ -153,7 +155,6 @@ class Player():
         playerCon.commit()
         playerCon.close()
         return
-
 
 @attr.s(auto_attribs = True)
 class ChannelMaker:
@@ -472,39 +473,80 @@ class GuildData:
                 if destination in madeEdges:
                     continue
 
-                if edge.directionality < 0:
+                if edge.directionality > 0:
                     graph.add_edge(name, destination)
                     graph[name][destination]['allowedRoles'] = edge.allowedRoles
                     graph[name][destination]['allowedPlayers'] = edge.allowedPlayers
                 
-                if edge.directionality > 2:
+                if edge.directionality < 2:
                     graph.add_edge(destination, name)
-                    graph[destionation][name]['allowedRoles'] = edge.allowedRoles
-                    graph[destination][time]['allowedPlayers'] = edge.allowedPlayers
+                    graph[destination][name]['allowedRoles'] = edge.allowedRoles
+                    graph[destination][name]['allowedPlayers'] = edge.allowedPlayers
 
             madeEdges.add(name)
 
         return graph
 
-    async def toMap(self, graph = None):
+    async def toMap(self, graph = None, edgeColor: str = 'black'):
 
         if not graph:
             graph = await self.toGraph()
 
-        nx.draw_shell(
+        # nx.draw_shell(
+        #     graph,
+        #     with_labels = True,
+        #     font_weight = 'bold',
+        #     arrows = True,
+        #     arrowsize = 20,
+        #     width = 2,
+        #     arrowstyle = '->',
+        #     node_shape = 'o',
+        #     node_size = 4000,
+        #     node_color = '#ffffff',
+        #     margins = (.3, .1),
+        #     edge_color = edgeColor)
+
+        positions = nx.shell_layout(graph)
+
+        # Draw the nodes without edges
+        nx.draw_networkx_nodes(
             graph,
-            with_labels = True,
-            font_weight = 'bold',
-            arrows = True,
-            arrowsize = 20,
-            width = 2,
-            arrowstyle = '->',
+            pos = positions,
             node_shape = 'o',
             node_size = 4000,
-            node_color = '#ffffff',
-            margins = (.3, .1),
-            edge_color = edgeColor)
+            node_color = '#ffffff')
+        nx.draw_networkx_labels(graph, pos = positions, font_weight = 'bold')
+
+        node_size = 100  # Adjust this value based on your node size
+        edge_pos = {}
+        for edge in graph.edges():
+            u, v = edge
+            if u in positions and v in positions:
+                x1, y1 = positions[u]
+                x2, y2 = positions[v]
+                d = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+                if d < 100:
+                    # Adjust edge positions to maintain the minimum distance
+                    offset = (100 - d) / d
+                    dx = (x2 - x1) * offset
+                    dy = (y2 - y1) * offset
+                    x1 -= dx
+                    y1 -= dy
+                    x2 += dx
+                    y2 += dy
+                edge_pos[edge] = [(x1, y1), (x2, y2)]
+                nx.draw_networkx_edges(graph, pos =  edge_pos, edgelist=[edge], edge_color='black', width=2.0)
+
+        #Adjust margins
+        plt.margins(x = .1)
+        plt.subplots_adjust(
+            left = .2, 
+            right = .8, 
+            bottom = .1, 
+            top = .9)
+        plt.axis('off')
         
+        #Produce image
         graphImage = plt.gcf()
         plt.close()
         bytesIO = BytesIO()
@@ -846,5 +888,38 @@ class DialogueView(discord.ui.View):
         else:
             return '\n• Whitelists: Multiple different whitelists.'
 
+@attr.s(auto_attribs = True)
+class Auto:
 
+    @classmethod
+    async def nodes(self, ctx: discord.AutocompleteContext):
+
+        guildData = GuildData(ctx.interaction.guild_id)
+
+        if not guildData.nodes:
+            return ['No nodes!']
+        
+        return guildData.nodes
+    
+    @classmethod
+    async def map(self, ctx: discord.AutocompleteContext):
+
+        guildData = GuildData(ctx.interaction.guild_id)
+        player = Player(ctx.interaction.user.id, guildData.id)
+
+
+        return ['Unfinished!']
+
+        if not player.channelID:
+            return ['For players only!']
+
+        accessibleNodes = await filterMap(guildData,
+            [role.id for role in ctx.interaction.user.roles],
+            ctx.interaction.user.id,
+            serverData['locationName'])
+
+        if not accessibleNodes:
+            return ['No where you can go.']
+        
+        return accessibleNodes.nodes
 

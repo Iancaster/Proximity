@@ -288,35 +288,6 @@ async def identifyNodeChannel(
     else:
         return None
 
-async def autocompleteNodes(ctx: discord.AutocompleteContext):
-
-    guildData = db.gd(ctx.interaction.guild_id)
-
-    if not guildData['nodes']:
-        return ['No nodes!']
-    
-    return guildData['nodes']
-
-async def autocompleteMap(ctx: discord.AutocompleteContext):
-
-    guildData = db.gd(ctx.interaction.guild_id)
-    con = db.connectToPlayer()
-    playerData = db.getPlayer(con, ctx.interaction.user.id)
-    serverData = playerData.get(str(ctx.interaction.guild_id), None)
-
-    if not serverData:
-        return ['For players only!']
-
-    accessibleNodes = await filterMap(guildData,
-        [role.id for role in ctx.interaction.user.roles],
-        ctx.interaction.user.id,
-        serverData['locationName'])
-
-    if not accessibleNodes:
-        return ['No where you can go.']
-    
-    return accessibleNodes.nodes
-
 async def waitForRefresh(interaction: discord.Interaction):
 
     embedData, _ = await embed(
