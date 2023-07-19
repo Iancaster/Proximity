@@ -105,39 +105,39 @@ async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = 
     view.add_item(nodeSelect)
     return view, nodeSelect
 
-async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
+# async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
-    view = discord.ui.View()
+#     view = discord.ui.View()
 
-    if leftCallback:
-        left = discord.ui.Button(
-            label = '<',
-            style = discord.ButtonStyle.secondary)
-        left.callback = leftCallback
-        view.add_item(left)
+#     if leftCallback:
+#         left = discord.ui.Button(
+#             label = '<',
+#             style = discord.ButtonStyle.secondary)
+#         left.callback = leftCallback
+#         view.add_item(left)
     
-    else:
-        left = discord.ui.Button(
-            label = '-',
-            style = discord.ButtonStyle.secondary,
-            disabled = True)
-        view.add_item(left)
+#     else:
+#         left = discord.ui.Button(
+#             label = '-',
+#             style = discord.ButtonStyle.secondary,
+#             disabled = True)
+#         view.add_item(left)
         
-    if rightCallback:
-        right = discord.ui.Button(
-            label = '>',
-            style = discord.ButtonStyle.secondary)
-        right.callback = rightCallback
-        view.add_item(right)
+#     if rightCallback:
+#         right = discord.ui.Button(
+#             label = '>',
+#             style = discord.ButtonStyle.secondary)
+#         right.callback = rightCallback
+#         view.add_item(right)
 
-    else:
-        right = discord.ui.Button(
-            label = 'Done',
-            style = discord.ButtonStyle.secondary)
-        right.callback = closeDialogue
-        view.add_item(right)
+#     else:
+#         right = discord.ui.Button(
+#             label = 'Done',
+#             style = discord.ButtonStyle.secondary)
+#         right.callback = closeDialogue
+#         view.add_item(right)
 
-    return view
+#     return view
 
 #Formatting
 async def whitelistsSimilar(components: list):

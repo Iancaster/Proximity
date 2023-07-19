@@ -108,7 +108,7 @@ class Player:
         if playerData:
             decodedPlayer = base64.b64decode(playerData)
             self.playerDict = pickle.loads(decodedPlayer)
-            serverData = playerDict.get(self.guildID, {})
+            serverData = self.playerDict.get(self.guildID, {})
         else:
             self.playerDict = {}
             serverData = {}
@@ -264,7 +264,7 @@ class Node(Component):
 
     async def removeOccupants(self, occupantIDs: iter):
 
-        if not occupantIDs.issubset(occupants):
+        if not occupantIDs.issubset(self.occupants):
             raise KeyError("Trying to remove someone from a node who's already absent.")
 
         self.occupants -= occupantIDs
@@ -275,7 +275,7 @@ class Node(Component):
         self.allowedPlayers = set()
 
     async def __str__(self):
-        return f'Node, channel ...{channelID[12:]}'
+        return f'Node, channel ...{self.channelID[12:]}'
 
     async def __dict__(self):
         returnDict = await super().__dict__()
@@ -605,8 +605,8 @@ class GuildData:
             player = Player(playerID, self.guildID)
 
             channel = get(guild.channels, id = player.channelID)
-            if playerChannel:
-                await playerChannel.delete()
+            if channel:
+                await channel.delete()
             
             directListeners.pop(player.channelID, None)
             indirectListeners.pop(player.channelID, None)
@@ -864,7 +864,7 @@ class DialogueView(discord.ui.View):
         return
 
     #Methods
-    async def whitelist(self, components: iter):
+    async def whitelist(self, components: iter): #Revisit this
 
         if self.clearing:
             return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
@@ -880,7 +880,7 @@ class DialogueView(discord.ui.View):
             return "\n• Whitelist:" + \
                 f" {await Format.whitelist(firstComponent.allowedRoles, firstComponent.allowedPlayers)}"
 
-        if await self.whitelistsSimilar(componentsValues):
+        if False: #await self.whitelistsSimilar(components.values()):
             return "\n• Whitelists: Every part has the same whitelist-" + \
                 await Format.whitelist(firstComponent.allowedRoles, \
                     firstComponent.allowedPlayers)

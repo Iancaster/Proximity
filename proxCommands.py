@@ -565,7 +565,7 @@ class nodeCommands(commands.Cog):
         guildData = oop.GuildData(beforeChannel.guild.id)
 
         foundNode = False
-        for name, node in guildData.nodes.items():
+        for node in guildData.nodes.values():
             if beforeChannel.id == node.channelID:
                 renamedNode = guildData.nodes.pop(beforeChannel.name, None)
 
@@ -581,7 +581,7 @@ class nodeCommands(commands.Cog):
 
         for node in guildData.nodes.values(): #Fix the edges too
             for neighbor in list(node.neighbors):
-                if neighbor == oldName:
+                if neighbor == beforeChannel.name:
                     node.neighbors[afterChannel.name] = node.neighbors.pop(beforeChannel.name)
 
         await guildData.save()
@@ -1255,6 +1255,9 @@ class serverCommands(commands.Cog):
         
         guildData = oop.GuildData(ctx.guild_id)
 
+        await db.newGuildDB()
+        await db.newPlayerDB()
+
         if not (guildData.nodes or guildData.players):
             
             embed, _ = await fn.embed(
@@ -1620,7 +1623,6 @@ class serverCommands(commands.Cog):
                 match edge.directionality:
                     case 0:
                         guildDescription += f"\n• {name} -> {neighbor}"
-                        visited
 
                     case 1:
                         guildDescription += f"\n• {name} <-> {neighbor}"
@@ -1659,54 +1661,54 @@ class serverCommands(commands.Cog):
         await ctx.respond(embed = embed)
         return
     
-    @server.command(
-        name = 'quick',
-        description = 'Create a quick example graph.')
-    async def quick(
-        self,
-        ctx: discord.ApplicationContext):
+    # @server.command(
+    #     name = 'quick',
+    #     description = 'Create a quick example graph.')
+    # async def quick(
+    #     self,
+    #     ctx: discord.ApplicationContext):
 
-        await ctx.defer(ephemeral = True)
+    #     await ctx.defer(ephemeral = True)
 
-        guildData = oop.GuildData(ctx.guild_id)
+    #     guildData = oop.GuildData(ctx.guild_id)
 
-        exampleNodes = ['the-kitchen', 'the-living-room', 'the-dining-room', 'the-bedroom']
+    #     exampleNodes = ['the-kitchen', 'the-living-room', 'the-dining-room', 'the-bedroom']
                 
-        maker = oop.ChannelMaker(ctx.guild, 'nodes')
-        await maker.initialize()
-        for name in exampleNodes:
+    #     maker = oop.ChannelMaker(ctx.guild, 'nodes')
+    #     await maker.initialize()
+    #     for name in exampleNodes:
 
-            if name in guildData.nodes:
-                await guildData.deleteNode(name, ctx.guild.text_channels)
+    #         if name in guildData.nodes:
+    #             await guildData.deleteNode(name, ctx.guild.text_channels)
 
-            newChannel = await maker.newChannel(name)
-            await guildData.newNode(name, newChannel.id)
+    #         newChannel = await maker.newChannel(name)
+    #         await guildData.newNode(name, newChannel.id)
 
 
-        newEdges = {
-            ('the-kitchen', 'the-dining-room') : {},
-            ('the-dining-room', 'the-kitchen') : {},
-            ('the-living-room', 'the-dining-room') : {},
-            ('the-dining-room', 'the-living-room') : {},
-            ('the-dining-room', 'the-kitchen') : {},
-            ('the-kitchen', 'the-dining-room') : {},
-            ('the-living-room', 'the-bedroom') : {},
-            ('the-bedroom', 'the-living-room') : {}}
-        guildData['edges'].update(newEdges)
-        db.updateGuild(con, guildData, ctx.guild_id)
-        con.close()
+    #     newEdges = {
+    #         ('the-kitchen', 'the-dining-room') : {},
+    #         ('the-dining-room', 'the-kitchen') : {},
+    #         ('the-living-room', 'the-dining-room') : {},
+    #         ('the-dining-room', 'the-living-room') : {},
+    #         ('the-dining-room', 'the-kitchen') : {},
+    #         ('the-kitchen', 'the-dining-room') : {},
+    #         ('the-living-room', 'the-bedroom') : {},
+    #         ('the-bedroom', 'the-living-room') : {}}
+    #     guildData['edges'].update(newEdges)
+    #     db.updateGuild(con, guildData, ctx.guild_id)
+    #     con.close()
 
-        await guildData.save()
+    #     await guildData.save()
 
-        embed, _ = await fn.embed(
-            'Done.',
-            "Made an example graph composed of a household layout. If there were any" + \
-                " nodes/edges that were already present from a previous `/server quick` call," + \
-                " they've been overwritten.",
-            'Your other data is untouched.')
+    #     embed, _ = await fn.embed(
+    #         'Done.',
+    #         "Made an example graph composed of a household layout. If there were any" + \
+    #             " nodes/edges that were already present from a previous `/server quick` call," + \
+    #             " they've been overwritten.",
+    #         'Your other data is untouched.')
 
-        await ctx.respond(embed = embed)
-        return
+    #     await ctx.respond(embed = embed)
+    #     return
 
 class playerCommands(commands.Cog):
 
@@ -1965,57 +1967,57 @@ class playerCommands(commands.Cog):
         await ctx.respond(embed = embed, view = view)
         return
     
-    @player.command(
-        name = 'review',
-        description = 'Change some player-specific data.')
-    async def review(
-        self,
-        ctx: discord.ApplicationContext):
+    # @player.command(
+    #     name = 'review',
+    #     description = 'Change some player-specific data.')
+    # async def review(
+    #     self,
+    #     ctx: discord.ApplicationContext):
 
-        await ctx.defer(ephemeral = True)
+    #     await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+    #     guildData, members = db.mag(ctx.guild_id)
 
-        if not members:
-            embed, _ = await fn.embed(
-            'But nobody came.',
-            'There are no players, so nobody to locate.',
-            'The title of this embed is a reference, by the way.')
-            await ctx.respond(embed = embed)
-            return
+    #     if not members:
+    #         embed, _ = await fn.embed(
+    #         'But nobody came.',
+    #         'There are no players, so nobody to locate.',
+    #         'The title of this embed is a reference, by the way.')
+    #         await ctx.respond(embed = embed)
+    #         return
 
-        if player:
-            if player in members:
-                playerIDs = [player.id]
-            else:
-                embed, _ = await embed(
-                    f'{player.mention}?',
-                    "But they aren't a player.",
-                    'So how can they be located?')
-                await ctx.edit(
-                    embed = embed,
-                    view = None)
-                return
-        else:
-            playerIDs = members
+    #     if player:
+    #         if player in members:
+    #             playerIDs = [player.id]
+    #         else:
+    #             embed, _ = await embed(
+    #                 f'{player.mention}?',
+    #                 "But they aren't a player.",
+    #                 'So how can they be located?')
+    #             await ctx.edit(
+    #                 embed = embed,
+    #                 view = None)
+    #             return
+    #     else:
+    #         playerIDs = members
                 
-        description = ''
+    #     description = ''
 
-        occupiedNodes = await fn.getOccupants(guildData['nodes'])
-        for nodeName, occupantIDs in occupiedNodes.items():
-            occupantMentions = [f'<@{occupantID}>' for occupantID in occupantIDs if occupantID in playerIDs]
-            if occupantMentions:
-                description += f"\n• <#{guildData['nodes'][nodeName]['channelID']}>: {await fn.listWords(occupantMentions)}"
+    #     occupiedNodes = await fn.getOccupants(guildData['nodes'])
+    #     for nodeName, occupantIDs in occupiedNodes.items():
+    #         occupantMentions = [f'<@{occupantID}>' for occupantID in occupantIDs if occupantID in playerIDs]
+    #         if occupantMentions:
+    #             description += f"\n• <#{guildData['nodes'][nodeName]['channelID']}>: {await fn.listWords(occupantMentions)}"
                 
-        if not description:
-            description = "• No players found. That's a big problem. Run `/server fix`."
+    #     if not description:
+    #         description = "• No players found. That's a big problem. Run `/server fix`."
 
-        embed, _ = await fn.embed(
-            'Find results',
-            description,
-            'Looked high and low.')
-        await ctx.respond(embed = embed)
-        return
+    #     embed, _ = await fn.embed(
+    #         'Find results',
+    #         description,
+    #         'Looked high and low.')
+    #     await ctx.respond(embed = embed)
+    #     return
     
     @player.command(
         name = 'find',
