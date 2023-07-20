@@ -7,6 +7,7 @@ import databaseFunctions as db
 import attr, base64, pickle, sqlite3, math
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.patches as pchs
 from io import BytesIO
 
 @attr.s
@@ -87,7 +88,26 @@ class Format:
     @classmethod
     async def nodes(cls, nodes: iter):
         return await cls.words([node.mention for node in nodes])
+    
+    @classmethod
+    async def colors(
+        cls, 
+        graph: nx.Graph, 
+        originName: str, 
+        coloredNeighbors: list, 
+        color: str):
 
+        edgeColors = []
+        for origin, destination in graph.edges:
+            if origin in coloredNeighbors and destination == originName:
+                edgeColors.append(color)
+            elif origin == originName and destination in coloredNeighbors:
+                edgeColors.append(color)
+            else:
+                edgeColors.append('black')
+
+        return edgeColors
+    
 @attr.s(auto_attribs = True)
 class Player:
     id: int = attr.ib(default = 0)
@@ -440,6 +460,24 @@ class GuildData:
             visitedNodes.add(name)
         return edgeCount
 
+    async def formatEdges(self, neighbors: dict):
+         
+        description = ''
+        for neighbor, edge in neighbors.items():
+
+            match edge.directionality:
+
+                case 0:
+                    description += f'<- {self.guildData.nodes[neighbor].channelID}'
+
+                case 1:
+                    description += f'<-> {self.guildData.nodes[neighbor].channelID}'
+
+                case 2:
+                    description += f'-> {self.guildData.nodes[neighbor].channelID}'
+                    
+        return
+
     #Players
     async def newPlayer(self, playerID: int, location: str):
 
@@ -464,10 +502,6 @@ class GuildData:
                 name,
                 channelID = node.channelID)
             
-            allowedRoles = node.allowedRoles
-            allowedPlayers = node.allowedPlayers
-            occupants = node.occupants
-
             for destination, edge in node.neighbors.items():
 
                 if destination in madeEdges:
@@ -487,24 +521,12 @@ class GuildData:
 
         return graph
 
-    async def toMap(self, graph = None, edgeColor: str = 'black'):
+    async def toMap(self, graph = None, edgeColor: str = []):
 
         if not graph:
             graph = await self.toGraph()
-
-        # nx.draw_shell(
-        #     graph,
-        #     with_labels = True,
-        #     font_weight = 'bold',
-        #     arrows = True,
-        #     arrowsize = 20,
-        #     width = 2,
-        #     arrowstyle = '->',
-        #     node_shape = 'o',
-        #     node_size = 4000,
-        #     node_color = '#ffffff',
-        #     margins = (.3, .1),
-        #     edge_color = edgeColor)
+        if not edgeColor:
+            edgeColor = ['black'] * len(graph.edges)
 
         positions = nx.shell_layout(graph)
 
@@ -513,40 +535,60 @@ class GuildData:
             graph,
             pos = positions,
             node_shape = 'o',
-            node_size = 4000,
+            node_size = 1,
             node_color = '#ffffff')
         nx.draw_networkx_labels(graph, pos = positions, font_weight = 'bold')
 
-        node_size = 100  # Adjust this value based on your node size
-        edge_pos = {}
-        for edge in graph.edges():
-            u, v = edge
-            if u in positions and v in positions:
-                x1, y1 = positions[u]
-                x2, y2 = positions[v]
-                d = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-                if d < 100:
-                    # Adjust edge positions to maintain the minimum distance
-                    offset = (100 - d) / d
-                    dx = (x2 - x1) * offset
-                    dy = (y2 - y1) * offset
-                    x1 -= dx
-                    y1 -= dy
-                    x2 += dx
-                    y2 += dy
-                edge_pos[edge] = [(x1, y1), (x2, y2)]
-                nx.draw_networkx_edges(graph, pos =  edge_pos, edgelist=[edge], edge_color='black', width=2.0)
+        currentIndex = 0
+        letterSpacing = 0.021
+        for origin, destination in graph.edges:
 
-        #Adjust margins
-        plt.margins(x = .1)
-        plt.subplots_adjust(
-            left = .2, 
-            right = .8, 
-            bottom = .1, 
-            top = .9)
-        plt.axis('off')
+            ox, oy = positions[origin]
+            dx, dy = positions[destination]
+            distance = math.sqrt((dx - ox) ** 2 + (dy - oy) ** 2)
+
+            if distance > letterSpacing*2: #Move the edges away from the labels
+                
+                if dx - ox != 0:
+                    slope = abs((dy - oy) / (dx - ox))
+                    angleSpacing = 1 - abs((1 - slope) / (1 + slope)) * 0.2
+
+                    labelFactor = 1 / (abs(slope) + 1)
+
+                    originSpacing = 0.1 * (1 - angleSpacing) + len(origin) * \
+                        letterSpacing * angleSpacing * labelFactor
+                    destinationSpacing = 0.1 * (1 - angleSpacing) + len(destination) * \
+                        letterSpacing * angleSpacing * labelFactor
+
+                    ox += (dx - ox) * originSpacing / distance
+                    oy += (dy - oy) * originSpacing / distance
+
+                    dx += (ox - dx) * destinationSpacing / distance
+                    dy += (oy - dy) * destinationSpacing / distance
+
+            else:
+                ox = dx = (dx + ox) / 2
+                oy = dy = (dy + oy) / 2
+    
+            nx.draw_networkx_edges(
+                graph, 
+                pos = {origin : (ox, oy),
+                    destination: (dx, dy)}, 
+                edgelist = [(origin, destination)], 
+                edge_color = edgeColor[currentIndex],
+                width = 3.0,
+                arrowstyle = 
+                    pchs.ArrowStyle('<|-|>'),
+                arrowsize = 15)
+            currentIndex += 1
+
+        #Adjust the rest
+        plt.margins(x = 0.3, y = 0.1)
+        plt.tight_layout(pad = 0.8)
+        plt.axis('on')
         
         #Produce image
+        #plt.show() #Uncomment this and comment everything below for bugtesting
         graphImage = plt.gcf()
         plt.close()
         bytesIO = BytesIO()
@@ -759,6 +801,42 @@ class DialogueView(discord.ui.View):
     def nodes(self):
         return self.nodeSelect.values
 
+    async def addEdges(
+        self,
+        neighbors: dict,  
+        delete: bool = True,
+        callback: callable = None):
+
+        action = 'delete' if delete else 'review whitelists'
+
+        edgeSelect = discord.ui.Select(
+            placeholder = f'Which edges to {action}?',
+            min_values = 0,
+            max_values = len(neighbors))
+        edgeSelect.callback = callback
+
+        for neighbor, edge in neighbors.items():
+
+            match edge.directionality:
+
+                case 0:
+                    edgeSelect.add_option(label = f'<- {neighbor}',
+                        value = neighbor)
+
+                case 1:
+                    edgeSelect.add_option(label = f'<-> {neighbor}',
+                        value = neighbor)
+
+                case 2:
+                    edgeSelect.add_option(label = f'-> {neighbor}',
+                        value = neighbor)
+
+        self.add_item(edgeSelect)
+        self.edgeSelect = edgeSelect
+        return
+
+    def edges(self):
+        return self.edgeSelect.values
 
     #Modal
     async def addName(self):

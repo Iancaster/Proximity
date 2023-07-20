@@ -124,7 +124,7 @@ async def postToDirects(
 
     return
 
-class nodeCommands(commands.Cog):
+class nodeCommands(commands.Cog): # Adjust this so it corrects edges on listeners
 
     def __init__(self, bot: discord.Bot):
         self.prox = bot
@@ -826,46 +826,38 @@ class edgeCommands(commands.Cog):
         
         await ctx.defer(ephemeral = True)
 
-        guildData = db.gd(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
         async def deleteEdges(originName: str):
 
-            originMention = f"<#{guildData['nodes'][originName]['channelID']}>"
+            origin = guildData.nodes[originName]
 
-            graph = await fn.makeGraph(guildData)
-            ancestors, mutuals, successors = await fn.getConnections(graph, [originName], True)
-            allNeighbors = ancestors + mutuals + successors
-            if not allNeighbors:
+            neighbors = origin.neighbors
+            if not neighbors:
                 embed, _ = await fn.embed(
                     'No edges.',
-                    f'{originMention} has no edges to view.',
+                    f'{origin.mention} has no edges to view.',
                     'So I suppose that answers your inquiry.')
                 await ctx.respond(embed = embed, ephemeral = True)
                 return
 
-            subgraph = graph.subgraph(allNeighbors + [originName])
-            description = f'{originMention} has the following connections'
+            local = await guildData.filterNodes(list(neighbors.keys()) + [originName])
+            graph = await guildData.toGraph(local)
+            description = f'{origin.mention} has these connections'
 
-            deletedEdges = []
             graphImage = None
 
             async def refreshEmbed():
 
                 fullDescription = description
 
-                if not deletedEdges:
+                if not view.edges():
                     fullDescription += ':'
                 else:
-                    deletingAncestors = [ancestor for ancestor in ancestors if ancestor in addEdges.values]
-                    deletingMutuals = [mutual for mutual in mutuals if mutual in addEdges.values]
-                    deletingSuccessors = [successor for successor in successors if successor in addEdges.values]
-
+                    selectedNeighbors = {neighbor : edge for neighbor, edge \
+                        in neighbors.items() if neighbor in view.edges()}
                     fullDescription += ", but you'll be deleting the following:" + \
-                        await fn.formatEdges(
-                            guildData['nodes'],
-                            deletingAncestors,
-                            deletingMutuals,
-                            deletingSuccessors)
+                        await guildData.formatEdges(selectedNeighbors)
 
                 embed, _ = await fn.embed(
                     'Delete edge(s)?',
@@ -876,13 +868,9 @@ class edgeCommands(commands.Cog):
                 return embed
 
             async def updateFile():
-
-                nonlocal graphImage, deletedEdges
-
-                deletedEdges = addEdges.values
-                edgeColors = await fn.colorEdges(subgraph, originName, deletedEdges, 'red')
-                graphImage = await fn.showGraph(subgraph, edgeColors)
-
+                nonlocal graphImage
+                edgeColors = await oop.Format.colors(graph, originName, view.edges(), 'red')
+                graphImage = await guildData.toMap(graph, edgeColors)
                 return
 
             async def refreshFile(interaction: discord.Interaction):   
@@ -895,17 +883,14 @@ class edgeCommands(commands.Cog):
 
                 await fn.loading(interaction)
 
-                for neighbor in deletedEdges:
-                    guildData['edges'].pop((neighbor, originName), None)
-                    guildData['edges'].pop((originName, neighbor), None)
+                for neighbor in view.edges():
+                    await guildData.deleteEdge(originName, neighbor)
 
-                con = db.connectToGuild()
-                db.updateGuild(con, guildData, interaction.guild_id)
-                con.close()
+                await guildData.save()
 
                 await queueRefresh(interaction.guild)
 
-                deletedNeighbors = await fn.filterNodes(guildData['nodes'], deletedEdges)
+                deletedNeighbors = await guildData.filterNodes(view.edges())
 
                 #Inform neighbors occupants and neighbor nodes
                 playersEmbed, _ = await fn.embed(
@@ -914,19 +899,19 @@ class edgeCommands(commands.Cog):
                     'Just like that...')
                 nodeEmbed, _ = await fn.embed(
                     'Edge deleted.',
-                    f'Removed an edge between here and {originMention}.',
+                    f'Removed an edge between here and {origin.mention}.',
                     'You can view the remaining edges with /node review.')
-                for data in deletedNeighbors.values():
+                for node in deletedNeighbors.values():
                     await postToDirects(
                         playersEmbed, 
                         interaction.guild, 
-                        data['channelID'],
+                        node.channelID,
                         onlyOccs = True)
-                    nodeChannel = get(interaction.guild.text_channels, id = data['channelID'])
+                    nodeChannel = get(interaction.guild.text_channels, id = node.channelID)
                     await nodeChannel.send(embed = nodeEmbed)
 
                 #Inform edited node occupants
-                boldDeleted = await fn.boldNodes(addEdges.values)
+                boldDeleted = await oop.Format.bold(view.edges())
                 playersEmbed, _ = await fn.embed(
                     'Hm?',
                     f"This place just lost access to {boldDeleted}.",
@@ -934,11 +919,11 @@ class edgeCommands(commands.Cog):
                 await postToDirects(
                     playersEmbed, 
                     interaction.guild, 
-                    guildData['nodes'][originName]['channelID'],
+                    origin.channelID,
                     onlyOccs = True)
 
                 #Inform own node            
-                deletedMentions = await fn.mentionNodes(deletedNeighbors.values())
+                deletedMentions = await oop.Format.nodes(deletedNeighbors.values())
                 embed, _ = await fn.embed(
                     'Edges deleted.',
                     f'Removed the edge(s) to {deletedMentions}.',
@@ -956,10 +941,10 @@ class edgeCommands(commands.Cog):
                         view = None)    
                 return
 
-            view = discord.ui.View()
-            view, addEdges = await fn.addEdges(ancestors, mutuals, successors, view, callback = refreshFile)
-            view, confirm = await fn.addEvilConfirm(view, confirmDelete)
-            view, cancel = await fn.addCancel(view)
+            view = oop.DialogueView()
+            await view.addEdges(neighbors, callback = refreshFile)
+            await view.addEvilConfirm(confirmDelete)
+            await view.addCancel()
 
             await updateFile()
             embed = await refreshEmbed()
@@ -970,7 +955,7 @@ class edgeCommands(commands.Cog):
                 ephemeral = True)
             return
 
-        result = await fn.identifyNodeChannel(guildData['nodes'], ctx.channel.name, origin)
+        result = await fn.identifyNodeChannel(guildData.nodes, ctx.channel.name, origin)
         match result:
             case isMessage if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
@@ -980,20 +965,20 @@ class edgeCommands(commands.Cog):
     
                 embed, _ = await fn.embed(
                     'Delete edges?',
-                    "You can delete edges three ways:\n\
-                    • Call this command inside of a node channel.\n\
-                    • Do `/edge delete #node-channel`.\n\
-                    • Select a node channel with the list below.",
+                    "You can delete edges three ways:" + \
+                        "\n• Call this command inside of a node channel." + \
+                        "\n• Do `/edge delete #node-channel`." + \
+                        "\n• Select a node channel with the list below.",
                     "This is just to select the origin, you'll see the edges next.")
 
                 async def submitNodes(interaction: discord.Interaction):
                     await ctx.delete()
-                    await deleteEdges(addNodes.values[0])
+                    await deleteEdges(view.nodes())
                     return
 
-                view = discord.ui.View()      
-                view, addNodes = await fn.addNodes(view, guildData['nodes'].keys(), submitNodes, manyNodes = False)
-                view, cancel = await fn.addCancel(view)
+                view = oop.DialogueView()      
+                await view.addNodes(guildData.nodes.keys(), submitNodes, manyNodes = False)
+                await view.addCancel()
                 await ctx.respond(embed = embed, view = view)
 
         return
@@ -1255,8 +1240,8 @@ class serverCommands(commands.Cog):
         
         guildData = oop.GuildData(ctx.guild_id)
 
-        await db.newGuildDB()
-        await db.newPlayerDB()
+        # db.newGuildDB()
+        # db.newPlayerDB()
 
         if not (guildData.nodes or guildData.players):
             

@@ -44,38 +44,6 @@ async def nullResponse(interaction: discord.Interaction):
     await interaction.response.edit_message()
     return #get fucked lmao
 
-async def addEdges(
-        ancestors: list, 
-        neighbors: list, 
-        successors: list, 
-        view: discord.ui.View, 
-        delete: bool = True,
-        callback: callable = None):
-
-    action = 'delete' if delete else 'review whitelists'
-
-    edgeSelect = discord.ui.Select(
-        placeholder = f'Which edges to {action}?',
-        min_values = 0,
-        max_values = len(ancestors + neighbors + successors))
-    edgeSelect.callback = callback
-
-    for ancestor in ancestors:
-        edgeSelect.add_option(label = f'<- {ancestor}',
-                                value = ancestor)
-
-    for neighbor in neighbors:
-        edgeSelect.add_option(label = f'<-> {neighbor}',
-                                value = neighbor)
-    
-    for successor in successors:
-        edgeSelect.add_option(label = f'-> {successor}',
-                                value = successor)
-
-    view.add_item(edgeSelect)
-
-    return view, edgeSelect
-
 async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = None, refresh: callable = None):
 
     if not nodes:
@@ -164,19 +132,6 @@ async def formatEdges(nodes: dict, ancestors: list, neighbors: list, successors:
     return description
     
 #Edges
-async def colorEdges(graph: nx.Graph, originName: str, coloredNeighbors: list, color: str):
-
-    edgeColors = []
-    for origin, destination in graph.edges:
-        if origin in coloredNeighbors and destination == originName:
-            edgeColors.append(color)
-        elif origin == originName and destination in coloredNeighbors:
-            edgeColors.append(color)
-        else:
-            edgeColors.append('black')
-
-    return edgeColors
-    
 async def getConnections(graph: nx.Graph, nodes: list, split: bool = False):
     
     successors = set()
