@@ -47,35 +47,6 @@ async def nullResponse(interaction: discord.Interaction):
     await interaction.response.edit_message()
     return #get fucked lmao
 
-async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = None, refresh: callable = None):
-
-    if not nodes:
-        nodeSelect = discord.ui.Select(
-            placeholder = 'No places you can access.',
-            disabled = True)
-        nodeSelect.add_option(
-            label = 'Nothing to choose.')
-        view.add_item(nodeSelect)
-        return view, nodeSelect
-
-    nodeSelect = discord.ui.Select(placeholder = 'Which place?')
-    if callback:
-        nodeSelect.callback = callback
-    else:
-        async def nodesChosen(interaction: discord.Interaction):
-            embed = await refresh()
-            await interaction.response.edit_message(embed = embed)
-            return
-        nodeSelect.callback = nodesChosen
-
-
-    for node in nodes:
-        nodeSelect.add_option(
-            label = node)
-    
-    view.add_item(nodeSelect)
-    return view, nodeSelect
-
 async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
     view = discord.ui.View()
@@ -153,63 +124,6 @@ async def getConnections(graph: nx.Graph, nodes: list, split: bool = False):
     else: 
         neighbors = ancestors.union(successors)
         return list(neighbors)
-
-async def filterMap(guildData: dict, roleIDs: list, userID: int, origin: str):
-
-    graph = nx.DiGraph()
-
-    acceptedNodes = set()
-
-    for nodeName, nodeData in guildData['nodes'].items():
-
-        if nodeName == origin:
-            graph.add_node(nodeName)
-            acceptedNodes.add(nodeName)
-            continue
-
-        allowedPeople = nodeData.get('allowedPeople', [])
-        allowedRoles = nodeData.get('allowedRoles', [])
-
-        if not allowedPeople and not allowedRoles:
-            graph.add_node(nodeName)
-            acceptedNodes.add(nodeName)
-            continue
-
-        if userID in allowedPeople:
-            graph.add_node(nodeName)
-            acceptedNodes.add(nodeName)
-            continue
-
-        for roleID in roleIDs:
-            if roleID in allowedRoles:
-                graph.add_node(nodeName)
-                acceptedNodes.add(nodeName)
-                continue
-
-    for edgeName, edgeData in guildData['edges'].items():
-
-        if edgeName[0] in acceptedNodes and edgeName[1] in acceptedNodes:
-            pass
-        else:
-            continue
-
-        allowedPeople = edgeData.get('allowedPeople', [])
-        allowedRoles = edgeData.get('allowedRoles')
-
-        if not allowedPeople and not allowedRoles:
-            graph.add_edge(edgeName[0], edgeName[1])
-            continue
-
-        if userID in allowedPeople:
-            graph.add_edge(edgeName[0], edgeName[1])
-            continue
-
-        for roleID in roleIDs:
-            if roleID in allowedRoles:
-                graph.add_edge(edgeName[0], edgeName[1])
-                continue
-    
-    return nx.ego_graph(graph, origin, radius = 99)
 
 #Guild
 async def identifyNodeChannel(
@@ -346,15 +260,12 @@ async def hasWhitelist(components):
 
 async def notPlayer(ctx: discord.ApplicationContext, members: list):
 
-    if ctx.author.id not in members:
-        embedData, _ = await embed(
-            'Easy there.',
-            "You're not a player in this server, so you're not able to do this.",
-            'You can ask the server owner to make you a player?')
-        await ctx.respond(embed = embedData)
-        return True
-
-    return False
+    embedData, _ = await embed(
+        'Easy there.',
+        "You're not a player in this server, so you're not able to do this.",
+        'You can ask the server owner to make you a player?')
+    await ctx.respond(embed = embedData)
+    return
 
 async def noCopies(test, embed: discord.Embed, interaction: discord.Interaction):
 

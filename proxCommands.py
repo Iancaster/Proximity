@@ -16,12 +16,14 @@ import oopFunctions as oop
 # I swear it's for a good reason. Do as I say, not as I do, you
 # must rise above my practices and code better than me padawan
 
-global updatedGuilds, needingUpdate, directListeners, indirectListeners, proximity
+global updatedGuilds, needingUpdate, directListeners, indirectListeners
+global proximity, brokenWebhooks
 proximity = None
 updatedGuilds = set()
 needingUpdate = set()
 directListeners = {}
 indirectListeners = {}
+brokenWebhooks = set()
 
 async def queueRefresh(guild: discord.Guild):
     updatedGuilds.discard(guild.id)
@@ -151,6 +153,7 @@ class nodeCommands(commands.Cog):
 
         async def refreshEmbed():
 
+            nonlocal name
             name = view.name() if view.name() else name
 
             description = f'Whitelist: {await oop.Format.whitelist(view.roles(), view.players())}'
@@ -166,6 +169,7 @@ class nodeCommands(commands.Cog):
 
             await fn.loading(interaction)
 
+            nonlocal name
             name = view.name() if view.name() else name
             if name in guildData.nodes:
                 await fn.nodeExists(guildData.nodes[name], interaction)
@@ -546,20 +550,41 @@ class nodeCommands(commands.Cog):
             if channel.id == node.channelID:
 
                 if not node.occupants:
+
+                    #Inform neighbor nodes and occupants that the node is deleted now
+                    for neighborName in list(node.neighbors.keys()):
+                        embed, _ = await fn.embed(
+                            'Misremembered?',
+                            f"Could you be imagining **#{name}**? Strangely, there's no trace.",
+                            "Whatever the case, it's gone now.")
+                        await postToDirects(
+                            embed, 
+                            channel.guild, 
+                            guildData.nodes[neighborName].channelID,
+                            onlyOccs = True)
+                        
+                        embed, _ = await fn.embed(
+                            'Neighbor node(s) deleted.',
+                            f'Deleted **#{name}**--this node now has fewer neighbors.',
+                            "I'm sure it's for the best.")
+                        neighborChannel = get(
+                            channel.guild.text_channels,
+                            id = guildData.nodes[neighborName].channelID,)
+                        await neighborChannel.send(embed = embed)
                 
-                    for neighbor in list(node.neighbors.keys()):
-                        await guildData.deleteEdge(name, neighbor)
+                        await guildData.deleteEdge(name, neighborName)
 
                     await guildData.deleteNode(name)
                     directListeners.pop(node.channelID, None)
                     await guildData.save()
-                    break
+                    return
 
                 maker = oop.ChannelMaker(channel.guild, 'nodes')
                 await maker.initialize()
                 newChannel = await maker.newChannel(name)
                 node.channelID = newChannel.id
                 await guildData.save()
+
                 await queueRefresh(channel.guild)
 
                 embed, _ = await fn.embed(
@@ -571,7 +596,37 @@ class nodeCommands(commands.Cog):
                         " `/player tp`.",
                     'Either way, you can only delete empty nodes.')
                 await newChannel.send(embed = embed)
-                break
+                return
+
+        for ID in guildData.players:
+            player = oop.Player(ID, channel.guild.id)
+            if player.channelID == channel.id:
+
+                oldNode = guildData.nodes[player.location]
+                await oldNode.removeOccupants({ID})
+                await player.delete()
+                guildData.players.discard(ID)
+                await guildData.save()
+
+                await queueRefresh(channel.guild)
+
+                playerEmbed, _ = await fn.embed(
+                    'Where did they go?',
+                    f"You look around, but <@{ID}> seems to have vanished into thin air.",
+                    "You get the impression you won't be seeing them again.") 
+                await postToDirects(
+                    playerEmbed,
+                    channel.guild,
+                    oldNode.channelID,
+                    onlyOccs = True)
+                
+                nodeEmbed, _ = await fn.embed(
+                    'Fewer players.',
+                    f'Removed <@{ID}> from the game (and this node).',
+                    'You can view all remaining players with /player find.') 
+                nodeChannel = get(channel.guild.channels, id = oldNode.channelID)
+                await nodeChannel.send(embed = nodeEmbed)
+                return
 
         return
     
@@ -609,48 +664,22 @@ class nodeCommands(commands.Cog):
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel):
 
-        await asyncio.sleep(5)
+        if channel in brokenWebhooks:
+            return
 
         guildData = oop.GuildData(channel.guild.id)
 
-        proxChannel = False
         if get(guildData.nodes.values(), channelID = channel.id):
-            proxChannel = True
+            brokenWebhooks.add(channel)
         else:
             for ID in guildData.players:
-
-                player = oop.Player()
+                player = oop.Player(ID, channel.guild.id)
                 if player.channelID == channel.id:
-                    proxChannel = True
+                    brokenWebhooks.add(channel)
                     break
                     
-        if not proxChannel:
-            return
-            
-        webhooks = await channel.webhooks()
-        if len(webhooks) != 1:
-            pass
-        else:
-            firstHook = webhooks[0]
-            if firstHook.user != self.prox:
-                pass
-            else:
-                return
-
-        for hook in webhooks:
-            await hook.delete()
-        
-        with open('assets/avatar.png', 'rb') as file:
-            avatar = file.read()
-            await channel.create_webhook(name = 'Proximity', avatar = avatar)
-
-        embed, _ = await fn.embed(
-            'Hey. Stop that.',
-            "Don't mess with the webhooks on here.",
-            "They're mine, got it?")
-        await channel.send(embed = embed)
         return
-    
+                
 class edgeCommands(commands.Cog):
 
     def __init__(self, bot: discord.Bot):
@@ -1296,7 +1325,7 @@ class serverCommands(commands.Cog):
             'Delete all data?',
             f"You're about to delete {len(guildData.nodes)} nodes" + \
                 f" and {await guildData.edgeCount()} edges, alongside" + \
-                f"player data for {len(guildData.players)} people.",
+                f" player data for {len(guildData.players)} people.",
             'This will also delete associated channels from the server.')
 
         await ctx.respond(embed = embed, view = view)
@@ -1503,15 +1532,16 @@ class serverCommands(commands.Cog):
                 continue
 
             if player.channelID not in channelIDs: #User is missing their channel
-                noChannelMentions.append(player.mention)
+                noChannelMentions.append(member.mention)
 
-                channel = await maker.newChannel(name)
+                channel = await maker.newChannel(member.display_name, member)
 
                 player.channelID = channel.id
+                await player.save()
                 
                 embed, _ = await fn.embed(
                     f'Welcome.',
-                    f"This is your very own channel, again, {player.mention}." + \
+                    f"This is your very own channel, again, {member.mention}." + \
                     "\n• Speak to others by just talking in this chat. Anyone who can hear you" + \
                     " will see your messages pop up in their own player channel." + \
                     f"\n• You can `/look` around. You're at **{player.location}** right now." + \
@@ -1874,7 +1904,7 @@ class playerCommands(commands.Cog):
 
             deletingIDs = set(int(ID) for ID in view.players() if ID in guildData.players)
 
-            if  not deletingIDs:
+            if not deletingIDs:
                 await fn.noPeople(interaction)
                 return
                 
@@ -2189,10 +2219,10 @@ class freeCommands(commands.Cog):
 
     def __init__(self, bot: discord.Bot):
         self.prox = bot
-        self.updateListeners.start()
+        self.updateChannels.start()
 
     def cog_unload(self):
-        self.updateListeners.cancel()
+        self.updateChannels.cancel()
 
     @commands.slash_command(
         name = 'help',
@@ -2478,45 +2508,78 @@ class freeCommands(commands.Cog):
         await ctx.respond(embed = embed, view = view)
         return
 
-    # @commands.slash_command(
-    #     name = 'challenge',
-    #     description = 'Here.')
-    # async def challenge(
-    #     self,
-    #     ctx: discord.ApplicationContext):
+    @commands.slash_command(
+        name = 'say',
+        description = 'Here.')
+    async def say(
+        self,
+        ctx: discord.ApplicationContext):
 
-    #     embed, file = await fn.embed(
-    #         'A locked computer.',
-    #         "You used your *extension cord*. The **computer** " + \
-    #             "is locked by a password.",
-    #         "Just as an example.",
-    #         ('assets/mockup.png', 'full'))
+        embed = discord.Embed(
+            title = 'Version 1.1: The Tough Stuff Update',
+            description = "Minecraft names their updates. That's" + \
+                " fun, so I'll do it too.",
+            color = discord.Color.from_rgb(67, 8, 69))
 
-    #     view = discord.ui.View()
-    #     button = discord.ui.Button(
-    #         label = 'Input password',
-    #         style = discord.ButtonStyle.secondary)
-    #     view.add_item(button)        
-    #     button = discord.ui.Button(
-    #         label = 'Reclaim "Extension Cord"',
-    #         style = discord.ButtonStyle.secondary)
-    #     view.add_item(button)
-    #     button = discord.ui.Button(
-    #         label = 'Walk away',
-    #         style = discord.ButtonStyle.secondary)
-    #     view.add_item(button)
+        embed.set_footer(text = 'I also spent two weeks rewriting the code' + \
+            ' to be within an OOP framework. That took like 80% of the ' + \
+            ' work and it barely makes a footnote because nobody knows what ' + \
+            ' the hell an OOP is.')
 
-    #     await ctx.respond(embed = embed, view = view, file = file, ephemeral = True)
-    #     return
+        embed.add_field(
+            name = 'New Features',
+            value = "1. Renaming node channels no longer breaks the graph!" + \
+                "\n2. You can also safely delete nodes just by deleting their channel." + \
+                "\n3. Unless you try to delete an occupied one, it'll just remake it and scold you." + \
+                "\n4. Messing with webhooks for node or player, same deal. :)" + \
+                "\n5. You can delete players by deleting their channel.",
+            inline = False)      
 
+        embed.add_field(
+            name = 'Fixes',
+            value = "1. Overhearing a node that gets deleted no longer" +\
+                        " *permanently breaks your ability to overhear.*" + \
+                    "\n2. Maps generated for `/server view`, `/map`, etc. now" + \
+                        " won't have the node labels overlap with the edge arrows." + \
+                    "\n3. The bot has a profile picture in *all* of its messages." + \
+                    "\n4. Deleting multiple players who were in the same location" + \
+                        " doesn't spam you anymore." + \
+                    "\n5. TONS of formatting and typo corrections." + \
+                    "\n6. Increased reliablity, scalability, and readability. The" + \
+                        " code runs smoother, can be upgraded easier, and looks " + \
+                        " better to the guy making it.",
+            inline = False)        
+            
+
+        # embed, file = await fn.embed(
+        #     'A locked computer.',
+        #     "You used your *extension cord*. The **computer** " + \
+        #         "is locked by a password.",
+        #     "Just as an example.",
+        #     ('assets/mockup.png', 'full'))
+
+        # view = discord.ui.View()
+        # button = discord.ui.Button(
+        #     label = 'Input password',
+        #     style = discord.ButtonStyle.secondary)
+        # view.add_item(button)        
+        # button = discord.ui.Button(
+        #     label = 'Reclaim "Extension Cord"',
+        #     style = discord.ButtonStyle.secondary)
+        # view.add_item(button)
+        # button = discord.ui.Button(
+        #     label = 'Walk away',
+        #     style = discord.ButtonStyle.secondary)
+        # view.add_item(button)
+
+        await ctx.respond(embed = embed)
+        return
 
     @tasks.loop(seconds = 5.0)
-    async def updateListeners(self):
+    async def updateChannels(self):
 
         for guild in list(needingUpdate):
 
-            guildStartTime = time.time()
-            
             guildData = oop.GuildData(guild.id)
             guildListeners = {}
             guildIndirects = {}
@@ -2540,7 +2603,7 @@ class freeCommands(commands.Cog):
 
                 channel = cachedChannelReferences.get(channelID, None)
                 if not channel:
-                    channel = await get_or_fetch(guild, 'channel', channelID)
+                    channel = get(guild.text_channels, id = channelID)
                     cachedChannelReferences[channelID] = channel
                 else:
                     nonlocal channelCacheHits
@@ -2605,8 +2668,38 @@ class freeCommands(commands.Cog):
 
             needingUpdate.remove(guild)
             updatedGuilds.add(guild.id)
-            print(f"Updated {guild.name}'s listeners in {time.time() - guildStartTime} seconds.")
 
+        if brokenWebhooks:
+
+            print(f'Fixing webhooks for {len(brokenWebhooks)} channels.')
+            
+            with open('assets/avatar.png', 'rb') as file:
+                avatar = file.read()
+
+            embed, _ = await fn.embed(
+                'Hey. Stop that.',
+                "Don't mess with the webhooks on here.",
+                "They're mine, got it?")
+                
+            for channel in brokenWebhooks:
+
+                webhooks = await channel.webhooks()
+                if len(webhooks) != 1:
+                    pass
+                else:
+                    firstHook = webhooks[0]
+                    if firstHook.user == self.prox.user:
+                        brokenWebhooks.discard(channel)
+                        return
+
+                for hook in webhooks:
+                    await hook.delete()
+
+                await channel.create_webhook(name = 'Proximity', avatar = avatar)
+                await channel.send(embed = embed)
+                brokenWebhooks.discard(channel)
+                return
+    
         #import json
         #printableListeners = {speakerID : [channel.name for channel, _ in listeners] 
         #    for speakerID, listeners in directListeners.items()}
@@ -2629,29 +2722,27 @@ class guildCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
-        if await fn.notPlayer(ctx, members):
+        if ctx.author.id not in guildData.players:
+            await fn.notPlayer(ctx)
             return
 
-        con = db.connectToPlayer()
-        playerData = db.getPlayer(con, ctx.author.id)
-        con.close()
-
-        nodeName = playerData[str(ctx.guild_id)]['locationName']
-        nodeData = guildData['nodes'][nodeName]
+        player = oop.Player(ctx.author.id, ctx.guild_id)
+        node = guildData.nodes[player.location]
 
         description = ''
 
-        nodeData['occupants'].remove(ctx.author.id)
-        if nodeData['occupants']:
-            occupantMentions = [f'<@{occupant}>' for occupant in nodeData['occupants']]
-            description += f"There's {await fn.listWords(occupantMentions)} with you inside **#{nodeName}**."
+        node.occupants.discard(ctx.author.id)
+        if node.occupants:
+            otherMentions = await oop.Format.players(node.occupants)
+            description += f"There's {otherMentions} with you inside **#{player.location}**."
         else:
-            description += f"You're by yourself inside **#{nodeName}**. "
+            description += f"You're by yourself inside **#{player.location}**. "
 
-        graph = await fn.makeGraph(guildData)
-        ancestors, mutuals, successors = await fn.getConnections(graph, [nodeName], True)
+        ancestors = [name for name, edge in node.neighbors.items() if edge.directionality == 0]
+        mutuals = [name for name, edge in node.neighbors.items() if edge.directionality == 1]
+        successors = [name for name, edge in node.neighbors.items() if edge.directionality == 2]
 
         if ancestors:
             if len(ancestors) > 1:
@@ -2660,22 +2751,22 @@ class guildCommands(commands.Cog):
             else:
                 description += f" There's a one-way route from (<-) **#{ancestors[0]}**. "
 
-        if successors:
-            if len(successors) > 1:
-                boldedNodes = await fn.boldNodes(successors)
-                description += f" There are one-way routes to (->) {boldedNodes}. "
-            else:
-                description += f" There's a one-way route to (->) **#{successors[0]}**. "
-
         if mutuals:
             if len(mutuals) > 1:
                 boldedNodes = await fn.boldNodes(mutuals)
                 description += f" There's ways to {boldedNodes} from here. "
             else:
                 description += f" There's a way to get to **#{mutuals[0]}** from here. "
-        
+
+        if successors:
+            if len(successors) > 1:
+                boldedNodes = await fn.boldNodes(successors)
+                description += f" There are one-way routes to (->) {boldedNodes}. "
+            else:
+                description += f" There's a one-way route to (->) **#{successors[0]}**. "
+      
         if not (ancestors or mutuals or successors):
-            description += "There's no way in or out of here."
+            description += "There's no way in or out of here. Oh dear."
 
         embed, _ = await fn.embed(
             'Looking around...',
@@ -2694,57 +2785,61 @@ class guildCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
-        if await fn.notPlayer(ctx, members):
+        if ctx.author.id not in guildData.players:
+            await fn.notPlayer(ctx)
             return
         
-        con = db.connectToPlayer()
-        playerData = db.getPlayer(con, ctx.author.id)
-        serverData = playerData[str(ctx.guild_id)]
-        con.close()
-
-        eavesdroppingNode = serverData.get('eavesdropping', None)
-        if eavesdroppingNode: #Breaking glitch here if the node you're eavesdropping on is deleted!
-            occupants = guildData['nodes'][eavesdroppingNode].get('occupants', False)
-            if occupants:
-                occupantMentions = await fn.listWords([f'<@{ID}>' for ID in occupants])
-                description = f"You're eavesdropping on {occupantMentions} in **#{eavesdroppingNode}**."
+        player = oop.Player(ctx.author.id, ctx.guild_id)
+        node = guildData.nodes[player.location]
+        if player.eavesdropping:
+            eavesNode = guildData.nodes.get(player.eavesdropping, None)
+            if not eavesNode:
+                player.eavesdropping = None
+                await player.save()
+        
+        if player.eavesdropping: 
+            
+            if eavesNode.occupants:
+                occupantMentions = await oop.Format.players(eavesNode.occupants)
+                description = f"You're eavesdropping on {occupantMentions} in **#{player.eavesdropping}**."
             else:
-                description = f"You're eavesdropping on **#{eavesdroppingNode}**, but you think nobody is there."
+                description = f"You're eavesdropping on **#{player.eavesdropping}**, but you think nobody is there."
 
             async def stopEavesdropping(interaction: discord.Interaction):
 
                 await fn.waitForRefresh(interaction)
-                
-                con = db.connectToPlayer()
-                del playerData[str(ctx.guild_id)]['eavesdropping']
-                db.updatePlayer(con, playerData, ctx.author.id)
-                con.close()
-
-                await queueRefresh(interaction.guild)
 
                 embed, _ = await fn.embed(
                     'Saw that.',
-                    f"You notice {ctx.author.mention} play it off like they weren't just listening in on **#{eavesdroppingNode}**.",
+                    f"You notice {ctx.author.mention} play it off like they" + \
+                        f" weren't just listening in on **#{player.eavesdropping}**.",
                     'Do with that what you will.')
                 await postToDirects(
                     embed, 
                     interaction.guild, 
-                    guildData['nodes'][serverData['locationName']]['channelID'], 
-                    serverData['channelID'],
+                    node.channelID, 
+                    player.channelID,
                     onlyOccs = True)
+                
+                player.eavesdropping = None
+                await player.save()
 
+                await queueRefresh(interaction.guild)
+
+                await interaction.delete_original_response()
                 embed, _ = await fn.embed(
                     'All done.',
                     "You're minding your own business, for now.",
                     'You can always choose to eavesdrop again later.')
-                await ctx.edit(embed = embed, view = None)
+                playerChannel = get(interaction.guild.text_channels, id = player.channelID)
+                await playerChannel.send(embed = embed)
                 return
 
-            view = discord.ui.View()
-            view, confirm = await fn.addEvilConfirm(view, callback = stopEavesdropping)
-            view, cancel = await fn.addCancel(view)
+            view = oop.DialogueView()
+            await view.addEvilConfirm(callback = stopEavesdropping)
+            await view.addCancel()
             embed, _ = await fn.embed(
                 'Nosy.',
                 description,
@@ -2752,50 +2847,46 @@ class guildCommands(commands.Cog):
             await ctx.respond(embed = embed, view = view)
             return
 
-        graph = await fn.makeGraph(guildData)
-        nodeName = playerData[str(ctx.guild_id)]['locationName']
-        neighbors = await fn.getConnections(graph, [nodeName])
-        selectedNode = None
-        userNodes = None
+        if node.neighbors:
+            neighborNodes = await guildData.filterNodes(node.neighbors.keys())
 
-        if neighbors:
-            neighborNodes = await fn.filterNodes(guildData['nodes'], neighbors)
-            occupiedNeighbors = await fn.getOccupants(neighborNodes)
-            if occupiedNeighbors:
+            if any(node.occupants for node in neighborNodes.values()):
+
+                occupiedNeighbors = {name : node for name, node in neighborNodes.items() \
+                    if node.occupants}
+                unoccupiedNeighbors = {name for name in neighborNodes.keys() if name not \
+                    in occupiedNeighbors}
+
                 description = 'Listening closely, you think that you can hear '
                 fullList = []
-                for neighborNodeName, occupants in occupiedNeighbors.items():
-                    occupantMentions = await fn.listWords([f'<@{ID}>' for ID in occupants])
-                    fullList.append(f'{occupantMentions} in **#{neighborNodeName}**')
-                description += f'{await fn.listWords(fullList)}. '
-                unoccupiedNeighbors = [neighbor for neighbor in neighbors if neighbor not in occupiedNeighbors]
+                for neighborName, neighborNode in occupiedNeighbors.items():
+                    occupantMentions = await oop.Format.players(neighborNode.occupants)
+                    fullList.append(f'{occupantMentions} in **#{neighborName}**')
+                description += f'{await oop.Format.words(fullList)}. '
                 if unoccupiedNeighbors:
-                    boldedUnoccupied = await fn.boldNodes(unoccupiedNeighbors)
+                    boldedUnoccupied = await oop.Format.bold(unoccupiedNeighbors)
                     description += f"You can also listen in on {boldedUnoccupied}, but it sounds like nobody is in there."
             else:
-                boldedNeighbors = await fn.boldNodes(neighbors)
+                boldedNeighbors = await oop.Format.bold(node.neighbors.keys())
                 description = f"You're able to listen in on {boldedNeighbors} from here," + \
                     " but you don't hear anyone over there. "
         else:
             description = "If there was someplace nearby, you could listen in on it, but" + \
-                " there's nowhere nearby here. Wait, does that mean you're stuck here?"
+                " there's not. Wait, does that mean you're stuck here?"
 
         async def refreshEmbed():
 
-            nonlocal selectedNode, description
+            nonlocal description
 
-            if userNodes.values:
-                selectedNode = userNodes.values[0]
+            if view.nodes():
+                selectedNode = view.nodes()[0]
+                description = f'Eavesdrop on **#{selectedNode}**?'
             else:
-                selectedNode = None
-
-            fullDescription = description
-            if selectedNode:
-                fullDescription = f'Eavesdrop on **#{selectedNode}**?'
+                pass
 
             embed, _ = await fn.embed(
                 'Eavesdrop?',
-                fullDescription,
+                description,
                 'You can listen in on any place near you.')
 
             return embed
@@ -2804,7 +2895,7 @@ class guildCommands(commands.Cog):
 
             await fn.waitForRefresh(interaction)
 
-            if not userNodes.values:
+            if not view.nodes():
                 embed, _ = await fn.embed(
                     'Eavesdrop where?',
                     'You have to tell me where you would like to eavesdrop.',
@@ -2815,36 +2906,41 @@ class guildCommands(commands.Cog):
                     view = None)
                 return
                 
-            con = db.connectToPlayer()
-            playerData[str(ctx.guild_id)]['eavesdropping'] = userNodes.values[0]
-            db.updatePlayer(con, playerData, ctx.author.id)
-            con.close()
+            player.eavesdropping = view.nodes()[0]
+            await player.save()
 
             await queueRefresh(interaction.guild)
 
             embed, _ = await fn.embed(
                 'Sneaky.',
-                f"You notice {ctx.author.mention} start to listen in on **#{userNodes.values[0]}**.",
+                f"You notice {ctx.author.mention} start to listen in on **#{player.eavesdropping}**.",
                 'Do with that what you will.')
-            await postToDirects(embed, interaction.guild, guildData['nodes'][nodeName]['channelID'], serverData['channelID'])
+            await postToDirects(
+                embed, 
+                interaction.guild, 
+                node.channelID, 
+                player.channelID,
+                onlyOccs = True)
 
+            await interaction.delete_original_response()
             embed, _ = await fn.embed(
                 'Listening close...',
-                f"Let's hear what's going on over there in **#{userNodes.values[0]}**, shall we?",
+                f"Let's hear what's going on over there in **#{player.eavesdropping}**, shall we?",
                 "Be mindful that people can see that you're doing this.")
-            await interaction.followup.edit_message(
-                message_id = interaction.message.id,
-                embed = embed,
-                view = None)
+            playerChannel = get(interaction.guild.text_channels, id = player.channelID)
+            await playerChannel.send(embed = embed)
             return
 
-        view = discord.ui.View()
-        if neighbors:
-            view, userNodes = await fn.addUserNodes(view, neighbors, refresh = refreshEmbed)
-            view, submit = await fn.addSubmit(view, submitEavesdrop)
-            view, cancel = await fn.addCancel(view)
-        embed = await refreshEmbed()
-        await ctx.respond(embed = embed, view = view)
+        view = oop.DialogueView(refresh = refreshEmbed)
+        await view.addUserNodes(node.neighbors.keys())
+        if node.neighbors:
+            await view.addSubmit(submitEavesdrop)
+            await view.addCancel()
+            embed = await refreshEmbed()
+            await ctx.respond(embed = embed, view = view)
+        else:
+            embed = await refreshEmbed()
+            await ctx.respond(embed = embed)
         return
 
     @commands.slash_command(
@@ -2857,31 +2953,27 @@ class guildCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
-        if await fn.notPlayer(ctx, members):
+        if ctx.author.id not in guildData.players:
+            await fn.notPlayer(ctx)
             return
         
-        con = db.connectToPlayer()
-        playerData = db.getPlayer(con, ctx.author.id)
-        serverData = playerData[str(ctx.guild_id)]
-        con.close()
-
+        player = oop.Player(ctx.author.id, ctx.guild_id)
         playerRoleIDs = [role.id for role in ctx.author.roles]
 
-        playerGraph = await fn.filterMap(
-            guildData, 
-            ctx.author.roles, 
+        graph = await guildData.filterMap(
+            playerRoleIDs,
             ctx.author.id, 
-            serverData['locationName'])
-        playerMap = await fn.showGraph(playerGraph)
+            player.location)
+        map = await guildData.toMap(graph)
 
         embed, file = await fn.embed(
             'Map',
-            f"Here are all the places you can reach from **#{serverData['locationName']}**." + \
+            f"Here are all the places you can reach from **#{player.location}**." + \
                 " You can travel along the arrows that point to where you want to go. ",
             "Use /move to go there.",
-            (playerMap, 'full'))
+            (map, 'full'))
         
         await ctx.respond(embed = embed, file = file)
         return
@@ -2901,47 +2993,35 @@ class guildCommands(commands.Cog):
 
         await ctx.defer(ephemeral = True)
 
-        guildData, members = db.mag(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
-        if await fn.notPlayer(ctx, members):
+        if ctx.author.id not in guildData.players:
+            await fn.notPlayer(ctx)
             return
 
-        con = db.connectToPlayer()
-        playerData = db.getPlayer(con, ctx.author.id)
-        serverData = playerData[str(ctx.guild_id)]
-        con.close()
+        player = oop.Player(ctx.author.id, ctx.guild_id)
 
         playerRoleIDs = [role.id for role in ctx.author.roles]
-        playerGraph = await fn.filterMap(
-            guildData,
-            ctx.author.roles,
+        map = await guildData.filterMap(
+            playerRoleIDs,
             ctx.author.id,
-            serverData['locationName'])
+            player.location)
+        
+        description = f"Move from **#{player.location}**"
 
-        description = f"Move from **#{serverData['locationName']}**"
-        userNodes = None
-        selectedNode = node if node and node != serverData['locationName'] else None
+        destinationName = node if node and node != player.location else None
 
-        async def refreshMessage():
-
-            nonlocal userNodes, selectedNode
-
-            view = discord.ui.View()
+        async def refreshEmbed():
 
             fullDescription = description
-            if userNodes:
-                view.add_item(userNodes)
-                selectedNode = userNodes.values[0]
-            else:
-                view, userNodes = await fn.addUserNodes(
-                    view, 
-                    [node for node in playerGraph.nodes if node != serverData['locationName']], 
-                    callback = callRefresh)
+
+            nonlocal destinationName
+
+            if view.nodes():
+                destinationName = view.nodes()[0]
             
-            if selectedNode:
-                fullDescription += f' to **#{selectedNode}**?'
-                view, submit = await fn.addSubmit(view, submitDestination)
-                view, cancel = await fn.addCancel(view)
+            if destinationName:
+                fullDescription += f' to **#{destinationName}**?'
             else:
                 fullDescription += f'? Where would you like to go?'
 
@@ -2949,37 +3029,27 @@ class guildCommands(commands.Cog):
                 'Move?',
                 fullDescription,
                 "Bear in mind that others will notice.")
-            return embed, view
-
-        async def callRefresh(interaction: discord.Interaction):
-            embed, view = await refreshMessage()
-            await interaction.response.edit_message(embed = embed, view = view)
-            return
+            return embed
 
         async def submitDestination(interaction: discord.Interaction):
 
             await fn.waitForRefresh(interaction)
 
-            nonlocal serverData, playerData, guildData
+            path = nx.shortest_path(map,
+                source = player.location,
+                target = destinationName)
 
-            path = nx.shortest_path(playerGraph,
-                source = serverData['locationName'],
-                target = selectedNode)
+            pathAdjs = await guildData.neighbors(set(path), exclusive = True)
+            nonPathAdjNodes = await guildData.filterNodes(pathAdjs)
+            nearbyOccs = await guildData.getUnifiedOccupants(nonPathAdjNodes.values())
 
-            graph = await fn.makeGraph(guildData)
-            allAdjacents = await fn.getConnections(graph, path)
-            nonPathAdjacents = [nodeName for nodeName in allAdjacents if nodeName not in path]
-            nonPathAdjNodes = await fn.filterNodes(guildData['nodes'], nonPathAdjacents)
-            nearbyOccs = await fn.getUnifiedOccupants(nonPathAdjNodes.values())
-
-            playerCon = db.connectToPlayer()
-            for occupant in nearbyOccs:
-                eavesPlayer = db.getPlayer(playerCon, occupant)
-                eavesData = eavesPlayer[str(interaction.guild_id)]
-                eavesDroppingName = eavesData.get('eavesdropping', None)
-                if eavesDroppingName in path:
-                    whichPart = path.index(eavesDroppingName)
-                    eavesdropperChannel = get(interaction.guild.text_channels, id = eavesData['channelID'])
+            for occID in nearbyOccs:
+                eavesPlayer = oop.Player(occID, ctx.guild_id)
+                if eavesPlayer.location in path:
+                    continue
+                if eavesPlayer.eavesdropping in path:
+                    whichPart = path.index(eavesPlayer.eavesdropping)
+                    eavesChannel = get(interaction.guild.text_channels, id = eavesPlayer.channelID)
 
                     match whichPart:
 
@@ -2989,7 +3059,7 @@ class guildCommands(commands.Cog):
                                 f"You can hear someone in **#{path[whichPart]}** start" + \
                                     f" to go towards **#{path[whichPart + 1]}**.",
                                 'Who could it be?')
-                            await eavesdropperChannel.send(embed = embed)
+                            await eavesChannel.send(embed = embed)
 
                         case halfway if whichPart < len(path):
                             embed, _ = await fn.embed(
@@ -2997,7 +3067,7 @@ class guildCommands(commands.Cog):
                                 f"You can hear someone go through **#{path[whichPart]}**,\
                                 from **#{path[whichPart - 1]}** to **#{path[whichPart + 1]}**.",
                                 'On the move.')
-                            await eavesdropperChannel.send(embed = embed)
+                            await eavesChannel.send(embed = embed)
 
                         case ending if whichPart == len(path) - 1:
                             embed, _ = await fn.embed(
@@ -3005,8 +3075,7 @@ class guildCommands(commands.Cog):
                                 f"You can hear someone come from **#{path[whichPart - 1]}**" +
                                     f" and stop at **#{path[whichPart + 1]}**.",
                                 'Wonder why they chose here.')
-                            await eavesdropperChannel.send(embed = embed)
-            playerCon.close()
+                            await eavesChannel.send(embed = embed)
 
             #Inform origin occupants
             embed, _ = await fn.embed(
@@ -3016,9 +3085,18 @@ class guildCommands(commands.Cog):
             await postToDirects(
                 embed, 
                 interaction.guild, 
-                guildData['nodes'][path[0]]['channelID'], 
-                serverData['channelID'],
-                True)
+                guildData.nodes[path[0]].channelID, 
+                player.channelID,
+                onlyOccs = True)
+
+            nodeChannel = get(
+                interaction.guild.text_channels,
+                id = guildData.nodes[path[0]].channelID)
+            embed, _ = await fn.embed(
+                'Departing.',
+                f"{interaction.user.mention} left here to go to **#{path[-1]}**.",
+                f"They went from {' -> '.join(path)}.")
+            await nodeChannel.send(embed = embed)
 
             #Inform destination occupants
             embed, _ = await fn.embed(
@@ -3027,60 +3105,68 @@ class guildCommands(commands.Cog):
                 'Say hello.')
             await postToDirects(embed, 
                 interaction.guild, 
-                guildData['nodes'][path[-1]]['channelID'],
-                serverData['channelID'],
-                True)
+                guildData.nodes[path[-1]].channelID,
+                player.channelID,
+                onlyOccs = True)
+
+            nodeChannel = get(
+                interaction.guild.text_channels,
+                id = guildData.nodes[path[-1]].channelID)
+            embed, _ = await fn.embed(
+                'Arriving.',
+                f"{interaction.user.mention} arrived here from **#{path[0]}**.",
+                f"They went from {' -> '.join(path)}.")
+            await nodeChannel.send(embed = embed)
 
             #Inform intermediary nodes + their occupants
             for index, midwayName in enumerate(path[1:-1]): 
                 embed, _ = await fn.embed(
                     'Passing through.',
-                    f"You notice {interaction.user.mention} come in from the direction of **#{path[index]}**\
-                    before continuing on their way towards **#{path[index+2]}**.",
+                    f"You notice {interaction.user.mention} come in" + \
+                        f" from the direction of **#{path[index]}**" + \
+                        f" before continuing on their way towards **#{path[index + 2]}**.",
                     'Like two ships in the night.')
                 await postToDirects(embed, 
                     interaction.guild, 
-                    guildData['nodes'][midwayName]['channelID'],
-                    True)
+                    guildData.nodes[midwayName].channelID,
+                    onlyOccs = True)
 
-                nodeChannel = get(interaction.guild.text_channels, name = midwayName)
+                nodeChannel = get(
+                    interaction.guild.text_channels,
+                    id = guildData.nodes[midwayName].channelID)
                 embed, _ = await fn.embed(
                     'Transit.',
                     f"{interaction.user.mention} passed through here when traveling from" + \
-                        f"**#{path[0]}>** to + **#{path[-1]}**.",
+                        f" **#{path[0]}>** to **#{path[-1]}**.",
                     f"They went from {' -> '.join(path)}.")
                 await nodeChannel.send(embed = embed)
 
-            visitedNodes = await fn.filterNodes(guildData['nodes'], path)
-            visitedNodes[path[0]]['occupants'].remove(interaction.user.id)
-            occupantsData = await fn.getOccupants(visitedNodes)
+            pathNodes = await guildData.filterNodes(path)
+            await pathNodes[path[0]].removeOccupants({player.id})
 
             #Calculate who they saw on the way
             fullMessage = []
-            for nodeName, occupantsList in occupantsData.items():
+            for name, node in pathNodes.items():
 
-                if occupantsList:
-                    occupantsMention = await fn.listWords([f"<@{ID}>" for ID in occupantsList])
-                    fullMessage.append(f'{occupantsMention} in **#{nodeName}**')
+                if node.occupants:
+                    occupantsMention = await oop.Format.players(node.occupants)
+                    fullMessage.append(f'{occupantsMention} in **#{name}**')
 
             #Inform player of who they saw and what path they took
             if fullMessage:
-                description = f'Along the way, you saw (and were seen by) {await fn.listWords(fullMessage)}.'
+                description = f"Along the way, you saw (and were seen" + \
+                    f"by) {await fn.listWords(fullMessage)}."
             else:
                 description = "You didn't see anyone along the way."
 
             #Change occupants
-            con = db.connectToGuild()
-            guildData = await fn.addOccupants(guildData, path[-1], [interaction.user.id])
-            db.updateGuild(con, guildData, interaction.guild_id)
-            con.close()
+            await pathNodes[path[-1]].addOccupants({player.id})
+            await guildData.save()
 
             #Update location and eavesdropping
-            playerCon = db.connectToPlayer()
-            playerData[str(ctx.guild_id)]['locationName'] = path[-1]
-            playerData[str(ctx.guild_id)].pop('eavesdropping', None)
-            db.updatePlayer(playerCon, playerData, ctx.author.id)
-            playerCon.close()        
+            player.location = path[-1]
+            player.eavesdropping = None
+            await player.save()
 
             await queueRefresh(interaction.guild)
 
@@ -3089,12 +3175,18 @@ class guildCommands(commands.Cog):
                 'Movement',
                 description,
                 f"The path you traveled was {' -> '.join(path)}.")
-            playerChannel = get(interaction.guild.text_channels, id = serverData['channelID'])
+            playerChannel = get(interaction.guild.text_channels, id = player.channelID)
             await playerChannel.send(embed = embed)
             await interaction.followup.delete_message(message_id = interaction.message.id)
             return
 
-        embed, view = await refreshMessage()        
+        view = oop.DialogueView(refresh = refreshEmbed)
+        if not destinationName:
+            await view.addUserNodes(
+                [node for node in map.nodes if node != player.location])
+        await view.addSubmit(submitDestination)
+        await view.addCancel()
+        embed = await refreshEmbed()        
         await ctx.respond(embed = embed, view = view)
         return
 

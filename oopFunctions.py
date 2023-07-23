@@ -152,7 +152,7 @@ class Player:
 
     async def delete(self):
 
-        self.playerDict.pop(self.guildID)
+        self.playerDict.pop(self.guildID, None)
 
         playerCon = sqlite3.connect('playerDB.db')
         cursor = playerCon.cursor()
@@ -382,6 +382,7 @@ class GuildData:
         return
 
     async def deleteNode(self, name: str, channels: iter = set()):
+
         node = self.nodes.pop(name, None)
 
         if not node:
@@ -392,8 +393,8 @@ class GuildData:
         if channel:
             await channel.delete()
 
-        for other in self.nodes:
-            other.neighbors.pop(name, None)
+        for otherNode in self.nodes.values():
+            otherNode.neighbors.pop(name, None)
 
         return
 
@@ -405,6 +406,68 @@ class GuildData:
         for node in nodes:
             occupants |= node.occupants
         return occupants
+
+    async def filterMap(self, roleIDs: iter, playerID: int, origin: str):
+
+        graph = nx.DiGraph()
+
+        accessibleNodes = set()
+        inaccessibleNodes = set()
+        
+        for name, node in self.nodes.items():
+
+            if name == origin:
+                graph.add_node(name)
+                accessibleNodes.add(name)
+                continue
+
+            elif not node.allowedPlayers and not node.allowedRoles:
+                graph.add_node(name)
+                accessibleNodes.add(name)
+                continue
+
+            elif playerID in node.allowedPlayers:
+                graph.add_node(name)
+                accessibleNodes.add(name)
+                continue
+
+            elif any(ID in node.allowedRoles for ID in roleIDs):
+                graph.add_node(name)
+                accessibleNodes.add(name)
+                continue
+
+            else:
+                inaccessibleNodes.add(name)
+
+        madeEdges = set()
+        for name in accessibleNodes:
+
+            for neighbor, edge in self.nodes[name].neighbors.items():
+
+                if neighbor not in accessibleNodes:
+                    continue
+
+                if neighbor in madeEdges:
+                    continue
+
+                if not edge.allowedPlayers and not edge.allowedRoles:
+                    pass                    
+                elif playerID in edge.allowedPlayers:
+                    pass
+                elif any(ID in edge.allowedRoles for ID in roleIDs):
+                    pass
+                else:
+                    continue
+
+                if edge.directionality > 0:
+                    graph.add_edge(name, neighbor)
+                
+                if edge.directionality < 2:
+                    graph.add_edge(neighbor, name)
+                
+            madeEdges.add(name)
+    
+        return nx.ego_graph(graph, origin, radius = 99) 
 
     #Edges
     async def setEdge(
@@ -661,10 +724,6 @@ class GuildData:
         directListeners: dict, 
         indirectListeners: dict):
 
-        for name, node in list(self.nodes.items()):
-            directListeners.pop(node.channelID, None)
-            await self.deleteNode(name, guild.channels)
-
         for playerID in self.players:
 
             player = Player(playerID, self.guildID)
@@ -677,6 +736,10 @@ class GuildData:
             indirectListeners.pop(player.channelID, None)
 
             await player.delete()
+
+        for name, node in list(self.nodes.items()):
+            directListeners.pop(node.channelID, None)
+            await self.deleteNode(name, guild.channels)
 
         for categoryName in ['nodes', 'players']:
             nodeCategory = get(guild.categories, name = categoryName)
@@ -824,6 +887,29 @@ class DialogueView(discord.ui.View):
 
         [nodeSelect.add_option(label = node) for node in nodeNames]
 
+        self.add_item(nodeSelect)
+        self.nodeSelect = nodeSelect
+        return
+
+    async def addUserNodes(self, nodeNames: iter, callback: callable = None):
+
+        if not nodeNames:
+            nodeSelect = discord.ui.Select(
+                placeholder = 'No places you can access.',
+                disabled = True)
+            nodeSelect.add_option(
+                label = 'Nothing to choose.')
+            self.add_item(nodeSelect)
+            self.nodeSelect = nodeSelect
+            return
+
+        nodeSelect = discord.ui.Select(placeholder = 'Which place?')
+        nodeSelect.callback = callback if callback else self._callRefresh
+
+        for name in nodeNames:
+            nodeSelect.add_option(
+                label = name)
+        
         self.add_item(nodeSelect)
         self.nodeSelect = nodeSelect
         return
