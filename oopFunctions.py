@@ -51,7 +51,7 @@ class Format:
     @classmethod
     async def whitelist(cls, allowedRoles: iter = set(), allowedPlayers: iter = set()):
 
-        if not allowedRoles or allowedPlayers:
+        if not allowedRoles and not allowedPlayers:
             return 'Everyone will be allowed to travel to/through this place.'
 
         roleMentions = await cls.roles(allowedRoles)
@@ -126,7 +126,7 @@ class Player:
         playerData = cursor.fetchone()
 
         if playerData:
-            decodedPlayer = base64.b64decode(playerData)
+            decodedPlayer = base64.b64decode(playerData['serverData'])
             self.playerDict = pickle.loads(decodedPlayer)
             serverData = self.playerDict.get(self.guildID, {})
         else:
@@ -158,6 +158,7 @@ class Player:
         cursor = playerCon.cursor()
         
         if self.playerDict:
+            print(f'Player removed from guild, ID: {self.id}.')
             return await self._commit(playerCon, cursor)
 
         cursor.execute(f"DELETE FROM players WHERE playerID = ?", (self.id,))
@@ -213,7 +214,7 @@ class ChannelMaker:
         await newChannel.create_webhook(name = 'Proximity', avatar = self.avatar)
         return newChannel
 
-@attr.s(auto_attribs = True) #Fix bug here where attributes are inexplicably linked between classes
+@attr.s(auto_attribs = True)
 class Component:
     allowedRoles: set = attr.Factory(set)
     allowedPlayers: set = attr.Factory(set)
@@ -279,10 +280,17 @@ class Node(Component):
         return
 
     async def addOccupants(self, occupantIDs: iter):
+
+        if not isinstance(occupantIDs, set):
+            occupantIDs = set(occupantIDs)
+
         self.occupants |= occupantIDs
         return
 
     async def removeOccupants(self, occupantIDs: iter):
+
+        if not isinstance(occupantIDs, set):
+            occupantIDs = set(occupantIDs)
 
         if not occupantIDs.issubset(self.occupants):
             raise KeyError("Trying to remove someone from a node who's already absent.")
@@ -349,7 +357,7 @@ class GuildData:
         playerData = cursor.fetchone()
 
         if playerData:
-            self.players = [int(player) for player in playerData['players'].split()]
+            self.players = set(int(player) for player in playerData['players'].split())
 
         guildCon.close()
         return
@@ -383,6 +391,10 @@ class GuildData:
         channel = get(channels, id = node.channelID)
         if channel:
             await channel.delete()
+
+        for other in self.nodes:
+            other.neighbors.pop(name, None)
+
         return
 
     async def filterNodes(self, nodeNames: iter):
@@ -416,17 +428,28 @@ class GuildData:
 
             case 0:
                 self.nodes[origin].neighbors[destination] = edge
-                edge.directionality = 2
-                self.nodes[destination].neighbors[origin] = edge
+                newEdge = Edge(
+                    allowedRoles = edge.allowedRoles,
+                    allowedPlayers = edge.allowedPlayers,
+                    directionality = 2)
+                self.nodes[destination].neighbors[origin] = newEdge
 
             case 1:
                 self.nodes[origin].neighbors[destination] = edge
-                self.nodes[destination].neighbors[origin] = edge
+                newEdge = Edge(
+                    allowedRoles = edge.allowedRoles,
+                    allowedPlayers = edge.allowedPlayers,
+                    directionality = 1)
+                self.nodes[destination].neighbors[origin] = newEdge
 
             case 2:
-                self.nodes[origin].neighbors[destination] = edge
-                edge.directionality = 0
-                self.nodes[destination].neighbors[origin] = edge
+                self.nodes[origin].neighbors[destination] = edge                
+                newEdge = Edge(
+                    allowedRoles = edge.allowedRoles,
+                    allowedPlayers = edge.allowedPlayers,
+                    directionality = 0)
+                self.nodes[destination].neighbors[origin] = newEdge
+
 
         return priorEdge
 
@@ -468,15 +491,15 @@ class GuildData:
             match edge.directionality:
 
                 case 0:
-                    description += f'<- {self.guildData.nodes[neighbor].channelID}'
+                    description += f'\n<- <#{self.nodes[neighbor].channelID}>'
 
                 case 1:
-                    description += f'<-> {self.guildData.nodes[neighbor].channelID}'
+                    description += f'\n<-> <#{self.nodes[neighbor].channelID}>'
 
                 case 2:
-                    description += f'-> {self.guildData.nodes[neighbor].channelID}'
+                    description += f'\n-> <#{self.nodes[neighbor].channelID}>'
                     
-        return
+        return description
 
     #Players
     async def newPlayer(self, playerID: int, location: str):
@@ -540,7 +563,7 @@ class GuildData:
         nx.draw_networkx_labels(graph, pos = positions, font_weight = 'bold')
 
         currentIndex = 0
-        letterSpacing = 0.021
+        letterSpacing = 0.029
         for origin, destination in graph.edges:
 
             ox, oy = positions[origin]
@@ -551,7 +574,7 @@ class GuildData:
                 
                 if dx - ox != 0:
                     slope = abs((dy - oy) / (dx - ox))
-                    angleSpacing = 1 - abs((1 - slope) / (1 + slope)) * 0.2
+                    angleSpacing = 1 - abs((1 - slope) / (1 + slope)) * 0.15
 
                     labelFactor = 1 / (abs(slope) + 1)
 
@@ -578,7 +601,7 @@ class GuildData:
                 edge_color = edgeColor[currentIndex],
                 width = 3.0,
                 arrowstyle = 
-                    pchs.ArrowStyle('<|-|>'),
+                    pchs.ArrowStyle('-|>'),
                 arrowsize = 15)
             currentIndex += 1
 
@@ -717,7 +740,10 @@ class DialogueView(discord.ui.View):
     def roles(self):
         return {role.id for role in self.roleSelect.values}
 
-    async def addPeople(self, maxUsers: int, callback: callable = None):
+    async def addPeople(self, maxUsers: int = 0, callback: callable = None):
+
+        if not maxUsers:
+            maxUsers = 25
 
         peopleSelect = discord.ui.Select(
             placeholder = 'Which people?',
@@ -734,7 +760,11 @@ class DialogueView(discord.ui.View):
     def people(self):
         return self.peopleSelect.values
 
-    async def addPlayers(self, playerIDs: iter, onlyOne: bool = False, callback: callable = None):
+    async def addPlayers(
+        self, 
+        playerIDs: iter, 
+        onlyOne: bool = False, 
+        callback: callable = None):
 
         playerSelect = discord.ui.Select(
             placeholder = 'Which players?',
@@ -743,7 +773,7 @@ class DialogueView(discord.ui.View):
 
         addedMembers = 0
         for playerID in playerIDs:
-            member = get(self.guild.players, id = playerID)
+            member = get(self.guild.members, id = playerID)
             playerSelect.add_option(
                 label = member.display_name,
                 value = str(playerID))
@@ -813,8 +843,8 @@ class DialogueView(discord.ui.View):
             placeholder = f'Which edges to {action}?',
             min_values = 0,
             max_values = len(neighbors))
-        edgeSelect.callback = callback
-
+        edgeSelect.callback = callback if callback else self._callRefresh
+        
         for neighbor, edge in neighbors.items():
 
             match edge.directionality:
@@ -869,14 +899,17 @@ class DialogueView(discord.ui.View):
         return Format.discordify(self.nameSelect.value)
         
     #Buttons
-    async def addClear(self):
+    async def addClear(self, callback: callable = None):
         clear = discord.ui.Button(
             label = 'Clear Whitelist',
             style = discord.ButtonStyle.secondary)
 
         async def clearing(interaction: discord.Interaction):
             self.clearing = not self.clearing
-            await self._callRefresh(interaction)
+            if callback:
+                await callback(interaction)
+            else:
+                await self._callRefresh(interaction)
             return
 
         clear.callback = clearing
@@ -952,20 +985,21 @@ class DialogueView(discord.ui.View):
             return "\n• New whitelist(s)-- will overwrite the old whitelist:" + \
                 f" {await Format.whitelist(self.roles(), self.players())}"
 
-        firstComponent = list(components)[0]
+        firstComponent = next(iter(components))
 
         if len(components) == 1:
             return "\n• Whitelist:" + \
                 f" {await Format.whitelist(firstComponent.allowedRoles, firstComponent.allowedPlayers)}"
 
-        if False: #await self.whitelistsSimilar(components.values()):
-            return "\n• Whitelists: Every part has the same whitelist-" + \
+        if any(com.allowedRoles != firstComponent.allowedRoles or \
+               com.allowedPlayers != firstComponent.allowedPlayers for com in components):
+            return '\n• Whitelists: Multiple different whitelists.'
+        
+        else:
+            return "\n• Whitelists: Every part has the same whitelist. " + \
                 await Format.whitelist(firstComponent.allowedRoles, \
                     firstComponent.allowedPlayers)
-
-        else:
-            return '\n• Whitelists: Multiple different whitelists.'
-
+            
 @attr.s(auto_attribs = True)
 class Auto:
 

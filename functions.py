@@ -25,6 +25,9 @@ async def embed(
         case None:
             file = discord.MISSING
 
+        case alsoNone if imageDetails[0] == None:
+            file = discord.MISSING
+
         case thumb if imageDetails[1] == 'thumb':
             file = discord.File(imageDetails[0], filename='image.png')
             embed.set_thumbnail(url='attachment://image.png')
@@ -73,39 +76,39 @@ async def addUserNodes(view: discord.ui.View, nodes: list, callback: callable = 
     view.add_item(nodeSelect)
     return view, nodeSelect
 
-# async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
+async def addArrows(leftCallback: callable = None, rightCallback: callable = None):
 
-#     view = discord.ui.View()
+    view = discord.ui.View()
 
-#     if leftCallback:
-#         left = discord.ui.Button(
-#             label = '<',
-#             style = discord.ButtonStyle.secondary)
-#         left.callback = leftCallback
-#         view.add_item(left)
+    if leftCallback:
+        left = discord.ui.Button(
+            label = '<',
+            style = discord.ButtonStyle.secondary)
+        left.callback = leftCallback
+        view.add_item(left)
     
-#     else:
-#         left = discord.ui.Button(
-#             label = '-',
-#             style = discord.ButtonStyle.secondary,
-#             disabled = True)
-#         view.add_item(left)
+    else:
+        left = discord.ui.Button(
+            label = '-',
+            style = discord.ButtonStyle.secondary,
+            disabled = True)
+        view.add_item(left)
         
-#     if rightCallback:
-#         right = discord.ui.Button(
-#             label = '>',
-#             style = discord.ButtonStyle.secondary)
-#         right.callback = rightCallback
-#         view.add_item(right)
+    if rightCallback:
+        right = discord.ui.Button(
+            label = '>',
+            style = discord.ButtonStyle.secondary)
+        right.callback = rightCallback
+        view.add_item(right)
 
-#     else:
-#         right = discord.ui.Button(
-#             label = 'Done',
-#             style = discord.ButtonStyle.secondary)
-#         right.callback = closeDialogue
-#         view.add_item(right)
+    else:
+        right = discord.ui.Button(
+            label = 'Done',
+            style = discord.ButtonStyle.secondary,
+            disabled = True)
+        view.add_item(right)
 
-#     return view
+    return view
 
 #Formatting
 async def whitelistsSimilar(components: list):
@@ -293,37 +296,29 @@ async def noNodes(interaction: discord.Interaction, singular: bool = False):
         attachments = [])
     return
 
-async def noEdges(edges, interaction: discord.Interaction):
+async def noEdges(interaction: discord.Interaction):
+    embedData, _ = await embed(
+        'No edges!',
+        "You've got to select at least one.",
+        'Try calling the command again.')        
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id, 
+        embed = embedData, 
+        view = None,
+        attachments = [])
+    return
 
-    if not edges:
+async def noPeople(interaction: discord.Interaction):
 
-        embedData, _ = await embed(
-            'No edges!',
-            "You've got to select some.",
-            'Try calling the command again.')        
-        await interaction.followup.edit_message(
-            message_id = interaction.message.id, 
-            embed = embedData, 
-            view = None,
-            attachments = [])
-        return True
-    
-    return False
-
-async def noPeople(values, interaction: discord.Interaction):
-
-    if not values:
-        embedData, _ = await embed(
-            'Who?',
-            "You didn't select any valid people.",
-            'You can call the command again and specify someone new.')
-        await interaction.followup.edit_message(
-            message_id = interaction.message.id,
-            embed = embedData,
-            view = None)
-        return True
-
-    return False
+    embedData, _ = await embed(
+        'Who?',
+        "You didn't select any valid people.",
+        'You can call the command again and specify someone new.')
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id,
+        embed = embedData,
+        view = None)
+    return
 
 async def noChanges(test, interaction: discord.Interaction):
 
