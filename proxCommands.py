@@ -2554,22 +2554,7 @@ class freeCommands(commands.Cog):
     #                 "\n - On node channels, deletes the node." + \
     #                 "\n - ...Unless it's occupied, then it'll remake it and scold you." + \
     #             "\n3. Messing with webhooks for node or player, same deal. :)",
-    #         inline = False)      
-
-    #     embed.add_field(
-    #         name = 'Fixes',
-    #         value = "1. Overhearing a node that gets deleted no longer" +\
-    #                     " *permanently breaks your ability to overhear.*" + \
-    #                 "\n2. Maps generated for `/server view`, `/map`, etc. now" + \
-    #                     " won't have the node labels overlap with the edge arrows." + \
-    #                 "\n3. The bot has a profile picture in *all* of its messages." + \
-    #                 "\n4. Deleting multiple players who were in the same location" + \
-    #                     " doesn't spam you anymore." + \
-    #                 "\n5. TONS of formatting and typo corrections." + \
-    #                 "\n6. Increased reliablity, scalability, and readability. The" + \
-    #                     " code runs smoother, can be upgraded easier, and looks " + \
-    #                     " better to the guy making it.",
-    #         inline = False)        
+    #         inline = False)         
             
 
     #     # embed, file = await fn.embed(
