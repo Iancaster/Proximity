@@ -1995,57 +1995,48 @@ class playerCommands(commands.Cog):
         await ctx.respond(embed = embed, view = view)
         return
     
-    # @player.command(
-    #     name = 'review',
-    #     description = 'Change some player-specific data.')
-    # async def review(
-    #     self,
-    #     ctx: discord.ApplicationContext):
+    @player.command(
+        name = 'review',
+        description = 'Change some player-specific data.',
+        player = discord.Option(
+            discord.Member,
+            'Who to review?',
+            default = None))
+    async def review(
+        self,
+        ctx: discord.ApplicationContext):
 
-    #     await ctx.defer(ephemeral = True)
+        await ctx.defer(ephemeral = True)
 
-    #     guildData, members = db.mag(ctx.guild_id)
+        guildData = oop.GuildData(ctx.guild_id)
 
-    #     if not members:
-    #         embed, _ = await fn.embed(
-    #         'But nobody came.',
-    #         'There are no players, so nobody to locate.',
-    #         'The title of this embed is a reference, by the way.')
-    #         await ctx.respond(embed = embed)
-    #         return
+        async def reviewPlayer(playerID: int):
+            return
 
-    #     if player:
-    #         if player in members:
-    #             playerIDs = [player.id]
-    #         else:
-    #             embed, _ = await embed(
-    #                 f'{player.mention}?',
-    #                 "But they aren't a player.",
-    #                 'So how can they be located?')
-    #             await ctx.edit(
-    #                 embed = embed,
-    #                 view = None)
-    #             return
-    #     else:
-    #         playerIDs = members
+        
+        if player:
+
+            if player.id in guildData.players:
+                await reviewPlayer(player.id)
+                return
                 
-    #     description = ''
+            embed, _ = await fn.embed(
+                'Them?',
+                f"But {player.mention} isn't a player in this server.",
+                "Try someone else.")
+            await ctx.respond(embed = embed)
+            return
+    
+        async def submitPlayer(interaction: discord.Interaction):
+            await ctx.delete()
+            await reviewPlayer(next(view.players()))
+            return
 
-    #     occupiedNodes = await fn.getOccupants(guildData['nodes'])
-    #     for nodeName, occupantIDs in occupiedNodes.items():
-    #         occupantMentions = [f'<@{occupantID}>' for occupantID in occupantIDs if occupantID in playerIDs]
-    #         if occupantMentions:
-    #             description += f"\n• <#{guildData['nodes'][nodeName]['channelID']}>: {await fn.listWords(occupantMentions)}"
-                
-    #     if not description:
-    #         description = "• No players found. That's a big problem. Run `/server fix`."
-
-    #     embed, _ = await fn.embed(
-    #         'Find results',
-    #         description,
-    #         'Looked high and low.')
-    #     await ctx.respond(embed = embed)
-    #     return
+        view = oop.DialogueView(guild = ctx.guild)
+        await view.addPlayers(guildData.nodes.keys(), onlyOne = True, callback = submitPlayer)
+        await view.addCancel()
+        await ctx.respond(embed = embed, view = view)
+        return
     
     @player.command(
         name = 'find',
