@@ -146,15 +146,16 @@ class Player:
 
         if playerData:
             decodedPlayer = base64.b64decode(playerData['serverData'])
-            self.playerDict = pickle.loads(decodedPlayer)
-            serverData = self.playerDict.get(self.guildID, {})
+            playerDict = pickle.loads(decodedPlayer)
+            serverData = playerDict.get(self.guildID, {})
         else:
-            self.playerDict = {}
             serverData = {}
         
         self.channelID = serverData.get('channelID', None)
         self.location = serverData.get('location', None)
         self.eavesdropping = serverData.get('eavesdropping', None)
+        self.name = serverData.get('name', None)
+        self.avatar = serverData.get('avatar', None)
         return
 
     async def save(self):
@@ -165,7 +166,9 @@ class Player:
         self.playerDict[self.guildID] = {
             'channelID' : self.channelID,
             'location' : self.location,
-            'eavesdropping' : self.eavesdropping}
+            'eavesdropping' : self.eavesdropping,
+            'name' : self.name,
+            'avatar' : self.avatar}
         
         return await self._commit(playerCon, cursor)
 
