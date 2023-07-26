@@ -4,7 +4,7 @@ from discord.utils import get
 import functions as fn
 import databaseFunctions as db
 
-import attr, base64, pickle, sqlite3, math
+import attr, base64, pickle, sqlite3, math, re
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.patches as pchs
@@ -108,6 +108,25 @@ class Format:
 
         return edgeColors
     
+    @classmethod
+    async def newName(cls, name: str, nodes: iter):
+
+        async def getIndex(name):
+            match = re.search(r'\d+$', name)
+            if match:
+                return int(match.group())
+            return 0
+
+        candidateName = name
+        while candidateName in nodes:
+            suffix = await getIndex(candidateName)
+            if suffix > 0:
+                candidateName = re.sub(r'\d+$', str(suffix + 1), candidateName)
+            else:
+                candidateName = f"{candidateName}-2"
+
+        return candidateName
+        
 @attr.s(auto_attribs = True)
 class Player:
     id: int = attr.ib(default = 0)

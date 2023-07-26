@@ -176,7 +176,7 @@ async def loading(interaction: discord.Interaction):
     embedData, _ = await embed(
         'Loading...',
         'Recalculating listeners.',
-        'This will take less than five seconds.')
+        'Usually takes less than five seconds.')
     await interaction.response.edit_message(
         embed = embedData,
         view = None,

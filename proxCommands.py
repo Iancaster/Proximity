@@ -150,11 +150,13 @@ class nodeCommands(commands.Cog):
 
         submittedName = oop.Format.discordify(name)
         name = submittedName if submittedName else 'new-node'
+        name = await oop.Format.newName(name, guildData.nodes.keys())
 
         async def refreshEmbed():
 
             nonlocal name
             name = view.name() if view.name() else name
+            name = await oop.Format.newName(name, guildData.nodes.keys())
 
             description = f'Whitelist: {await oop.Format.whitelist(view.roles(), view.players())}'
 
@@ -170,10 +172,6 @@ class nodeCommands(commands.Cog):
             await fn.loading(interaction)
 
             nonlocal name
-            name = view.name() if view.name() else name
-            if name in guildData.nodes:
-                await fn.nodeExists(guildData.nodes[name], interaction)
-                return
     
             maker = oop.ChannelMaker(interaction.guild, 'nodes')
             await maker.initialize()
@@ -391,7 +389,8 @@ class nodeCommands(commands.Cog):
 
                 fullDescription = intro
                 if view.name():
-                    fullDescription += f', renaming to **#{view.name()}**.'
+                    newName = await oop.Format.newName(view.name(), guildData.nodes.keys())
+                    fullDescription += f', renaming to **#{newName}**.'
                 fullDescription += description
                 
                 fullDescription += await view.whitelist(revisingNodes.values())
@@ -408,12 +407,9 @@ class nodeCommands(commands.Cog):
                 await fn.loading(interaction)
 
                 nonlocal revisingNodes
+                newName = await oop.Format.newName(view.name(), guildData.nodes.keys())
 
-                if view.name() in guildData.nodes:
-                    await fn.nodeExists(guildData.nodes[view.name()], interaction)
-                    return
-
-                if await fn.noChanges((view.name() or view.roles() or view.players() or view.clearing), interaction):
+                if await fn.noChanges((newName or view.roles() or view.players() or view.clearing), interaction):
                     return
 
                 description = ''
@@ -452,32 +448,32 @@ class nodeCommands(commands.Cog):
                         await guildData.nodes[name].setRoles(view.roles())
                         await guildData.nodes[name].setPlayers(view.players())
                     
-                if view.name(): 
+                if newName: 
 
                     oldName = list(revisingNodes.keys())[0]
                     renamedNode = guildData.nodes.pop(oldName)
-                    guildData.nodes[view.name()] = renamedNode
+                    guildData.nodes[newName] = renamedNode
                     
                     description += f"\n• Renamed **#{oldName}** to {renamedNode.mention}."
 
-                    #Correct locationName in player data
-                    for occupantID in renamedNode.occupants:
 
-                        player = oop.Player(occupantID, interaction.guild_id)
-                        player.location = view.name()
+                    #Correct locationName in player data
+                    for ID in renamedNode.occupants:
+                        player = oop.Player(ID, channel.guild.id)
+                        player.location = newName
                         await player.save()
                     
-                    #Rename channel
-                    nodeChannel = get(interaction.guild.text_channels, id = renamedNode.channelID)
-                    await nodeChannel.edit(name = view.name())
-
                     #Rename edges
                     for node in guildData.nodes.values():
                         for neighbor in list(node.neighbors):
                             if neighbor == oldName:
-                                node.neighbors[view.name()] = node.neighbors.pop(oldName)
+                                node.neighbors[newName] = node.neighbors.pop(oldName)
                                 
                 await guildData.save()
+
+                if newName: #Gotta save first sorry
+                    nodeChannel = get(interaction.guild.text_channels, id = renamedNode.channelID)
+                    await nodeChannel.edit(name = newName)
 
                 await queueRefresh(interaction.guild)
                 
@@ -490,7 +486,7 @@ class nodeCommands(commands.Cog):
                     await nodeChannel.send(embed = embed)  
 
                 return await fn.noCopies(
-                    (interaction.channel.name in revisingNodes or interaction.channel.name == view.name()),
+                    (interaction.channel.name in revisingNodes or interaction.channel.name == newName),
                     embed,
                     interaction)              
             
@@ -641,22 +637,43 @@ class nodeCommands(commands.Cog):
         foundNode = False
         for node in guildData.nodes.values():
             if beforeChannel.id == node.channelID:
-                renamedNode = guildData.nodes.pop(beforeChannel.name, None)
 
-                if not renamedNode: #Node was renamed by Prox itself, phew
+                if beforeChannel.name not in guildData.nodes \
+                    and afterChannel.name in guildData.nodes:
+                    return #Already good
+
+                newName = await oop.Format.newName(afterChannel.name, guildData.nodes.keys())
+
+                if newName != afterChannel.name:
+                    await afterChannel.edit(name = newName)
                     return
 
-                guildData.nodes[afterChannel.name] = renamedNode
+                oldName = next(name for name, candidate in guildData.nodes.items() if candidate is node)
+                guildData.nodes[newName] = guildData.nodes.pop(oldName)
+
+                #Correct location name for occupants
+                for ID in node.occupants:
+                    player = oop.Player(ID, channel.guild.id)
+                    player.location = newName
+                    await player.save()
+
+                embed, _ = await fn.embed(
+                    'Edited.',
+                    f'Renamed **#{beforeChannel.name}** to {afterChannel.mention}.',
+                    'Another successful revision.')
+                await afterChannel.send(embed = embed)
+
                 foundNode = True
                 break
             
         if foundNode == False: #Channel wasn't even a node channel
             return
 
-        for node in guildData.nodes.values(): #Fix the edges too
-            for neighbor in list(node.neighbors):
+        for node in guildData.nodes.values(): 
+            #Fix the edges too
+            for neighbor in list(node.neighbors.keys()):
                 if neighbor == beforeChannel.name:
-                    node.neighbors[afterChannel.name] = node.neighbors.pop(beforeChannel.name)
+                    node.neighbors[newName] = node.neighbors.pop(beforeChannel.name)
 
         await guildData.save()
         return
@@ -2508,72 +2525,76 @@ class freeCommands(commands.Cog):
         await ctx.respond(embed = embed, view = view)
         return
 
-    @commands.slash_command(
-        name = 'say',
-        description = 'Here.')
-    async def say(
-        self,
-        ctx: discord.ApplicationContext):
+    # @commands.slash_command(
+    #     name = 'say',
+    #     description = 'Here.')
+    # async def say(
+    #     self,
+    #     ctx: discord.ApplicationContext):
 
-        embed = discord.Embed(
-            title = 'Version 1.1: The Tough Stuff Update',
-            description = "Minecraft names their updates. That's" + \
-                " fun, so I'll do it too.",
-            color = discord.Color.from_rgb(67, 8, 69))
+    #     embed = discord.Embed(
+    #         title = 'Version 1.1: The Tough Stuff Update',
+    #         description = "This bot just got a lot harder to break. P.S. -" + \
+    #             " Minecraft names their updates. That's fun, so I'll do it too.",
+    #         color = discord.Color.from_rgb(67, 8, 69))
 
-        embed.set_footer(text = 'I also spent two weeks rewriting the code' + \
-            ' to be within an OOP framework. That took like 80% of the ' + \
-            ' work and it barely makes a footnote because nobody knows what ' + \
-            ' the hell an OOP is.')
+    #     embed.set_footer(text = 'I also spent two weeks rewriting the code' + \
+    #         ' to be within an OOP framework. That took like 80% of the ' + \
+    #         ' work and it barely makes a footnote because nobody knows what ' + \
+    #         ' the hell an OOP is.')
 
-        embed.add_field(
-            name = 'New Features',
-            value = "1. Renaming node channels no longer breaks the graph!" + \
-                "\n2. You can also safely delete nodes just by deleting their channel." + \
-                "\n3. Unless you try to delete an occupied one, it'll just remake it and scold you." + \
-                "\n4. Messing with webhooks for node or player, same deal. :)" + \
-                "\n5. You can delete players by deleting their channel.",
-            inline = False)      
+    #     embed.add_field(
+    #         name = 'New Features',
+    #         value = "1. Renaming a channel..." + \
+    #                 "\n - Is perfectly safe on player channels." + \
+    #                 "\n - On node channels, renames the node." + \
+    #                 "\n - ...unless that name's taken. Then it's name-2." + \
+    #             "\n2. Deleting a channel..." + \
+    #                 "\n - On player channels, deletes the player." + \
+    #                 "\n - On node channels, deletes the node." + \
+    #                 "\n - ...Unless it's occupied, then it'll remake it and scold you." + \
+    #             "\n3. Messing with webhooks for node or player, same deal. :)",
+    #         inline = False)      
 
-        embed.add_field(
-            name = 'Fixes',
-            value = "1. Overhearing a node that gets deleted no longer" +\
-                        " *permanently breaks your ability to overhear.*" + \
-                    "\n2. Maps generated for `/server view`, `/map`, etc. now" + \
-                        " won't have the node labels overlap with the edge arrows." + \
-                    "\n3. The bot has a profile picture in *all* of its messages." + \
-                    "\n4. Deleting multiple players who were in the same location" + \
-                        " doesn't spam you anymore." + \
-                    "\n5. TONS of formatting and typo corrections." + \
-                    "\n6. Increased reliablity, scalability, and readability. The" + \
-                        " code runs smoother, can be upgraded easier, and looks " + \
-                        " better to the guy making it.",
-            inline = False)        
+    #     embed.add_field(
+    #         name = 'Fixes',
+    #         value = "1. Overhearing a node that gets deleted no longer" +\
+    #                     " *permanently breaks your ability to overhear.*" + \
+    #                 "\n2. Maps generated for `/server view`, `/map`, etc. now" + \
+    #                     " won't have the node labels overlap with the edge arrows." + \
+    #                 "\n3. The bot has a profile picture in *all* of its messages." + \
+    #                 "\n4. Deleting multiple players who were in the same location" + \
+    #                     " doesn't spam you anymore." + \
+    #                 "\n5. TONS of formatting and typo corrections." + \
+    #                 "\n6. Increased reliablity, scalability, and readability. The" + \
+    #                     " code runs smoother, can be upgraded easier, and looks " + \
+    #                     " better to the guy making it.",
+    #         inline = False)        
             
 
-        # embed, file = await fn.embed(
-        #     'A locked computer.',
-        #     "You used your *extension cord*. The **computer** " + \
-        #         "is locked by a password.",
-        #     "Just as an example.",
-        #     ('assets/mockup.png', 'full'))
+    #     # embed, file = await fn.embed(
+    #     #     'A locked computer.',
+    #     #     "You used your *extension cord*. The **computer** " + \
+    #     #         "is locked by a password.",
+    #     #     "Just as an example.",
+    #     #     ('assets/mockup.png', 'full'))
 
-        # view = discord.ui.View()
-        # button = discord.ui.Button(
-        #     label = 'Input password',
-        #     style = discord.ButtonStyle.secondary)
-        # view.add_item(button)        
-        # button = discord.ui.Button(
-        #     label = 'Reclaim "Extension Cord"',
-        #     style = discord.ButtonStyle.secondary)
-        # view.add_item(button)
-        # button = discord.ui.Button(
-        #     label = 'Walk away',
-        #     style = discord.ButtonStyle.secondary)
-        # view.add_item(button)
+    #     # view = discord.ui.View()
+    #     # button = discord.ui.Button(
+    #     #     label = 'Input password',
+    #     #     style = discord.ButtonStyle.secondary)
+    #     # view.add_item(button)        
+    #     # button = discord.ui.Button(
+    #     #     label = 'Reclaim "Extension Cord"',
+    #     #     style = discord.ButtonStyle.secondary)
+    #     # view.add_item(button)
+    #     # button = discord.ui.Button(
+    #     #     label = 'Walk away',
+    #     #     style = discord.ButtonStyle.secondary)
+    #     # view.add_item(button)
 
-        await ctx.respond(embed = embed)
-        return
+    #     await ctx.respond(embed = embed)
+    #     return
 
     @tasks.loop(seconds = 5.0)
     async def updateChannels(self):
