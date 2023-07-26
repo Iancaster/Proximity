@@ -36,25 +36,24 @@ async def relay(msg: discord.Message):
         return
 
     if msg.guild.id not in updatedGuilds: #Listeners are out of date, wait for refresh
-        
+        print(f'Waiting for updated listeners in server: {guild.name}.')
         needingUpdate.add(msg.guild)
-        
         while msg.guild.id not in updatedGuilds:
-            print(f'Waiting for updated listeners in server: {msg.guild.name}.')
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
+        print(f'Updated {guild.name}!')
 
     directs = directListeners.get(msg.channel.id, [])
     for channel, eavesdropping in directs:
 
         if eavesdropping:
             embed, _ = await fn.embed(
-                msg.author.name,
+                f'{msg.author.name}:',
                 msg.content[:2000],
                 'You hear everything.')
             await channel.send(embed = embed)
             if len(msg.content) > 1999:
                 embed, _ = await fn.embed(
-                    'Continued',
+                    'Continued.',
                     msg.content[2000:4000],
                     'And wow, is that a lot to say.')
                 await channel.send(embed = embed)
@@ -94,11 +93,11 @@ async def postToDirects(
     onlyOccs: bool = False):
 
     if guild.id not in updatedGuilds:
-    
+        print(f'Waiting for updated listeners in server: {guild.name}.')
         needingUpdate.add(guild)
         while guild.id not in updatedGuilds:
-            print(f'Waiting for updated listeners in server: {guild.name}.')
             await asyncio.sleep(1)
+        print(f'Updated {guild.name}!')
     
     directs = directListeners.get(channelID, [])
     for channel, eavesdropping in directs:
@@ -1997,23 +1996,57 @@ class playerCommands(commands.Cog):
     
     @player.command(
         name = 'review',
-        description = 'Change some player-specific data.',
-        player = discord.Option(
-            discord.Member,
-            'Who to review?',
-            default = None))
+        description = 'Review player data.')
     async def review(
         self,
-        ctx: discord.ApplicationContext):
+        ctx: discord.ApplicationContext,
+        player: discord.Option(
+            discord.Member,
+            'Who to review?',
+            default = None)):
 
         await ctx.defer(ephemeral = True)
 
         guildData = oop.GuildData(ctx.guild_id)
 
         async def reviewPlayer(playerID: int):
+
+            playerData = oop.Player(playerID, ctx.guild_id)
+
+            # Location, usermention, character name, eavesdropping (location), pfp as thumb, channel mention
+
+            noData = []
+
+            description = f'\n• Mention: <@{playerID}>'
+
+            if playerData.name:
+                description += f'\n• Character Name: {playerData.name}'
+            else:
+                noData.append('has no character name override')
+
+            locationNode = guildData.nodes[playerData.location]
+            description += f'\n• Location: {locationNode.mention}'
+
+            description += f'\n• Player Channel: <#{playerData.channelID}>'
+
+            if playerData.eavesdropping:
+                eavesNode = guildData.nodes[playerData.eavesdropping]
+                description += f'\n• Eavesdropping: {eavesNode.mention}'
+            else:
+                noData.append("isn't eavesdropping on anyone")
+            
+            if noData:
+                footer = f'This user {await oop.Format.words(noData)}.'
+            else:
+                footor = "And that's everything."
+
+            embed, _ = await fn.embed(
+                f'Player Review',
+                description,
+                footer)
+            await ctx.respond(embed = embed, ephemeral = True)
             return
 
-        
         if player:
 
             if player.id in guildData.players:
@@ -2029,11 +2062,16 @@ class playerCommands(commands.Cog):
     
         async def submitPlayer(interaction: discord.Interaction):
             await ctx.delete()
-            await reviewPlayer(next(view.players()))
+            await reviewPlayer([view.players()][0])
             return
 
+        embed, _ = await fn.embed(
+            'Who to review?',
+            f"Select who you'd like to review. You can also do" + \
+                " `/player review @player-name`.",
+            "Or just choose someone below.")
         view = oop.DialogueView(guild = ctx.guild)
-        await view.addPlayers(guildData.nodes.keys(), onlyOne = True, callback = submitPlayer)
+        await view.addPlayers(guildData.players, onlyOne = True, callback = submitPlayer)
         await view.addCancel()
         await ctx.respond(embed = embed, view = view)
         return
@@ -3152,7 +3190,7 @@ class guildCommands(commands.Cog):
             #Inform player of who they saw and what path they took
             if fullMessage:
                 description = f"Along the way, you saw (and were seen" + \
-                    f"by) {await fn.listWords(fullMessage)}."
+                    f" by) {await oop.Format.words(fullMessage)}."
             else:
                 description = "You didn't see anyone along the way."
 
