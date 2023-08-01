@@ -9,6 +9,8 @@ import databaseFunctions as db
 import asyncio
 import time
 import networkx as nx
+import requests
+from io import BytesIO
 
 import oopFunctions as oop
 
@@ -36,47 +38,59 @@ async def relay(msg: discord.Message):
         return
 
     if msg.guild.id not in updatedGuilds: #Listeners are out of date, wait for refresh
-        print(f'Waiting for updated listeners in server: {guild.name}.')
+        print(f'Waiting for updated listeners in server: {msg.guild.name}.')
         needingUpdate.add(msg.guild)
         while msg.guild.id not in updatedGuilds:
             await asyncio.sleep(1)
-        print(f'Updated {guild.name}!')
+        print(f'Updated {msg.guild.name}!')
+
+    speaker = oop.Player(msg.author.id, msg.guild.id)
+    speakerName = speaker.name if speaker.name else msg.author.display_name
+    speakerAvatar = speaker.avatar if speaker.avatar else msg.author.display_avatar.url
 
     directs = directListeners.get(msg.channel.id, [])
     for channel, eavesdropping in directs:
 
         if eavesdropping:
+            webhook = (await channel.webhooks())[0]
             embed, _ = await fn.embed(
-                f'{msg.author.name}:',
+                f'{speakerName}:',
                 msg.content[:2000],
                 'You hear everything.')
-            await channel.send(embed = embed)
+            await webhook.send(
+                username = speakerName, 
+                avatar_url = speakerAvatar,
+                embed = embed)
+
             if len(msg.content) > 1999:
                 embed, _ = await fn.embed(
                     'Continued.',
                     msg.content[2000:4000],
                     'And wow, is that a lot to say.')
-                await channel.send(embed = embed)
+                await webhook.send(
+                    username = speakerName, 
+                    avatar_url = speakerAvatar,
+                    embed = embed)
 
         else:
             webhook = (await channel.webhooks())[0]
-            files = [attachment.to_file() for attachment in msg.attachments]
+            files = [await attachment.to_file() for attachment in msg.attachments]
             await webhook.send(
                 msg.content[:2000], 
-                username = msg.author.display_name, 
-                avatar_url = msg.author.avatar.url,
+                username = speakerName, 
+                avatar_url = speakerAvatar,
                 files = files)
             if len(msg.content) > 1999:
                 await webhook.send(
                     msg.content[2000:4000], 
-                    username = msg.author.display_name, 
-                    avatar_url = msg.author.avatar.url)
+                    username = speakerName, 
+                    avatar_url = speakerAvatar)
 
     indirects = indirectListeners.get(msg.channel.id, [])
     for speakerLocation, channel in indirects:
         embed, _ = await fn.embed(
             f'Hm?',
-            f"You think you hear {msg.author.mention} in **#{speakerLocation}**.",
+            f"You think you hear {speakerName} in **#{speakerLocation}**.",
             'Perhaps you can /move over to them.')
         await channel.send(embed = embed)
 
@@ -207,7 +221,7 @@ class nodeCommands(commands.Cog):
         await view.addRoles()
         await view.addPlayers(guildData.players)
         await view.addSubmit(submitNode)
-        await view.addName()
+        await view.addName('new-node')
         await view.addCancel()
         
         embed = await refreshEmbed()
@@ -408,7 +422,8 @@ class nodeCommands(commands.Cog):
                 nonlocal revisingNodes
                 newName = await oop.Format.newName(view.name(), guildData.nodes.keys())
 
-                if await fn.noChanges((newName or view.roles() or view.players() or view.clearing), interaction):
+                if not any([newName, view.roles(), view.players(), view.clearing]):
+                    await fn.noChanges(interaction)
                     return
 
                 description = ''
@@ -494,7 +509,7 @@ class nodeCommands(commands.Cog):
             await view.addPlayers(guildData.players)
             await view.addSubmit(submitNode)
             if len(revisingNodes) == 1:
-                await view.addName()
+                await view.addName(nodeNames[0])
             if hasWhitelist:
                 await view.addClear()
             await view.addCancel()
@@ -620,7 +635,8 @@ class nodeCommands(commands.Cog):
                     f'Removed <@{ID}> from the game (and this node).',
                     'You can view all remaining players with /player find.') 
                 nodeChannel = get(channel.guild.channels, id = oldNode.channelID)
-                await nodeChannel.send(embed = nodeEmbed)
+                if nodeChannel:
+                    await nodeChannel.send(embed = nodeEmbed)
                 return
 
         return
@@ -1159,7 +1175,8 @@ class edgeCommands(commands.Cog):
                     await fn.noEdges(interaction)
                     return
 
-                if await fn.noChanges(any([view.roles(), view.players(), view.clearing]), interaction):
+                if not any([view.roles(), view.players(), view.clearing]):
+                    await fn.noChanges(interaction)
                     return
                 
                 if view.clearing:
@@ -1742,7 +1759,7 @@ class serverCommands(commands.Cog):
     #     await ctx.respond(embed = embed)
     #     return
 
-class playerCommands(commands.Cog):
+class playerCommands(commands.Cog): #Create a listener to delete players when they leave the server
 
     def __init__(self, bot: discord.Bot):
         self.prox = bot
@@ -2013,38 +2030,110 @@ class playerCommands(commands.Cog):
 
             playerData = oop.Player(playerID, ctx.guild_id)
 
-            # Location, usermention, character name, eavesdropping (location), pfp as thumb, channel mention
-
-            noData = []
-
-            description = f'\n• Mention: <@{playerID}>'
-
+            intro = f'• Mention: <@{playerID}>'
             if playerData.name:
-                description += f'\n• Character Name: {playerData.name}'
-            else:
-                noData.append('has no character name override')
+                intro += f'\n• Character Name: {playerData.name}'
 
             locationNode = guildData.nodes[playerData.location]
-            description += f'\n• Location: {locationNode.mention}'
-
+            description = f'\n• Location: {locationNode.mention}'
             description += f'\n• Player Channel: <#{playerData.channelID}>'
 
             if playerData.eavesdropping:
                 eavesNode = guildData.nodes[playerData.eavesdropping]
                 description += f'\n• Eavesdropping: {eavesNode.mention}'
-            else:
-                noData.append("isn't eavesdropping on anyone")
-            
-            if noData:
-                footer = f'This user {await oop.Format.words(noData)}.'
-            else:
-                footor = "And that's everything."
 
-            embed, _ = await fn.embed(
-                f'Player Review',
-                description,
-                footer)
-            await ctx.respond(embed = embed, ephemeral = True)
+            async def refreshEmbed(interaction: discord.Interaction = None):
+                
+                fullDescription = intro
+                if view.name():
+                    fullDescription += f'\n• New Character Name: *{view.name()}*'
+                fullDescription += description
+
+                if view.url():
+                    try:
+                        response = requests.head(view.url())
+                        if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
+                            fullDescription += '\n\nSetting a new character avatar.'
+                            avatarDisplay = (view.url(), 'thumb')
+                        else:
+                            fullDescription += '\n\nCharacter avatars have to be a still image.'
+                            avatarDisplay = ('assets/badLink.png', 'thumb')
+                    except:
+                        fullDescription += '\n\nThe avatar URL you provided is broken.'
+                        avatarDisplay = ('assets/badLink.png', 'thumb')
+                elif playerData.avatar:
+                    avatarDisplay = (playerData.avatar, 'thumb')
+                else:
+
+                    try:
+                        member = await get_or_fetch(ctx.guild, 'member', id = playerID)
+                        avatarDisplay = (member.display_avatar.url, 'thumb')
+                    except:
+                        avatarDisplay = None
+                        
+                    fullDescription += "\n\nChoose an avatar for this character's" + \
+                        " proxy by uploading a file URL. Do `/player review avatar:(URL)`." + \
+                        " You'll want it to be a permanent URL like Imgur."
+
+                noData = []
+                if not playerData.name and not view.name():
+                    noData.append('has no character name override')
+                if not playerData.eavesdropping:
+                    noData.append("isn't eavesdropping on anyone")
+                if noData:
+                    footer = f'This user {await oop.Format.words(noData)}.'
+                else:
+                    footer = "And that's everything."
+
+                embed, file = await fn.embed(
+                    'Player review',
+                    fullDescription,
+                    footer,
+                    avatarDisplay)
+                return embed, file
+
+            async def refreshMessage(interaction: discord.Interaction):
+                embed, file = await refreshEmbed()
+                await interaction.response.edit_message(embed = embed, file = file)
+                return
+
+            async def submitReview(interaction: discord.Interaction):
+
+                await fn.loading(interaction)
+
+                if not (view.name() or view.url()):
+                    await fn.noChanges(interaction)
+                    return
+
+                description = ''
+                if view.name():
+                    playerData.name = view.name()
+                    description += f'• Changed their character name to *{view.name()}.*'
+                
+                if view.url():
+                    playerData.avatar = view.url()
+                    description += f'\n• Changed their character avatar.'
+
+                await playerData.save()
+
+                embed, _ = await fn.embed(
+                    'Review results',
+                    description,
+                    'Much better.')
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)
+                return
+         
+            view = oop.DialogueView(ctx.guild)
+            await view.addSubmit(submitReview)
+            existing = playerData.name if playerData.name else ''
+            await view.addName(existing = existing, skipCheck = True, callback = refreshMessage)
+            await view.addURL(callback = refreshMessage)
+            await view.addCancel()
+            embed, file = await refreshEmbed()
+            await ctx.respond(embed = embed, file = file, view = view, ephemeral = True)                    
             return
 
         if player:
@@ -2062,7 +2151,7 @@ class playerCommands(commands.Cog):
     
         async def submitPlayer(interaction: discord.Interaction):
             await ctx.delete()
-            await reviewPlayer([view.players()][0])
+            await reviewPlayer(list(view.players())[0])
             return
 
         embed, _ = await fn.embed(
@@ -2075,7 +2164,7 @@ class playerCommands(commands.Cog):
         await view.addCancel()
         await ctx.respond(embed = embed, view = view)
         return
-    
+
     @player.command(
         name = 'find',
         description = 'Locate the players.')
@@ -2770,8 +2859,8 @@ class guildCommands(commands.Cog):
 
         node.occupants.discard(ctx.author.id)
         if node.occupants:
-            otherMentions = await oop.Format.players(node.occupants)
-            description += f"There's {otherMentions} with you inside **#{player.location}**."
+            others = await oop.Format.characters(node.occupants, ctx.guild_id)
+            description += f"There's {others} with you inside **#{player.location}**."
         else:
             description += f"You're by yourself inside **#{player.location}**. "
 
@@ -2837,7 +2926,7 @@ class guildCommands(commands.Cog):
         if player.eavesdropping: 
             
             if eavesNode.occupants:
-                occupantMentions = await oop.Format.players(eavesNode.occupants)
+                occupantMentions = await oop.Format.characters(eavesNode.occupants, ctx.guild_id)
                 description = f"You're eavesdropping on {occupantMentions} in **#{player.eavesdropping}**."
             else:
                 description = f"You're eavesdropping on **#{player.eavesdropping}**, but you think nobody is there."
@@ -2895,7 +2984,7 @@ class guildCommands(commands.Cog):
                 description = 'Listening closely, you think that you can hear '
                 fullList = []
                 for neighborName, neighborNode in occupiedNeighbors.items():
-                    occupantMentions = await oop.Format.players(neighborNode.occupants)
+                    occupantMentions = await oop.Format.characters(neighborNode.occupants, ctx.guild_id)
                     fullList.append(f'{occupantMentions} in **#{neighborName}**')
                 description += f'{await oop.Format.words(fullList)}. '
                 if unoccupiedNeighbors:
@@ -3113,9 +3202,10 @@ class guildCommands(commands.Cog):
                             await eavesChannel.send(embed = embed)
 
             #Inform origin occupants
+            authorName = await oop.Format.characters(list(ctx.author.id), interaction.guild.id)
             embed, _ = await fn.embed(
                 'Departing.',
-                f"You notice {ctx.author.mention} leave, heading towards **#{path[1]}**.",
+                f"You notice {authorName} leave, heading towards **#{path[1]}**.",
                 'Maybe you can follow them?')
             await postToDirects(
                 embed, 
@@ -3136,7 +3226,7 @@ class guildCommands(commands.Cog):
             #Inform destination occupants
             embed, _ = await fn.embed(
                 'Arrived.',
-                f"You notice {ctx.author.mention} arrive from the direction of **#{path[-2]}**.",
+                f"You notice {authorName} arrive from the direction of **#{path[-2]}**.",
                 'Say hello.')
             await postToDirects(embed, 
                 interaction.guild, 
@@ -3149,7 +3239,7 @@ class guildCommands(commands.Cog):
                 id = guildData.nodes[path[-1]].channelID)
             embed, _ = await fn.embed(
                 'Arriving.',
-                f"{interaction.user.mention} arrived here from **#{path[0]}**.",
+                f"{authorName} arrived here from **#{path[0]}**.",
                 f"They went from {' -> '.join(path)}.")
             await nodeChannel.send(embed = embed)
 
@@ -3157,7 +3247,7 @@ class guildCommands(commands.Cog):
             for index, midwayName in enumerate(path[1:-1]): 
                 embed, _ = await fn.embed(
                     'Passing through.',
-                    f"You notice {interaction.user.mention} come in" + \
+                    f"You notice {authorName} come in" + \
                         f" from the direction of **#{path[index]}**" + \
                         f" before continuing on their way towards **#{path[index + 2]}**.",
                     'Like two ships in the night.')
@@ -3184,7 +3274,7 @@ class guildCommands(commands.Cog):
             for name, node in pathNodes.items():
 
                 if node.occupants:
-                    occupantsMention = await oop.Format.players(node.occupants)
+                    occupantsMention = await oop.Format.characters(node.occupants, interaction.guild.id)
                     fullMessage.append(f'{occupantsMention} in **#{name}**')
 
             #Inform player of who they saw and what path they took

@@ -5,6 +5,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 from discord.utils import get_or_fetch, get
 import oopFunctions as oop
+import requests
 
 #Dialogues
 async def embed(
@@ -29,12 +30,23 @@ async def embed(
             file = discord.MISSING
 
         case thumb if imageDetails[1] == 'thumb':
-            file = discord.File(imageDetails[0], filename='image.png')
-            embed.set_thumbnail(url='attachment://image.png')
+
+            file = discord.File('assets/badLink.png', filename = 'image.png')
+            embed.set_thumbnail(url = 'attachment://image.png')
+
+            try:
+                response = requests.head(imageDetails[0])
+                if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
+                    embed.set_thumbnail(url = imageDetails[0])
+                    file = discord.MISSING
+                else:
+                    pass
+            except:
+                pass
         
         case full if imageDetails[1] == 'full':
-            file = discord.File(imageDetails[0], filename='image.png')
-            embed.set_image(url='attachment://image.png')
+            file = discord.File(imageDetails[0], filename = 'image.png')
+            embed.set_image(url = 'attachment://image.png')
             
         case _:
             print(f"Unrecognized image viewing mode in dialogue!")
@@ -234,21 +246,18 @@ async def noPeople(interaction: discord.Interaction):
         view = None)
     return
 
-async def noChanges(test, interaction: discord.Interaction):
+async def noChanges(interaction: discord.Interaction):
 
-    if not test:
-        embedData, _ = await embed(
-            'Success?',
-            "You didn't make any changes.",
-            "Unsure what the point of that was.")
-        await interaction.followup.edit_message(
-            message_id = interaction.message.id,
-            embed = embedData,
-            view = None,
-            attachments = [])
-        return True
-
-    return False
+    embedData, _ = await embed(
+        'Success?',
+        "You didn't make any changes.",
+        "Unsure what the point of that was.")
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id,
+        embed = embedData,
+        view = None,
+        attachments = [])
+    return
 
 async def hasWhitelist(components):
 

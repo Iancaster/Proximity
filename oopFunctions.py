@@ -47,6 +47,17 @@ class Format:
     @classmethod
     async def players(cls, playerIDs: iter):
         return await cls.words([f'<@{playerID}>' for playerID in playerIDs])
+
+    @classmethod
+    async def characters(cls, playerIDs: iter, guildID: int):
+        
+        characters = []
+        for ID in playerIDs:
+            player = oop.Player(ID, guildID)
+            name = player.name if player.name else f'<@{ID}>'
+            characters.append(name)
+
+        return await cls.words(characters)
     
     @classmethod
     async def whitelist(cls, allowedRoles: iter = set(), allowedPlayers: iter = set()):
@@ -146,10 +157,10 @@ class Player:
 
         if playerData:
             decodedPlayer = base64.b64decode(playerData['serverData'])
-            playerDict = pickle.loads(decodedPlayer)
-            serverData = playerDict.get(self.guildID, {})
+            self.playerDict = pickle.loads(decodedPlayer)
+            serverData = self.playerDict.get(self.guildID, {})
         else:
-            serverData = {}
+            self.playerDict = serverData = {}
         
         self.channelID = serverData.get('channelID', None)
         self.location = serverData.get('location', None)
@@ -976,8 +987,8 @@ class DialogueView(discord.ui.View):
     def edges(self):
         return self.edgeSelect.values
 
-    #Modal
-    async def addName(self):
+    #Modals
+    async def addName(self, existing: str = '', skipCheck: bool = False, callback: callable = None):
 
         modal = discord.ui.Modal(title = 'Choose a new name?')
 
@@ -986,9 +997,10 @@ class DialogueView(discord.ui.View):
             style = discord.InputTextStyle.short,
             min_length = 1,
             max_length = 20,
-            placeholder = "What should it be?")
+            placeholder = "What should it be?",
+            value = existing)
         modal.add_item(nameSelect)
-        modal.callback = self._callRefresh
+        modal.callback = callback if callback else self._callRefresh
 
         async def sendModal(interaction: discord.Interaction):
             await interaction.response.send_modal(modal = modal)
@@ -1001,11 +1013,50 @@ class DialogueView(discord.ui.View):
         modalButton.callback = sendModal
         self.add_item(modalButton)
         self.nameSelect = nameSelect
+        self.skipCheck = skipCheck
+        self.existing = existing
         return
 
     def name(self):
+
+        if self.nameSelect.value == self.existing:
+            return None
+
+        if self.skipCheck:
+            return self.nameSelect.value
+
         return Format.discordify(self.nameSelect.value)
         
+    async def addURL(self, callback: callable = None):
+
+        modal = discord.ui.Modal(title = 'Choose a new avatar?')
+
+        urlSelect = discord.ui.InputText(
+            label = 'url',
+            style = discord.InputTextStyle.short,
+            min_length = 1,
+            max_length = 200,
+            placeholder = "What's the image URL?")
+        modal.add_item(urlSelect)
+        modal.callback = callback if callback else self._callRefresh
+
+        async def sendModal(interaction: discord.Interaction):
+            await interaction.response.send_modal(modal = modal)
+            return
+
+        modalButton = discord.ui.Button(
+            label = 'Change Avatar',
+            style = discord.ButtonStyle.success)
+
+        modalButton.callback = sendModal
+        self.add_item(modalButton)
+        self.urlSelect = urlSelect
+        return
+
+    def url(self):
+        return self.urlSelect.value
+        
+
     #Buttons
     async def addClear(self, callback: callable = None):
         clear = discord.ui.Button(
