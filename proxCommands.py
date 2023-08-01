@@ -2651,28 +2651,29 @@ class freeCommands(commands.Cog):
     #     ctx: discord.ApplicationContext):
 
     #     embed = discord.Embed(
-    #         title = 'Version 1.1: The Tough Stuff Update',
-    #         description = "This bot just got a lot harder to break. P.S. -" + \
-    #             " Minecraft names their updates. That's fun, so I'll do it too.",
+    #         title = 'Version 1.2: The Proxymity Update',
+    #         description = "Because it proxies your messages. Like Tupperbox. Get it?",
     #         color = discord.Color.from_rgb(67, 8, 69))
 
-    #     embed.set_footer(text = 'I also spent two weeks rewriting the code' + \
-    #         ' to be within an OOP framework. That took like 80% of the ' + \
-    #         ' work and it barely makes a footnote because nobody knows what ' + \
-    #         ' the hell an OOP is.')
+    #     embed.set_footer(text = "Now it's getting good.")
 
     #     embed.add_field(
     #         name = 'New Features',
-    #         value = "1. Renaming a channel..." + \
-    #                 "\n - Is perfectly safe on player channels." + \
-    #                 "\n - On node channels, renames the node." + \
-    #                 "\n - ...unless that name's taken. Then it's name-2." + \
-    #             "\n2. Deleting a channel..." + \
-    #                 "\n - On player channels, deletes the player." + \
-    #                 "\n - On node channels, deletes the node." + \
-    #                 "\n - ...Unless it's occupied, then it'll remake it and scold you." + \
-    #             "\n3. Messing with webhooks for node or player, same deal. :)",
+    #         value = "1. Proxied messages!" + \
+    #                 "\n - Admins can use `/player review` on their players." + \
+    #                 "\n - Change their character's username for their IC messages." + \
+    #                 "\n - As well as their avatars!" + \
+    #                 "\n - Shows you their @mention, location, name, avatar, and channel." + \
+    #                 "\n - Player commands like `/look` now show their character's name.",
     #         inline = False)         
+        
+    #     embed.add_field(
+    #         name = 'Fixes',
+    #         value = "1. Messages sent during a listener refresh are no longer eaten." + \
+    #                 "\n2. Some performance optimizations." + \
+    #                 "\n3. Webhook fixes no longer infinitely re-fix themselves." + \
+    #                 "\n4. So many typo fixes, *how* do these many still exist?",
+    #         inline = False)      
             
 
     #     # embed, file = await fn.embed(
@@ -2890,7 +2891,7 @@ class guildCommands(commands.Cog):
                 description += f" There's a one-way route to (->) **#{successors[0]}**. "
       
         if not (ancestors or mutuals or successors):
-            description += "There's no way in or out of here. Oh dear."
+            description += " There's no way in or out of here. Oh dear."
 
         embed, _ = await fn.embed(
             'Looking around...',
