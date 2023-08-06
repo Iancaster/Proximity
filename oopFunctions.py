@@ -53,8 +53,8 @@ class Format:
         
         characters = []
         for ID in playerIDs:
-            player = oop.Player(ID, guildID)
-            name = player.name if player.name else f'<@{ID}>'
+            player = Player(ID, guildID)
+            name = f'**{player.name}**' if player.name else f'<@{ID}>'
             characters.append(name)
 
         return await cls.words(characters)
