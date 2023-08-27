@@ -1770,7 +1770,7 @@ class serverCommands(commands.Cog):
         await ctx.respond(embed = embed)
         return
     
-    # @server.command(
+    # @server.command( ##testing
     #     name = 'quick',
     #     description = 'Create a quick example graph.')
     # async def quick(
