@@ -1363,7 +1363,67 @@ class serverCommands(commands.Cog):
 
         await ctx.respond(embed = embed, view = view)
         return
-    
+
+    @server.command(
+        name = 'settings',
+        description = 'Review server options.')
+    async def settings(
+        self,
+        ctx: discord.ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+        
+        guildData = oop.GuildData(ctx.guild_id)
+
+        if not (guildData.nodes or guildData.players):
+            
+            embed, _ = await fn.embed(
+                'No settings.',
+                'You can edit settings once you make some nodes or add some players.',
+                'You know where to find me once that happens.')
+            await ctx.respond(embed = embed)
+            return
+ 
+        async def deleteData(interaction: discord.Interaction):
+
+            await fn.loading(interaction)
+
+            global directListeners, indirectListeners
+
+            directListeners, indirectListeners = await guildData.clear(
+                ctx.guild,
+                directListeners,
+                indirectListeners)
+
+            embed, _ = await fn.embed(
+                'See you.',
+                "The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
+                    "\n• All location messages.\n• All edges.\n• All player info and their channels.",
+                'You can always make them again if you change your mind.')
+
+            try:
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)            
+            except:
+                pass
+
+            return
+
+        view = oop.DialogueView()
+        await view.addEvilConfirm(deleteData)
+        await view.addCancel()
+        embed, _ = await fn.embed(
+            'Delete all data?',
+            f"You're about to delete {len(guildData.nodes)} nodes" + \
+                f" and {await guildData.edgeCount()} edges, alongside" + \
+                f" player data for {len(guildData.players)} people.",
+            'This will also delete associated channels from the server.')
+
+        await ctx.respond(embed = embed, view = view)
+        return
+  
     @server.command(
         name = 'view',
         description = 'View the entire graph or just a portion.')
