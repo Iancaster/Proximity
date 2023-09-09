@@ -1,7 +1,7 @@
+#!/usr/bin/python3
+
 # Import-ant Libraries
 import discord
-from discord.ext import commands
-import databaseFunctions as db
 import time
 
 bootTime = time.time()
