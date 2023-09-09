@@ -18,9 +18,6 @@ prox = discord.Bot(intents = intents, owner_id = 985699127742582846)
 @prox.listen()
 async def on_connect():
 
-    # import test
-    # await test.main()
-
     await prox.change_presence(
         activity = discord.Game('the angles.'),
         status = discord.Status.online)

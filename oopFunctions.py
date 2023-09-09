@@ -11,7 +11,7 @@ import matplotlib.patches as pchs
 from io import BytesIO
 
 @attr.s
-class Format:
+class Format: # Test
     
     @classmethod
     async def words(cls, words: iter):
@@ -1193,4 +1193,3 @@ class Auto:
             return ['No where you can go.']
         
         return accessibleNodes.nodes
-

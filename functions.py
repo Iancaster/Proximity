@@ -1,10 +1,5 @@
 import discord
-import databaseFunctions as db
 import networkx as nx
-from io import BytesIO
-import matplotlib.pyplot as plt
-from discord.utils import get_or_fetch, get
-import oopFunctions as oop
 import requests
 
 #Dialogues
