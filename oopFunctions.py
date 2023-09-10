@@ -2,7 +2,6 @@ import discord.ui
 from discord.utils import get
 
 import functions as fn
-import databaseFunctions as db
 
 import attr, base64, pickle, sqlite3, math, re
 import networkx as nx

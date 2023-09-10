@@ -5,18 +5,6 @@ import json
 import base64
 
 #Internal
-def newTable(connection, table):
-
-    try:
-        cursor = connection.cursor()
-        cursor.execute(table)
-        print('Table added to database.')
-        return True
-
-    except Error as problem:
-        print(f'Error when adding table: {problem}.')
-        return False
-
 def connectToPlayer():
     connection = None
     
@@ -28,58 +16,6 @@ def connectToPlayer():
         print(f'Error when connecting to player database: {problem}.')
         return None
 
-def newGuildDB():
-    if os.path.isfile('guildDB.db'):
-        os.remove('guildDB.db')
-    
-    connection = sqlite3.connect('guildDB.db')
-
-    tables = ["""CREATE TABLE guilds
-                (guildID INTEGER PRIMARY KEY,
-                nodes TEXT);""",
-                """CREATE TABLE messages
-                (locationChannelID INTEGER PRIMARY KEY,
-                title TEXT,
-                description TEXT,
-                footer TEXT);""",
-                """CREATE TABLE playerData
-                (guildID INTEGER PRIMARY KEY,
-                players TEXT);""",]
-
-    if isinstance(connection, sqlite3.Connection):
-        print(f'New guild database created, version {sqlite3.version}.')
-        print("Adding 'Guilds' table...")
-        newTable(connection, tables[0])
-        print("Adding 'Messages' table...")
-        newTable(connection, tables[1])
-        print("Adding 'Players' table...")
-        newTable(connection, tables[2])
-    
-    else:
-        print('New guild database failed to create. No tables made.')
-    
-    return connection
-
-def newPlayerDB():
-    if os.path.isfile('playerDB.db'):
-        os.remove('playerDB.db')
-    
-    connection = connectToPlayer()
-
-    table = """CREATE TABLE players
-                (playerID integer PRIMARY KEY,
-                serverData TEXT);"""
-
-    if isinstance(connection, sqlite3.Connection):
-        print(f'New players database created, version {sqlite3.version}.')
-        print("Adding 'Players' table...")
-        newTable(connection, table)
-    
-    else:
-        print('New players database failed to create. No tables made.')
-    
-    return connection
-
 def countRows(con, tableName):
 
     cursor = con.cursor()
@@ -88,18 +24,9 @@ def countRows(con, tableName):
 
     return rowCount
 
-#Members
-def deleteMembers(con, guild_id: int):
-    cursor = con.cursor()
-
-    members = getMembers(con, guild_id)        
-    cursor.execute(f"""DELETE FROM members WHERE guildID = {guild_id}""")
-    con.commit()
-    print(f'Members removed, guild ID: {guild_id}.')
-    return
 
 #Messages
-def newMessage(con, locationChannelID: int, title: str = '', description: str = '', footer: str = ''):
+def updateMessage(con, locationChannelID: int, title: str = '', description: str = '', footer: str = ''):
     cursor = con.cursor()
     cursor.execute(f"""INSERT or REPLACE INTO messages(locationChannelID, title, description, footer) 
                    VALUES('{locationChannelID}', '{title}', '{description}', '{footer}')""")
@@ -117,7 +44,6 @@ def deleteMessage(con, locationChannelID: int):
 
 
 #Players
-  
 def updatePlayer(con, playerData: dict, playerID: int):
 
     if not playerData:
