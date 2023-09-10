@@ -467,7 +467,7 @@ class nodeCommands(commands.Cog):
 
                     #Correct locationName in player data
                     for ID in renamedNode.occupants:
-                        player = oop.Player(ID, channel.guild.id)
+                        player = oop.Player(ID, interaction.guild.id)
                         player.location = newName
                         await player.save()
                     
@@ -662,7 +662,7 @@ class nodeCommands(commands.Cog):
 
                 #Correct location name for occupants
                 for ID in node.occupants:
-                    player = oop.Player(ID, channel.guild.id)
+                    player = oop.Player(ID, afterChannel.guild.id)
                     player.location = newName
                     await player.save()
 
@@ -939,7 +939,7 @@ class edgeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         origin: discord.Option(
             str,
-            'Either call this command inside a node or name it here.',
+            description = 'Either call this command inside a node or name it here.',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -1135,7 +1135,7 @@ class edgeCommands(commands.Cog):
                 fullDescription = description
 
                 if view.edges():
-                    fullDescription += f"\n• Selected Edges: See below." 
+                    fullDescription += '\n• Selected Edges: See below.'
                     revisingEdges = [origin.neighbors[name] for name in view.edges()]
                     fullDescription += await view.whitelist(revisingEdges)                   
                 
@@ -1426,7 +1426,7 @@ class serverCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         node: discord.Option(
             str,
-            'Specify a node to highlight?',
+            decription = 'Specify a node to highlight?',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -2073,7 +2073,7 @@ class playerCommands(commands.Cog): #Create a listener to delete players when th
         ctx: discord.ApplicationContext,
         player: discord.Option(
             discord.Member,
-            'Who to review?',
+            description = 'Who to review?',
             default = None)):
 
         await ctx.defer(ephemeral = True)
@@ -2421,7 +2421,7 @@ class freeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         word: discord.Option(
             str,
-            'Get help on a specific term?',
+            decription = 'Get help on a specific term?',
             required = False)):
 
         await ctx.defer(ephemeral = True)
@@ -2484,7 +2484,7 @@ class freeCommands(commands.Cog):
                 "Clear things up, I hope?")
             else:
                 embed, _ = await fn.embed(
-                f'What was that?',
+                'What was that?',
                 f"I'm sorry. I have a glossay for {len(allHelp)} words, but not for that.\
                 Perhaps start with the tutorials with just a standard `/help` and go from there.",
                 "Sorry I couldn't do more.")
@@ -2519,13 +2519,12 @@ class freeCommands(commands.Cog):
                             'Fin': "And that's about it! Enjoy the game."}
             
             if interaction.guild_id:
-                guildData = oop.GuildData(interaction.guild_id)
                 player = oop.Player(interaction.user.id, ctx.guild_id)
                 if player.location:
-                    tutorialData['Player Channels'] += f" You're a" + \
+                    tutorialData['Player Channels'] += " You're a" + \
                         " player in this server, so you'll use" + \
                         f" <#{player.channelID}>."
-                    tutorialData['Locations'] += f" Right now, you're" + \
+                    tutorialData['Locations'] += " Right now, you're" + \
                         f" in **#{player.location}**."
                 
             await displayTutorial(interaction = interaction)
@@ -2586,7 +2585,6 @@ class freeCommands(commands.Cog):
 
                 nonlocal pageCount
 
-                totalPages = len(tutorialData)
                 embedTitle = interaction.message.embeds[0].title
                 if embedTitle == 'Hello!':
                     pass
@@ -3166,7 +3164,7 @@ class guildCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         node: discord.Option(
             str,
-            "Name where you would like to go?",
+            description = "Name where you would like to go?",
             autocomplete = oop.Auto.map,
             required = False)):
 
@@ -3202,7 +3200,7 @@ class guildCommands(commands.Cog):
             if destinationName:
                 fullDescription += f' to **#{destinationName}**?'
             else:
-                fullDescription += f'? Where would you like to go?'
+                fullDescription += '? Where would you like to go?'
 
             embed, _ = await fn.embed(
                 'Move?',
@@ -3240,7 +3238,7 @@ class guildCommands(commands.Cog):
                                 'Who could it be?')
                             await eavesChannel.send(embed = embed)
 
-                        case halfway if whichPart < len(path):
+                        case _ if whichPart < len(path):
                             embed, _ = await fn.embed(
                                 'Someone passed through.',
                                 f"You can hear someone go through **#{path[whichPart]}**,\
@@ -3248,7 +3246,7 @@ class guildCommands(commands.Cog):
                                 'On the move.')
                             await eavesChannel.send(embed = embed)
 
-                        case ending if whichPart == len(path) - 1:
+                        case _ if whichPart == len(path) - 1:
                             embed, _ = await fn.embed(
                                 'Someone stopped by.',
                                 f"You can hear someone come from **#{path[whichPart - 1]}**" +
@@ -3334,7 +3332,7 @@ class guildCommands(commands.Cog):
 
             #Inform player of who they saw and what path they took
             if fullMessage:
-                description = f"Along the way, you saw (and were seen" + \
+                description = 'Along the way, you saw (and were seen' + \
                     f" by) {await oop.Format.words(fullMessage)}."
             else:
                 description = "You didn't see anyone along the way."

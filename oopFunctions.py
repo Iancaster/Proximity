@@ -193,7 +193,7 @@ class Player:
             print(f'Player removed from guild, ID: {self.id}.')
             return await self._commit(playerCon, cursor)
 
-        cursor.execute(f"DELETE FROM players WHERE playerID = ?", (self.id,))
+        cursor.execute("DELETE FROM players WHERE playerID = ?", (self.id,))
         playerCon.commit()
         print(f'Player deleted, ID: {self.id}.')
         return
@@ -476,10 +476,7 @@ class GuildData:
 
             for neighbor, edge in self.nodes[name].neighbors.items():
 
-                if neighbor not in accessibleNodes:
-                    continue
-
-                if neighbor in madeEdges:
+                if neighbor not in accessibleNodes or neighbor in madeEdges:
                     continue
 
                 if not edge.allowedPlayers and not edge.allowedRoles:
@@ -727,7 +724,7 @@ class GuildData:
             (self.guildID, encodedNodes))
 
         playerData = ' '.join([str(playerID) for playerID in self.players])
-        cursor.execute(f"INSERT or REPLACE INTO playerData(guildID, players) VALUES(?, ?)",
+        cursor.execute("INSERT or REPLACE INTO playerData(guildID, players) VALUES(?, ?)",
             (self.guildID, playerData))
 
         guildCon.commit()
