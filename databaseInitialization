@@ -1,5 +1,20 @@
+#!/usr/bin/python3
+import sqlite3
+import os
 
+#Internal
+def connectToPlayer():
+    connection = None
 
+    try:
+        connection = sqlite3.connect('playerDB.db')
+        return connection
+
+    except Error as problem:
+        print(f'Error when connecting to player database: {problem}.')
+        return None
+
+#Initialize
 def newTable(connection, table):
 
     try:
@@ -11,7 +26,6 @@ def newTable(connection, table):
     except Error as problem:
         print(f'Error when adding table: {problem}.')
         return False
-
 
 def newGuildDB():
     if os.path.isfile('guildDB.db'):
@@ -126,3 +140,6 @@ def countRows(con, tableName):
     rowCount = cursor.fetchone()[0]
 
     return rowCount
+
+newGuildDB()
+newPlayerDB()
