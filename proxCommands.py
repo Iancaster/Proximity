@@ -4,19 +4,13 @@ from discord.ext import commands, tasks
 from discord.utils import get_or_fetch, get
 
 import functions as fn
-import databaseFunctions as db
 
 import asyncio
-import time
 import networkx as nx
 import requests
-from io import BytesIO
 
 import oopFunctions as oop
 
-# Please, dear Gray, do not judge me based on the fact i used global here,
-# I swear it's for a good reason. Do as I say, not as I do, you
-# must rise above my practices and code better than me padawan
 
 global updatedGuilds, needingUpdate, directListeners, indirectListeners
 global proximity, brokenWebhooks
@@ -34,10 +28,10 @@ async def queueRefresh(guild: discord.Guild):
 
 async def relay(msg: discord.Message):
 
-    if msg.author.id == 1114004384926421126: #Don't relay Prox itself
+    if msg.author.id == 1114004384926421126:
         return
 
-    if msg.guild.id not in updatedGuilds: #Listeners are out of date, wait for refresh
+    if msg.guild.id not in updatedGuilds:
         print(f'Waiting for updated listeners in server: {msg.guild.name}.')
         needingUpdate.add(msg.guild)
         while msg.guild.id not in updatedGuilds:
@@ -89,7 +83,7 @@ async def relay(msg: discord.Message):
     indirects = indirectListeners.get(msg.channel.id, [])
     for speakerLocation, channel in indirects:
         embed, _ = await fn.embed(
-            f'Hm?',
+            'Hm?',
             f"You think you hear {speakerName} in **#{speakerLocation}**.",
             'Perhaps you can /move over to them.')
         await channel.send(embed = embed)
@@ -130,7 +124,7 @@ async def postToDirects(
                 print(f'#{channel.name} is missing its webhook!')
                 continue
 
-            raise ConnectionRefusedError(f"Tried to send a message to a channel" + \
+            raise ConnectionRefusedError("Tried to send a message to a channel" + \
                 f" with some weird error, #{channel.name}, within" + \
                 f" {channel.guild.name}. It's probably fine.")
 
@@ -199,7 +193,7 @@ class nodeCommands(commands.Cog):
 
             embed, _ = await fn.embed(
                 f'{newChannel.mention} created!',
-                f"The permissions you requested are set-- just not in the channel's Discord" + \
+                "The permissions you requested are set-- just not in the channel's Discord" + \
                 " settings.",
                 "No worries, it's all being kept track of by me.")        
             await interaction.followup.edit_message(
@@ -236,7 +230,7 @@ class nodeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         node: discord.Option(
             str,
-            'Call this command in a node (or name it) to narrow it down.',
+            description = 'Call this command in a node (or name it) to narrow it down.',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -336,9 +330,9 @@ class nodeCommands(commands.Cog):
 
         result = await fn.identifyNodeChannel(guildData.nodes.keys(), ctx.channel.name, node)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await deleteNodes([result])
             case None:
                 embed, _ = await fn.embed(
@@ -369,7 +363,7 @@ class nodeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         node: discord.Option(
             str,
-            'Either call this command inside a node or name it here.',
+            description = 'Either call this command inside a node or name it here.',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -522,9 +516,9 @@ class nodeCommands(commands.Cog):
 
         result = await fn.identifyNodeChannel(guildData.nodes.keys(), ctx.channel.name, node)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await reviseNodes([result])
             case None:
             
@@ -711,7 +705,7 @@ class nodeCommands(commands.Cog):
                     break
                     
         return
-                
+
 class edgeCommands(commands.Cog):
 
     def __init__(self, bot: discord.Bot):
@@ -730,7 +724,7 @@ class edgeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         origin: discord.Option(
             str,
-            'Either call this command inside a node or name it here.',
+            description = 'Either call this command inside a node or name it here.',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -752,7 +746,7 @@ class edgeCommands(commands.Cog):
                     destinationMentions = await oop.Format.nodes(destinations.values())
                     description += f'\n• Destination(s): {destinationMentions}.'
                 else:
-                    description += f"\n• Destination(s): None yet! Choose some nodes to connect to this one."
+                    description += "\n• Destination(s): None yet! Choose some nodes to connect to this one."
 
                 description += f"\n• Whitelist: {await oop.Format.whitelist(view.roles(), view.players())}"
 
@@ -768,12 +762,12 @@ class edgeCommands(commands.Cog):
                             f" {origin.mention} to the destination(s)."
 
                 if view.overwriting:
-                    description += f"\n• **Overwriting** edges. Old edges will be erased where new one are laid."
+                    description += "\n• **Overwriting** edges. Old edges will be erased where new one are laid."
                 else:
-                    description += f"\n• Will not overwrite edges. Click below to toggle."
+                    description += "\n• Will not overwrite edges. Click below to toggle."
 
                 embed, _ = await fn.embed(
-                    f'New edge(s)',
+                    'New edge(s)',
                     description,
                     'Which nodes are we hooking up?')
                 return embed
@@ -876,7 +870,7 @@ class edgeCommands(commands.Cog):
                         description += f'\n• Overwrote {existingEdges} edge(s).'
                     else:
                         description += f"\n• Skipped {existingEdges} edge(s) because" + \
-                            f" the nodes were already connected. Enable overwriting to ignore."
+                            " the nodes were already connected. Enable overwriting to ignore."
 
                 #Produce map of new edges
                 neighborsDict[originName] = origin
@@ -911,9 +905,9 @@ class edgeCommands(commands.Cog):
 
         result = await fn.identifyNodeChannel(guildData.nodes.keys(), ctx.channel.name, origin)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await createEdges(result)
             case None:
             
@@ -1075,9 +1069,9 @@ class edgeCommands(commands.Cog):
 
         result = await fn.identifyNodeChannel(guildData.nodes, ctx.channel.name, origin)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await deleteEdges(result)
             case None:
     
@@ -1109,7 +1103,7 @@ class edgeCommands(commands.Cog):
         ctx: discord.ApplicationContext,
         origin: discord.Option(
             str,
-            'Either call this command inside a node or name it here.',
+            description = 'Either call this command inside a node or name it here.',
             autocomplete = oop.Auto.nodes,
             required = False)):
         
@@ -1265,9 +1259,9 @@ class edgeCommands(commands.Cog):
     
         result = await fn.identifyNodeChannel(guildData.nodes, ctx.channel.name, origin)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await revisePermissions(result)
             case None:
     
@@ -1471,9 +1465,9 @@ class serverCommands(commands.Cog):
               
         result = await fn.identifyNodeChannel(guildData.nodes.keys(), node)
         match result:
-            case isMessage if isinstance(result, discord.Embed):
+            case _ if isinstance(result, discord.Embed):
                 await ctx.respond(embed = result)
-            case isChannel if isinstance(result, str):
+            case _ if isinstance(result, str):
                 await viewEgo(guildData, result)
             case None:
                 await viewEgo(guildData)
@@ -1520,7 +1514,7 @@ class serverCommands(commands.Cog):
                 whitelist = await oop.Format.whitelist(node.allowedRoles, node.allowedPlayers)
                 embed, _ = await fn.embed(
                 'Cool, new node...again.',
-                f"**Important!** Don't delete this one!" + \
+                "**Important!** Don't delete this one!" + \
                     f"\n\nAnyways, here's who is allowed:\n{whitelist}", 
                 "Unfortunately, I couldn't save the edges this may have had.")         
                 await newChannel.send(embed = embed)
@@ -1633,7 +1627,7 @@ class serverCommands(commands.Cog):
                 await player.save()
                 
                 embed, _ = await fn.embed(
-                    f'Welcome.',
+                    'Welcome.',
                     f"This is your very own channel, again, {member.mention}." + \
                     "\n• Speak to others by just talking in this chat. Anyone who can hear you" + \
                     " will see your messages pop up in their own player channel." + \
@@ -1666,7 +1660,7 @@ class serverCommands(commands.Cog):
             f" their deleted player channels: {await oop.Format.words(noChannelMentions)}."
 
         if missingPlayers:
-            description += f"\n• Deleted data and any remaining player" + \
+            description += "\n• Deleted data and any remaining player" + \
                 f" channels for {len(missingPlayers)} players who left" + \
                 " the server without ever being officially removed as" + \
                 " players. My best guess for the name(s) of those who" + \
@@ -1684,7 +1678,7 @@ class serverCommands(commands.Cog):
                 " or a channel.\n• No players missing a channel or their webhook."
 
         embed, _ = await fn.embed(
-        f'Server fix',
+        'Server fix',
         description,
         'Be sure to check this whenever you have issues.')
         await ctx.respond(embed = embed)
@@ -1710,7 +1704,7 @@ class serverCommands(commands.Cog):
 
         guildDescription = ''
         guildDescription += f"\n• Guild ID: {ctx.guild_id}"
-        guildDescription += f"\n• Nodes: "
+        guildDescription += "\n• Nodes: "
         for index, node in enumerate(guildData.nodes.values()):
             guildDescription += f"\n{index}. {node.mention}"
             if node.allowedRoles or node.allowedPlayers:
@@ -1886,7 +1880,7 @@ class playerCommands(commands.Cog): #Create a listener to delete players when th
 
                 newChannel = await maker.newChannel(person.name, person)
                 embed, _ = await fn.embed(
-                    f'Welcome.',
+                    'Welcome.',
                     f"This is your very own channel, {person.mention}." + \
                     "\n• Speak to others by just talking in this chat. Anyone who can hear you" + \
                         "will see your messages pop up in their own player channel." + \
@@ -2172,7 +2166,7 @@ class playerCommands(commands.Cog): #Create a listener to delete players when th
                 
                 if view.url():
                     playerData.avatar = view.url()
-                    description += f'\n• Changed their character avatar.'
+                    description += '\n• Changed their character avatar.'
 
                 await playerData.save()
 
@@ -2216,7 +2210,7 @@ class playerCommands(commands.Cog): #Create a listener to delete players when th
 
         embed, _ = await fn.embed(
             'Who to review?',
-            f"Select who you'd like to review. You can also do" + \
+            "Select who you'd like to review. You can also do" + \
                 " `/player review @player-name`.",
             "Or just choose someone below.")
         view = oop.DialogueView(guild = ctx.guild)
