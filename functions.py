@@ -21,10 +21,10 @@ async def embed(
         case None:
             file = discord.MISSING
 
-        case alsoNone if imageDetails[0] == None:
+        case _ if imageDetails[0] == None:
             file = discord.MISSING
 
-        case thumb if imageDetails[1] == 'thumb':
+        case _ if imageDetails[1] == 'thumb':
 
             file = discord.File('assets/badLink.png', filename = 'image.png')
             embed.set_thumbnail(url = 'attachment://image.png')
@@ -39,7 +39,7 @@ async def embed(
             except:
                 pass
         
-        case full if imageDetails[1] == 'full':
+        case _ if imageDetails[1] == 'full':
             file = discord.File(imageDetails[0], filename = 'image.png')
             embed.set_image(url = 'attachment://image.png')
             
