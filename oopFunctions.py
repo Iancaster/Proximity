@@ -740,11 +740,11 @@ class GuildData:
         cursor = guildCon.cursor()
 
         for node in self.nodes:
-            cursor.execute(f"""DELETE FROM messages WHERE
+            cursor.execute("""DELETE FROM messages WHERE
                             locationChannelID = ?""", (node.channelID,))
 
-        cursor.execute(f"DELETE FROM guilds WHERE guildID = ?", (self.guildID,))
-        cursor.execute(f"DELETE FROM playerData WHERE guildID = ?", (self.guildID,))
+        cursor.execute("DELETE FROM guilds WHERE guildID = ?", (self.guildID,))
+        cursor.execute("DELETE FROM playerData WHERE guildID = ?", (self.guildID,))
         guildCon.commit()
 
         print(f'Guild deleted, ID: {self.guildID}.')
@@ -1177,16 +1177,15 @@ class Auto:
         guildData = GuildData(ctx.interaction.guild_id)
         player = Player(ctx.interaction.user.id, guildData.id)
 
-
         return ['Unfinished!']
 
         if not player.channelID:
             return ['For players only!']
 
-        accessibleNodes = await filterMap(guildData,
+        accessibleNodes = await guildData.filterMap(
             [role.id for role in ctx.interaction.user.roles],
             ctx.interaction.user.id,
-            serverData['locationName'])
+            player.location)
 
         if not accessibleNodes:
             return ['No where you can go.']

@@ -44,7 +44,7 @@ async def embed(
             embed.set_image(url = 'attachment://image.png')
             
         case _:
-            print(f"Unrecognized image viewing mode in dialogue!")
+            print('Unrecognized image viewing mode in dialogue!')
             file = discord.MISSING
 
     return embed, file
