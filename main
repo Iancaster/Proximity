@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 #Import-ant Libraries
-import time
 import discord
+from time import time
 from data.data import BotData as data
 from dotenv import load_dotenv
-import os
+from os import environ
 
 # Setup
-boot_time = time.time()
+boot_time = time()
 bot = discord.Bot(intents = data.intents, owner_id = data.owner_id)
 
 @bot.listen()
@@ -18,11 +18,11 @@ async def on_connect():
         activity = discord.Game(data.activity),
         status = discord.Status.online)
 
-    print(f'{bot.user.name} woke up in {time.time() - boot_time} seconds.')
+    print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
     return
 
 
 # Run
 #bot.load_extensions('cogs')
 load_dotenv()
-bot.run(os.environ.get("TOKEN"))
+bot.run(environ.get("TOKEN"))
