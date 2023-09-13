@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 #Import-ant Libraries
-import discord
+from discord import Bot, Game, Status
 from time import time
 from data.data import BotData as data
 from dotenv import load_dotenv
@@ -9,14 +9,14 @@ from os import environ
 
 # Setup
 boot_time = time()
-bot = discord.Bot(intents = data.intents, owner_id = data.owner_id)
+bot = Bot(intents = data.intents, owner_id = data.owner_id)
 
 @bot.listen()
 async def on_connect():
 
     await bot.change_presence(
-        activity = discord.Game(data.activity),
-        status = discord.Status.online)
+        activity = Game(data.activity),
+        status = Status.online)
 
     print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
     return
