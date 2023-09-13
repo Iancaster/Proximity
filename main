@@ -3,14 +3,16 @@
 #Import-ant Libraries
 from discord import Bot, Game, Status
 from time import time
-from data.data import BotData as data
+import data.data as data
 from dotenv import load_dotenv
 from os import environ
 
-# Setup
+#Variables
 boot_time = time()
 bot = Bot(intents = data.intents, owner_id = data.owner_id)
 
+
+#Functions
 @bot.listen()
 async def on_connect():
 
@@ -23,6 +25,6 @@ async def on_connect():
 
 
 # Run
-#bot.load_extensions('cogs')
+bot.load_extension('cogs.test')
 load_dotenv()
 bot.run(environ.get("TOKEN"))
