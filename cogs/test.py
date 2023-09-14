@@ -6,6 +6,7 @@ from discord.ext import commands
 from libraries.universal import mbd
 
 
+#Functions
 class TestCommands(commands.Cog):
 
     @commands.slash_command(

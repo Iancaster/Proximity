@@ -33,13 +33,14 @@ and can secretly overhear what's being said, word for word.
 9. The /help command contains options for players and for hosts, to
 flip through page-by-page. Includes a glossary for term lookups.
 
-## Not Long, Read allows
+## Not Long, Read All
 1. When you register a player, the bot automatically creates a player
 channel exclusive to them and the admins. All RP is routed through
 that-- the bot has a sort of Tupper-like "proxying" of messages where
 other player's messages are repeated in that channel, while messages
 sent in this channel are repeated by the bot in *their* respective
 channels.
+
     Besides neater organization and a clear delineation of
 what's IC and what's OOC, it also means that the players and the
 admins can follow their own POV to a T, regardless of their hopping
