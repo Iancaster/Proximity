@@ -257,7 +257,6 @@ class GuildData:
             fields = [column[0] for column in cursor.description]
             return {column_name: data for column_name, data in zip(fields, guild)}
 
-
         guild_con = connect(getcwd() + '/data/guildDB.db')
         guild_con.row_factory = return_dictionary
         cursor = guild_con.cursor()
@@ -287,12 +286,7 @@ class GuildData:
         return
 
     #Nodes
-    async def create_node(
-        self,
-        name: str,
-        channel_ID: int,
-        allowed_roles: iter = set(),
-        allowed_players: iter = set()):
+    async def create_node(self, name: str, channel_ID: int, allowed_roles: iter = set(), allowed_players: iter = set()):
 
         if name in self.nodes:
             raise KeyError('Node already exists, no overwriting!')
@@ -379,12 +373,7 @@ class GuildData:
         return ego_graph(graph, origin, radius = 99)
 
     #Edges
-    async def set_edge(
-        self,
-        origin: str,
-        destination: str,
-        edge: Edge,
-        overwrite: bool = False):
+    async def set_edge(self, origin: str, destination: str, edge: Edge, overwrite: bool = False):
 
         if destination in self.nodes[origin].neighbors or \
             origin in self.nodes[destination].neighbors:
@@ -593,7 +582,7 @@ class GuildData:
 
     async def save(self):
 
-        guild_con = connect('guildDB.db')
+        guild_con = connect(getcwd() + '/data/guildDB.db')
         cursor = guild_con.cursor()
 
         nodes = {nodeName : await node.__dict__() for nodeName, node in self.nodes.items()}
@@ -626,11 +615,7 @@ class GuildData:
         print(f'Guild deleted, ID: {self.guild_ID}.')
         return
 
-    async def clear(
-        self,
-        guild: Guild,
-        direct_listeners: dict,
-        indirect_listeners: dict):
+    async def clear(self, guild: Guild, direct_listeners: dict, indirect_listeners: dict):
 
         for player_ID in self.players:
 
@@ -732,11 +717,7 @@ class DialogueView(View):
     def people(self):
         return self.people_select.values
 
-    async def add_players(
-        self,
-        player_IDs: iter,
-        only_one: bool = False,
-        callback: callable = None):
+    async def add_players(self, player_IDs: iter, only_one: bool = False, callback: callable = None):
 
         player_select = Select(
             placeholder = 'Which players?',
@@ -826,10 +807,7 @@ class DialogueView(View):
     def nodes(self):
         return self.node_select.values
 
-    async def add_edges(
-        self,
-        neighbors: dict,
-        callback: callable = None):
+    async def add_edges(self, neighbors: dict, callback: callable = None):
 
 
         edge_select = Select(

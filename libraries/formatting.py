@@ -69,10 +69,10 @@ async def discordify(text: str):
     return spaceless[:19]
 
 async def embolden(node_names: iter):
-    return format_words([f"**#{name}**" for name in node_names])
+    return await format_words([f"**#{name}**" for name in node_names])
 
 async def format_nodes(nodes: iter):
-    return format_words([node.mention for node in nodes])
+    return await format_words([node.mention for node in nodes])
 
 async def format_colors(graph: DiGraph, origin_name: str, colored_neighbors: list, color: str):
 

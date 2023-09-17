@@ -8,7 +8,7 @@ from os import path, remove, getcwd
 def access_DB(DB: str):
 
     connection = None
-    data_directory = path.dirname(getcwd()) + '/data/'
+    data_directory = getcwd() + '/data/'
 
     try:
         connection = connect(f'{data_directory}/{DB}DB.db')
@@ -33,7 +33,7 @@ def create_table(connection, table):
 
 def create_guild_DB():
 
-    data_directory = path.dirname(getcwd()) + '/data/'
+    data_directory = getcwd() + '/data/'
 
     if path.isfile(data_directory + 'guildDB.db'):
         remove(data_directory + 'guildDB.db')
@@ -66,7 +66,7 @@ def create_guild_DB():
 
 def create_player_DB():
 
-    data_directory = path.dirname(getcwd()) + '/data/'
+    data_directory = getcwd() + '/data/'
 
     if path.isfile(data_directory + 'playerDB.db'):
         remove(data_directory + 'playerDB.db')

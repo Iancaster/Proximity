@@ -2,7 +2,7 @@
 
 #Import-ant Libraries
 from discord import AutocompleteContext
-from classes import GuildData
+from libraries.classes import GuildData
 
 
 #Functions
