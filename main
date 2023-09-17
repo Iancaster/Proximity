@@ -26,6 +26,8 @@ async def on_connect():
 
 
 # Run
-bot.load_extension('cogs.nodes')
+bot.load_extension('cogs.owner')
+bot.load_extension('cogs.open')
+bot.load_extension('cogs.test')
 load_dotenv()
 bot.run(environ.get("TOKEN"))

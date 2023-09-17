@@ -15,7 +15,7 @@ from libraries.formatting import discordify, unique_name, format_whitelist
 
 
 #Classes
-class nodeCommands(commands.Cog):
+class NodeCommands(commands.Cog):
 
     node = SlashCommandGroup(
         name = 'node',
@@ -49,7 +49,6 @@ class nodeCommands(commands.Cog):
 
             description = f'Whitelist: {await format_whitelist(view.roles(), view.players())}'
 
-            #Formatting results
             embed, _ = await mbd(
                 f'New node: {name}',
                 description,
@@ -105,4 +104,4 @@ class nodeCommands(commands.Cog):
         return
 
 def setup(prox):
-    prox.add_cog(nodeCommands(prox), override = True)
+    prox.add_cog(NodeCommands(prox), override = True)

@@ -1,8 +1,13 @@
 
 
 #Import-ant Libraries
-from discord import Guild
+from discord import Guild, Member, PermissionOverwrite, Interaction, \
+    ComponentType, InputTextStyle, ButtonStyle, MISSING
 from discord.utils import get
+from discord.ui import View, Select, Button, Modal, InputText
+
+from libraries.universal import mbd
+from libraries.formatting import discordify, format_whitelist
 
 #Data Libraries
 from attr import s, ib, Factory
@@ -10,16 +15,16 @@ from sqlite3 import connect
 from base64 import b64encode, b64decode
 from pickle import loads, dumps
 from io import BytesIO
+from os import getcwd
 
 #Math Libraries
-from nx import DiGraph, ego_graph, draw_networkx_nodes, \
+from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
     draw_networkx_edges, shell_layout, draw_networkx_labels
 from math import sqrt
+from matplotlib.pyplot import margins, gcf, tight_layout, axis, close
 from matplotlib.patches import ArrowStyle
-from matplotlib import margins, tight_layout, axis, gcf, close
 
-
-#Classes
+#Graph
 @s(auto_attribs = True)
 class Component:
     allowed_roles: set = Factory(set)
@@ -33,7 +38,7 @@ class Component:
         self.allowed_players = players_IDs
         return
 
-    async def clear_whitelist(self):
+    async def clear_format_whitelist(self):
         self.allowed_roles = set()
         self.allowed_players = set()
         return
@@ -49,12 +54,22 @@ class Component:
 
         return return_dict
 
+@s(auto_attribs = True)
+class Edge(Component):
+    directionality: int = ib(default = 1)
+    # directionality > 0 means it's going TO the destination
+    # directionality < 2 means it's coming FROM the target
+
+    async def __dict__(self):
+        return_dict = await super().__dict__()
+        return_dict['directionality'] = self.directionality
+        return return_dict
 
 @s(auto_attribs = True)
 class Node(Component):
-    channel_ID: int = attr.ib(default = 0)
-    occupants: set = attr.Factory(set)
-    neighbors: dict = attr.Factory(dict)
+    channel_ID: int = ib(default = 0)
+    occupants: set = Factory(set)
+    neighbors: dict = Factory(dict)
 
     def __attrs_pre_init__(self):
         super().__init__()
@@ -94,7 +109,7 @@ class Node(Component):
         self.occupants -= occupant_IDs
         return
 
-    async def clear_whitelist(self):
+    async def clear_format_whitelist(self):
         self.allowed_roles = set()
         self.allowed_players = set()
         return
@@ -118,10 +133,120 @@ class Node(Component):
 
         return return_dict
 
+#Player
+@s(auto_attribs = True)
+class Player:
+    id: int = ib(default = 0)
+    guild_ID: int = ib(default = 0)
+
+    def __attrs_post_init__(self):
+
+        def return_dict(cursor, players):
+            fields = [column[0] for column in cursor.description]
+            return {field_name: data for field_name, data in zip(fields, players)}
+
+
+        player_con = connect(getcwd() + '/data/playerDB.db')
+        player_con.row_factory = return_dict
+        cursor = player_con.cursor()
+        cursor.execute(f"""SELECT * FROM players WHERE player_ID = {self.id}""")
+        player_data = cursor.fetchone()
+
+        if player_data:
+            serialized_player = b64decode(player_data['relevant_data'])
+            self.as_dict = loads(serialized_player)
+            relevant_data = self.as_dict.get(self.guild_ID, {})
+        else:
+            self.as_dict = relevant_data = {}
+
+        self.channel_ID = relevant_data.get('channel_ID', None)
+        self.location = relevant_data.get('location', None)
+        self.eavesdropping = relevant_data.get('eavesdropping', None)
+        self.name = relevant_data.get('name', None)
+        self.avatar = relevant_data.get('avatar', None)
+        return
+
+    async def save(self):
+
+        player_con = connect('playerDB.db')
+        cursor = player_con.cursor()
+
+        self.as_dict[self.guild_ID] = {
+            'channel_ID' : self.channel_ID,
+            'location' : self.location,
+            'eavesdropping' : self.eavesdropping,
+            'name' : self.name,
+            'avatar' : self.avatar}
+
+        return await self._commit(player_con, cursor)
+
+    async def delete(self):
+
+        self.as_dict.pop(self.guild_ID, None)
+
+        player_con = connect('playerDB.db')
+        cursor = player_con.cursor()
+
+        if self.as_dict:
+            print(f'Player removed from guild, ID: {self.id}.')
+            return await self._commit(player_con, cursor)
+
+        cursor.execute("DELETE FROM players WHERE player_ID = ?", (self.id,))
+        player_con.commit()
+        print(f'Player deleted, ID: {self.id}.')
+        return
+
+    async def _commit(self, player_con, cursor):
+
+        player_serialized = dumps(self.as_dict)
+        player_encoded = b64encode(player_serialized)
+        cursor.execute("INSERT or REPLACE INTO players(player_ID, relevant_data) VALUES(?, ?)",
+            (self.id, player_encoded))
+
+        player_con.commit()
+        player_con.close()
+        return
+
+#Guild
+@s(auto_attribs = True)
+class ChannelMaker:
+    guild: Guild
+    category_name: str  = ib(default = '')
+
+    def __attrs_post_init__(self):
+
+        with open('assets/avatar.png', 'rb') as file:
+            self.avatar = file.read()
+
+    async def initialize(self):
+
+        existing_category = get(self.guild.categories, name = self.category_name)
+        if existing_category:
+            self.category = existing_category
+            return
+
+        self.category = await self.guild.create_category(self.category_name)
+        return
+
+    async def create_channel(self, name: str, allowed_person: Member = None):
+        permissions = {
+            self.guild.default_role: PermissionOverwrite(read_messages = False),
+            self.guild.me: PermissionOverwrite(send_messages = True, read_messages = True)}
+
+        if allowed_person:
+            permissions.update({
+                allowed_person: PermissionOverwrite(send_messages = True, read_messages = True)})
+
+        create_channel = await self.guild.create_text_channel(
+            name,
+            category = self.category,
+            overwrites = permissions)
+        await create_channel.create_webhook(name = 'Proximity', avatar = self.avatar)
+        return create_channel
 
 @s(auto_attribs = True)
 class GuildData:
-    guildID: int
+    guild_ID: int
     maker: ChannelMaker = ib(default = None)
     nodes: dict = Factory(dict)
     players: set = Factory(set)
@@ -132,11 +257,12 @@ class GuildData:
             fields = [column[0] for column in cursor.description]
             return {column_name: data for column_name, data in zip(fields, guild)}
 
-        guild_con = connect('guildDB.db')
+
+        guild_con = connect(getcwd() + '/data/guildDB.db')
         guild_con.row_factory = return_dictionary
         cursor = guild_con.cursor()
 
-        cursor.execute("SELECT * FROM guilds WHERE guildID = ?", (self.guildID,))
+        cursor.execute("SELECT * FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
         guild_data = cursor.fetchone()
 
         if guild_data:
@@ -151,7 +277,7 @@ class GuildData:
                         allowed_players = data.get('allowed_players', set()),
                         neighbors = data.get('neighbors', dict()))
 
-        cursor.execute(f"""SELECT * FROM player_data WHERE guildID = {self.guildID}""")
+        cursor.execute(f"""SELECT * FROM player_data WHERE guild_ID = {self.guild_ID}""")
         player_data = cursor.fetchone()
 
         if player_data:
@@ -161,7 +287,7 @@ class GuildData:
         return
 
     #Nodes
-    async def newNode(
+    async def create_node(
         self,
         name: str,
         channel_ID: int,
@@ -346,15 +472,8 @@ class GuildData:
 
         return description
 
-
-
-
-#Pick up here
-
-
-
     #Players
-    async def newPlayer(self, player_ID: int, location: str):
+    async def create_player(self, player_ID: int, location: str):
 
         if location in self.nodes:
             self.nodes[location].add_occupants({player_ID})
@@ -366,13 +485,13 @@ class GuildData:
         return
 
     #Guild Data
-    async def toGraph(self, nodeDict: dict = {}):
+    async def to_graph(self, nodes: dict = {}):
         graph = DiGraph()
 
-        nodesToGraph = nodeDict if nodeDict else self.nodes
+        included_nodes = nodes if nodes else self.nodes
 
         completed_edges = set()
-        for name, node in nodesToGraph.items():
+        for name, node in included_nodes.items():
             graph.add_node(
                 name,
                 channel_ID = node.channel_ID)
@@ -396,10 +515,10 @@ class GuildData:
 
         return graph
 
-    async def toMap(self, graph = None, edgeColor: str = []):
+    async def to_map(self, graph = None, edgeColor: str = []):
 
         if not graph:
-            graph = await self.toGraph()
+            graph = await self.to_graph()
         if not edgeColor:
             edgeColor = ['black'] * len(graph.edges)
 
@@ -414,32 +533,32 @@ class GuildData:
             node_color = '#ffffff')
         draw_networkx_labels(graph, pos = positions, font_weight = 'bold')
 
-        currentIndex = 0
-        letterSpacing = 0.029
+        index = 0
+        letter_spacing = 0.029
         for origin, destination in graph.edges:
 
             ox, oy = positions[origin]
             dx, dy = positions[destination]
             distance = sqrt((dx - ox) ** 2 + (dy - oy) ** 2)
 
-            if distance > letterSpacing*2: #Move the edges away from the labels
+            if distance > letter_spacing*2: #Move the edges away from the labels
 
                 if dx - ox != 0:
                     slope = abs((dy - oy) / (dx - ox))
-                    angleSpacing = 1 - abs((1 - slope) / (1 + slope)) * 0.15
+                    angle_spacing = 1 - abs((1 - slope) / (1 + slope)) * 0.15
 
                     labelFactor = 1 / (abs(slope) + 1)
 
-                    originSpacing = 0.1 * (1 - angleSpacing) + len(origin) * \
-                        letterSpacing * angleSpacing * labelFactor
-                    destinationSpacing = 0.1 * (1 - angleSpacing) + len(destination) * \
-                        letterSpacing * angleSpacing * labelFactor
+                    origin_spacing = 0.1 * (1 - angle_spacing) + len(origin) * \
+                        letter_spacing * angle_spacing * labelFactor
+                    destination_spacing = 0.1 * (1 - angle_spacing) + len(destination) * \
+                        letter_spacing * angle_spacing * labelFactor
 
-                    ox += (dx - ox) * originSpacing / distance
-                    oy += (dy - oy) * originSpacing / distance
+                    ox += (dx - ox) * origin_spacing / distance
+                    oy += (dy - oy) * origin_spacing / distance
 
-                    dx += (ox - dx) * destinationSpacing / distance
-                    dy += (oy - dy) * destinationSpacing / distance
+                    dx += (ox - dx) * destination_spacing / distance
+                    dy += (oy - dy) * destination_spacing / distance
 
             else:
                 ox = dx = (dx + ox) / 2
@@ -450,12 +569,12 @@ class GuildData:
                 pos = {origin : (ox, oy),
                     destination: (dx, dy)},
                 edgelist = [(origin, destination)],
-                edge_color = edgeColor[currentIndex],
+                edge_color = edgeColor[index],
                 width = 3.0,
                 arrowstyle =
                     ArrowStyle('-|>'),
                 arrowsize = 15)
-            currentIndex += 1
+            index += 1
 
         #Adjust the rest
         margins(x = 0.3, y = 0.1)
@@ -464,10 +583,10 @@ class GuildData:
 
         #Produce image
         #plt.show() #Uncomment this and comment everything below for bugtesting
-        graphImage = gcf()
+        map_image = gcf()
         close()
         bytesIO = BytesIO()
-        graphImage.savefig(bytesIO)
+        map_image.savefig(bytesIO)
         bytesIO.seek(0)
 
         return bytesIO
@@ -477,15 +596,15 @@ class GuildData:
         guild_con = connect('guildDB.db')
         cursor = guild_con.cursor()
 
-        nodesData = {nodeName : await node.__dict__() for nodeName, node in self.nodes.items()}
-        serializedNodes = dumps(nodesData)
-        encodedNodes = b64encode(serializedNodes)
-        cursor.execute("INSERT or REPLACE INTO guilds(guildID, nodes) VALUES(?, ?)",
-            (self.guildID, encodedNodes))
+        nodes = {nodeName : await node.__dict__() for nodeName, node in self.nodes.items()}
+        serialized_nodes = dumps(nodes)
+        encoded_nodes = b64encode(serialized_nodes)
+        cursor.execute("INSERT or REPLACE INTO guilds(guild_ID, nodes) VALUES(?, ?)",
+            (self.guild_ID, encoded_nodes))
 
         player_data = ' '.join([str(player_ID) for player_ID in self.players])
-        cursor.execute("INSERT or REPLACE INTO player_data(guildID, players) VALUES(?, ?)",
-            (self.guildID, player_data))
+        cursor.execute("INSERT or REPLACE INTO player_data(guild_ID, players) VALUES(?, ?)",
+            (self.guild_ID, player_data))
 
         guild_con.commit()
         guild_con.close()
@@ -500,39 +619,537 @@ class GuildData:
             cursor.execute("""DELETE FROM messages WHERE
                             locationChannelID = ?""", (node.channel_ID,))
 
-        cursor.execute("DELETE FROM guilds WHERE guildID = ?", (self.guildID,))
-        cursor.execute("DELETE FROM player_data WHERE guildID = ?", (self.guildID,))
+        cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
+        cursor.execute("DELETE FROM player_data WHERE guild_ID = ?", (self.guild_ID,))
         guild_con.commit()
 
-        print(f'Guild deleted, ID: {self.guildID}.')
+        print(f'Guild deleted, ID: {self.guild_ID}.')
         return
 
     async def clear(
         self,
         guild: Guild,
-        directListeners: dict,
-        indirectListeners: dict):
+        direct_listeners: dict,
+        indirect_listeners: dict):
 
         for player_ID in self.players:
 
-            player = Player(player_ID, self.guildID)
+            player = Player(player_ID, self.guild_ID)
 
             channel = get(guild.channels, id = player.channel_ID)
             if channel:
                 await channel.delete()
 
-            directListeners.pop(player.channel_ID, None)
-            indirectListeners.pop(player.channel_ID, None)
+            direct_listeners.pop(player.channel_ID, None)
+            indirect_listeners.pop(player.channel_ID, None)
 
             await player.delete()
 
         for name, node in list(self.nodes.items()):
-            directListeners.pop(node.channel_ID, None)
+            direct_listeners.pop(node.channel_ID, None)
             await self.delete_node(name, guild.channels)
 
-        for categoryName in ['nodes', 'players']:
-            nodeCategory = get(guild.categories, name = categoryName)
-            await nodeCategory.delete() if nodeCategory else None
+        for category_name in ['nodes', 'players']:
+            nodes_category = get(guild.categories, name = category_name)
+            await nodes_category.delete() if nodes_category else None
 
         await self.delete()
-        return directListeners, indirectListeners
+        return
+
+#Dialogues
+@s(auto_attribs = True)
+class DialogueView(View):
+    guild: Guild = ib(default = None)
+    refresh: callable = ib(default = None)
+
+    def __attrs_pre_init__(self):
+        super().__init__()
+        return
+
+    def __attrs_post_init__(self):
+        self.clearing = False
+        self.overwriting = False
+        self.directionality = 1
+        return
+
+    async def _close_dialogue(self, interaction: Interaction):
+
+        embed, _ = await mbd(
+            'Cancelled.',
+            'Window closed.',
+            'Feel free to call the command again.')
+
+        await interaction.response.edit_message(
+            embed = embed,
+            attachments = [],
+            view = None)
+        return
+
+    async def _call_refresh(self, interaction: Interaction):
+        embed = await self.refresh()
+        await interaction.response.edit_message(embed = embed)
+        return
+
+
+    #Selects
+    async def add_roles(self, max_roles: int = 0, callback: callable = None):
+
+        if not max_roles:
+            max_roles = len(self.guild.roles)
+
+        role_select = Select(
+            placeholder = 'Which roles to add?',
+            select_type = ComponentType.role_select,
+            min_values = 0,
+            max_values = max_roles)
+
+        role_select.callback = callback if callback else self._call_refresh
+
+        self.add_item(role_select)
+        self.role_select = role_select
+        return
+
+    def roles(self):
+        return {role.id for role in self.role_select.values}
+
+    async def add_people(self, max_people: int = 0, callback: callable = None):
+
+        if not max_people:
+            max_people = 25
+
+        people_select = Select(
+            placeholder = 'Which people?',
+            select_type = ComponentType.user_select,
+            min_values = 0,
+            max_values = max_people)
+
+        people_select.callback = callback if callback else self._call_refresh
+
+        self.add_item(people_select)
+        self.people_select = people_select
+        return
+
+    def people(self):
+        return self.people_select.values
+
+    async def add_players(
+        self,
+        player_IDs: iter,
+        only_one: bool = False,
+        callback: callable = None):
+
+        player_select = Select(
+            placeholder = 'Which players?',
+            min_values = 0,
+            max_values = 1)
+
+        player_count = 0
+        for player_ID in player_IDs:
+            member = get(self.guild.members, id = player_ID)
+            player_select.add_option(
+                label = member.display_name,
+                value = str(player_ID))
+            player_count += 1
+
+        if player_count == 0:
+            player_select.placeholder = 'No players to select.'
+            player_select.add_option(label = 'No players!')
+            player_select.disabled = True
+            self.player_select = player_select
+        elif only_one:
+            pass
+        else:
+            player_select.max_values = player_count
+
+        player_select.callback = callback if callback else self._call_refresh
+
+        self.add_item(player_select)
+        self.player_select = player_select
+        return
+
+    def players(self):
+        return {int(player_ID) for player_ID in self.player_select.values}
+
+    async def add_nodes(self, node_names: iter, callback: callable = None, select_multiple: bool = True):
+
+        if not node_names:
+            node_select = Select(
+                placeholder = 'No nodes to select.',
+                disabled = True)
+            node_select.add_option(
+                label = 'Nothing to choose.')
+            self.add_item(node_select)
+            self.node_select = node_select
+            return
+
+        if select_multiple:
+            max_values = len(node_names)
+        else:
+            max_values = 1
+
+        node_select = Select(
+            placeholder = 'Which node(s) to select?',
+            min_values = 1,
+            max_values = max_values)
+
+        node_select.callback = callback if callback else self._call_refresh
+
+        [node_select.add_option(label = node) for node in node_names]
+
+        self.add_item(node_select)
+        self.node_select = node_select
+        return
+
+    async def add_user_nodes(self, node_names: iter, callback: callable = None):
+
+        if not node_names:
+            node_select = Select(
+                placeholder = 'No places you can access.',
+                disabled = True)
+            node_select.add_option(
+                label = 'Nothing to choose.')
+            self.add_item(node_select)
+            self.node_select = node_select
+            return
+
+        node_select = Select(placeholder = 'Which place?')
+        node_select.callback = callback if callback else self._call_refresh
+
+        for name in node_names:
+            node_select.add_option(
+                label = name)
+
+        self.add_item(node_select)
+        self.node_select = node_select
+        return
+
+    def nodes(self):
+        return self.node_select.values
+
+    async def add_edges(
+        self,
+        neighbors: dict,
+        callback: callable = None):
+
+
+        edge_select = Select(
+            placeholder = 'Which edges to review?',
+            min_values = 0,
+            max_values = len(neighbors))
+        edge_select.callback = callback if callback else self._call_refresh
+
+        for neighbor, edge in neighbors.items():
+
+            match edge.directionality:
+
+                case 0:
+                    edge_select.add_option(label = f'<- {neighbor}',
+                        value = neighbor)
+
+                case 1:
+                    edge_select.add_option(label = f'<-> {neighbor}',
+                        value = neighbor)
+
+                case 2:
+                    edge_select.add_option(label = f'-> {neighbor}',
+                        value = neighbor)
+
+        self.add_item(edge_select)
+        self.edge_select = edge_select
+        return
+
+    def edges(self):
+        return self.edge_select.values
+
+    #Modals
+    async def add_rename(self, existing: str = '', bypass_formatting: bool = False, callback: callable = None):
+
+        modal = Modal(title = 'Choose a new name?')
+
+        name_select = InputText(
+            label = 'name',
+            style = InputTextStyle.short,
+            min_length = 1,
+            max_length = 20,
+            placeholder = "What should it be?",
+            value = existing)
+        modal.add_item(name_select)
+        modal.callback = callback if callback else self._call_refresh
+
+        async def send_modal(interaction: Interaction):
+            await interaction.response.send_modal(modal = modal)
+            return
+
+        modal_button = Button(
+            label = 'Change Name',
+            style = ButtonStyle.success)
+
+        modal_button.callback = send_modal
+        self.add_item(modal_button)
+        self.name_select = name_select
+        self.bypass_formatting = bypass_formatting
+        self.existing = existing
+        return
+
+    def name(self):
+
+        if self.name_select.value == self.existing:
+            return None
+
+        if self.bypass_formatting:
+            return self.name_select.value
+
+        return discordify(self.name_select.value)
+
+    async def add_URL(self, callback: callable = None):
+
+        modal = Modal(title = 'Choose a new avatar?')
+
+        url_select = InputText(
+            label = 'url',
+            style = InputTextStyle.short,
+            min_length = 1,
+            max_length = 200,
+            placeholder = "What's the image URL?")
+        modal.add_item(url_select)
+        modal.callback = callback if callback else self._call_refresh
+
+        async def send_modal(interaction: Interaction):
+            await interaction.response.send_modal(modal = modal)
+            return
+
+        modal_button = Button(
+            label = 'Change Avatar',
+            style = ButtonStyle.success)
+
+        modal_button.callback = send_modal
+        self.add_item(modal_button)
+        self.url_select = url_select
+        return
+
+    def url(self):
+        return self.url_select.value
+
+
+    #Buttons
+    async def add_clear(self, callback: callable = None):
+        clear = Button(
+            label = 'Clear Whitelist',
+            style = ButtonStyle.secondary)
+
+        async def clearing(interaction: Interaction):
+            self.clearing = not self.clearing
+            if callback:
+                await callback(interaction)
+            else:
+                await self._call_refresh(interaction)
+            return
+
+        clear.callback = clearing
+        self.add_item(clear)
+        return
+
+    async def add_overwrite(self):
+        overwrite = Button(
+            label = 'Toggle Overwrite',
+            style = ButtonStyle.secondary)
+
+        async def overwriting(interaction: Interaction):
+            self.overwriting = not self.overwriting
+            await self._call_refresh(interaction)
+            return
+
+        overwrite.callback = overwriting
+        self.add_item(overwrite)
+        return
+
+    async def add_directionality(self):
+        direct = Button(
+            label = 'Toggle Direction',
+            style = ButtonStyle.secondary)
+
+        async def change_directionality(interaction: Interaction):
+            if self.directionality < 2:
+                self.directionality += 1
+            else:
+                self.directionality = 0
+            await self._call_refresh(interaction)
+            return
+
+        direct.callback = change_directionality
+        self.add_item(direct)
+        return
+
+    async def add_submit(self, callback: callable):
+
+        submit = Button(
+            label = 'Submit',
+            style = ButtonStyle.success)
+        submit.callback = callback
+        self.add_item(submit)
+        return
+
+    async def add_confirm(self, callback: callable):
+
+        evilConfirm = Button(
+            label = 'Confirm',
+            style = ButtonStyle.danger)
+        evilConfirm.callback = callback
+        self.add_item(evilConfirm)
+        return
+
+    async def add_cancel(self):
+
+        cancel = Button(
+            label = 'Cancel',
+            style = ButtonStyle.secondary)
+        cancel.callback = self._close_dialogue
+        self.add_item(cancel)
+        return
+
+    #Methods
+    async def format_whitelist(self, components: iter): #Revisit this
+
+        if self.clearing:
+            return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
+                " to use the old format_whitelist, or if you select any roles or players below, to use that."
+
+        if self.roles() or self.players():
+            return "\n• New format_whitelist(s)-- will overwrite the old format_whitelist:" + \
+                f" {await format_whitelist(self.roles(), self.players())}"
+
+        first_component = next(iter(components))
+
+        if len(components) == 1:
+            return "\n• Whitelist:" + \
+                f" {await format_whitelist(first_component.allowed_roles, first_component.allowed_players)}"
+
+        if any(com.allowed_roles != first_component.allowed_roles or \
+               com.allowed_players != first_component.allowed_players for com in components):
+            return '\n• Whitelists: Multiple different format_whitelists.'
+
+        else:
+            return "\n• Whitelists: Every part has the same format_whitelist. " + \
+                await format_whitelist(first_component.allowed_roles, \
+                    first_component.allowed_players)
+
+@s(auto_attribs = True)
+class Paginator():
+    interaction: Interaction = ib(default = None)
+    title_prefix: str = ib(default = '')
+    all_pages: dict = Factory(dict)
+    all_images: dict = Factory(dict)
+
+    def __attrs_post_init__(self):
+        self.current_page = 0
+        self.total_pages = len(self.all_pages)
+
+    async def _close_dialogue(self, interaction: Interaction):
+
+        embed, _ = await mbd(
+            'All done.',
+            'Window closed.',
+            'Feel free to call the command again.')
+
+        await self.interaction.followup.edit_message(
+            message_id = self.interaction.message.id,
+            embed = embed,
+            file = MISSING,
+            view = None)
+        return
+
+    async def _determine_arrows(self, page: int):
+        return page > 0, page < self.total_pages - 1
+
+    async def _flip_page_right(self, interaction: Interaction):
+
+        await interaction.response.defer()
+        self.current_page += 1
+        self.interaction = interaction
+        await self.refresh_embed()
+        return
+
+    async def _flip_page_left(self, interaction: Interaction):
+
+        await interaction.response.defer()
+        self.current_page -= 1
+        self.interaction = interaction
+        await self.refresh_embed()
+        return
+
+    async def _construct_buttons(self, left_arrow_enabled: bool, right_arrow_enabled: bool):
+
+        view = View()
+
+        if left_arrow_enabled:
+            label = '<'
+            disabled = False
+        else:
+            label = '-'
+            disabled = True
+
+        left = Button(
+            label = label,
+            style = ButtonStyle.secondary,
+            disabled = disabled)
+        left.callback = self._flip_page_left
+        view.add_item(left)
+
+        if right_arrow_enabled:
+            label = '>'
+            callback = self._flip_page_right
+        else:
+            label = 'Done'
+            callback = self._close_dialogue
+
+        right = Button(
+            label = label,
+            style = ButtonStyle.secondary)
+        right.callback = callback
+        view.add_item(right)
+
+        return view
+
+    async def refresh_embed(self):
+
+        subheader, page_content = list(self.all_pages.items())[self.current_page]
+
+        page_title = f'{self.title_prefix} {self.current_page + 1}: ' + \
+            subheader
+
+        picture = self.all_images.get(subheader, None)
+        picture_view = (picture, 'full') if picture else None
+
+        embed, file = await mbd(
+            page_title,
+            page_content,
+            'Use the buttons below to flip the page.',
+            picture_view)
+
+        left_arrow_enabled, right_arrow_enabled = \
+            await self._determine_arrows(self.current_page)
+
+        if self.current_page < 1:
+            furthest_left, furthest_right = True, self.total_pages > 1
+        elif self.current_page == self.total_pages - 2:
+            furthest_left, furthest_right = self.current_page < 1, False
+        else:
+            furthest_left, furthest_right = await self._determine_arrows(self.current_page - 1)
+
+
+        if furthest_left != left_arrow_enabled or \
+            furthest_right != right_arrow_enabled:
+
+            await self.interaction.followup.edit_message(
+                message_id = self.interaction.message.id,
+                embed = embed,
+                file = file if file else MISSING,
+                view = await self._construct_buttons(left_arrow_enabled, right_arrow_enabled))
+        else:
+
+            await self.interaction.followup.edit_message(
+                message_id = self.interaction.message.id,
+                embed = embed,
+                file = file if file else MISSING) #Might be attachments = MISSING
+
+        return

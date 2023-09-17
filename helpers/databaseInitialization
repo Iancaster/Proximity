@@ -1,81 +1,86 @@
 #!/usr/bin/python3
 
 #Import-ant Libraries
-import sqlite3
-from sqlite3 import Error
-import os
+from sqlite3 import Error, connect, Connection, version
+from os import path, remove, getcwd
 
 #Internal
-def connectToPlayer():
+def access_DB(DB: str):
+
     connection = None
+    data_directory = path.dirname(getcwd()) + '/data/'
 
     try:
-        connection = sqlite3.connect('playerDB.db')
+        connection = connect(f'{data_directory}/{DB}DB.db')
         return connection
 
     except Error as problem:
-        print(f'Error when connecting to player database: {problem}.')
+        print(f'Error when connecting to {DB} database: {problem}.')
         return None
 
 #Initialize
-def newTable(connection, table):
+def create_table(connection, table):
 
     try:
         cursor = connection.cursor()
         cursor.execute(table)
-        print('Table added to database.')
+        print('done.')
         return True
 
     except Error as problem:
         print(f'Error when adding table: {problem}.')
         return False
 
-def newGuildDB():
-    if os.path.isfile('guildDB.db'):
-        os.remove('guildDB.db')
+def create_guild_DB():
 
-    connection = sqlite3.connect('guildDB.db')
+    data_directory = path.dirname(getcwd()) + '/data/'
 
-    tables = ["""CREATE TABLE guilds
-                (guildID INTEGER PRIMARY KEY,
+    if path.isfile(data_directory + 'guildDB.db'):
+        remove(data_directory + 'guildDB.db')
+
+    connection = access_DB('guild')
+
+    tables = {'Guilds' : """CREATE TABLE guilds
+                (guild_ID INTEGER PRIMARY KEY,
                 nodes TEXT);""",
-                """CREATE TABLE messages
-                (locationChannelID INTEGER PRIMARY KEY,
+            'Messages' : """CREATE TABLE messages
+                (location_channel_ID INTEGER PRIMARY KEY,
                 title TEXT,
                 description TEXT,
                 footer TEXT);""",
-                """CREATE TABLE playerData
-                (guildID INTEGER PRIMARY KEY,
-                players TEXT);""",]
+            'Players' : """CREATE TABLE player_Data
+                (guild_ID INTEGER PRIMARY KEY,
+                players TEXT);"""}
 
-    if isinstance(connection, sqlite3.Connection):
-        print(f'New guild database created, version {sqlite3.version}.')
-        print("Adding 'Guilds' table...")
-        newTable(connection, tables[0])
-        print("Adding 'Messages' table...")
-        newTable(connection, tables[1])
-        print("Adding 'Players' table...")
-        newTable(connection, tables[2])
+    if isinstance(connection, Connection):
+        print(f'New guild database created, version {version}.')
+
+        for name, data in tables.items():
+            print(f"Adding '{name}' table...", end = '')
+            create_table(connection, data)
 
     else:
         print('New guild database failed to create. No tables made.')
 
     return connection
 
-def newPlayerDB():
-    if os.path.isfile('playerDB.db'):
-        os.remove('playerDB.db')
+def create_player_DB():
 
-    connection = connectToPlayer()
+    data_directory = path.dirname(getcwd()) + '/data/'
+
+    if path.isfile(data_directory + 'playerDB.db'):
+        remove(data_directory + 'playerDB.db')
+
+    connection = access_DB('player')
 
     table = """CREATE TABLE players
-                (playerID integer PRIMARY KEY,
-                serverData TEXT);"""
+                (player_ID integer PRIMARY KEY,
+                player_Data TEXT);"""
 
-    if isinstance(connection, sqlite3.Connection):
-        print(f'New players database created, version {sqlite3.version}.')
-        print("Adding 'Players' table...")
-        newTable(connection, table)
+    if isinstance(connection, Connection):
+        print(f'New players database created, version {version}.')
+        print("Adding 'Player Data' table...", end = '')
+        create_table(connection, table)
 
     else:
         print('New players database failed to create. No tables made.')
@@ -84,7 +89,7 @@ def newPlayerDB():
 
 
 #Erase actions
-def eraseGuildDB(con):
+def erase_all_guilds(con):
     cursor = con.cursor()
     cursor.execute("""DELETE FROM guilds""")
     cursor.execute("""DELETE FROM messages""")
@@ -92,7 +97,7 @@ def eraseGuildDB(con):
     print('All guilds and messages removed.')
     return
 
-def erasePlayerDB(con):
+def erase_all_players(con):
     cursor = con.cursor()
     cursor.execute("""DELETE FROM players""")
     con.commit()
@@ -100,43 +105,43 @@ def erasePlayerDB(con):
     return
 
 
-#Mall Get
-def getAllGuilds(con):
+#Mass Get
+def get_all_guilds(con):
 
-    def returnDictionary(cursor, guild):
+    def return_dict(cursor, guild):
         fields = [column[0] for column in cursor.description]
         return {key: value for key, value in zip(fields, guild)}
 
-    con.row_factory = returnDictionary
+    con.row_factory = return_dict
     cursor = con.cursor()
     cursor.execute("SELECT * FROM guilds")
     return cursor.fetchall()
 
-def getAllMessages(con):
+def get_all_messages(con):
 
-    def returnDictionary(cursor, guild):
+    def return_dict(cursor, guild):
         fields = [column[0] for column in cursor.description]
         return {key: value for key, value in zip(fields, guild)}
 
-    con.row_factory = returnDictionary
+    con.row_factory = return_dict
     cursor = con.cursor()
     cursor.execute("SELECT * FROM messages")
     return cursor.fetchall()
 
-def getAllPlayers(con):
+def get_all_players(con):
 
-    def returnDictionary(cursor, guild):
+    def return_dict(cursor, guild):
         fields = [column[0] for column in cursor.description]
         return {key: value for key, value in zip(fields, guild)}
 
-    con.row_factory = returnDictionary
+    con.row_factory = return_dict
     cursor = con.cursor()
     cursor.execute("SELECT * FROM players")
     return cursor.fetchall()
 
 
 #Internal
-def countRows(con, tableName):
+def count_rows(con, tableName):
 
     cursor = con.cursor()
     cursor.execute(f"""SELECT COUNT(*) FROM {tableName}""")
@@ -144,5 +149,5 @@ def countRows(con, tableName):
 
     return rowCount
 
-newGuildDB()
-newPlayerDB()
+create_guild_DB()
+create_player_DB()

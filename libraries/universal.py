@@ -5,11 +5,7 @@ from requests import head
 
 
 #Dialogues
-async def mbd(
-    title: str = 'No Title',
-    description: str = 'No description.',
-    footer: str = 'No footer.',
-    image_details = None):
+async def mbd(title: str = 'No Title', description: str = 'No description.', footer: str = 'No footer.', image_details = None):
 
     embed = Embed(
         title = title,
@@ -63,10 +59,7 @@ async def loading(interaction: Interaction):
     return
 
 #Guild
-async def identify_node_channel(
-    node_names: dict,
-    origin_channel_name: str = '',
-    presented_channel_name: str = ''):
+async def identify_node_channel(node_names: dict, origin_channel_name: str = '', presented_channel_name: str = ''):
 
     if not node_names:
 
