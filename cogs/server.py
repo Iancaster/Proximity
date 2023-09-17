@@ -267,9 +267,9 @@ class ServerCommands(commands.Cog):
     #
     #     result = await fn.identifyNodeChannel(guild_data.nodes.keys(), node)
     #     match result:
-    #         case isMessage if isinstance(result, Embed):
+    #         case _ if isinstance(result, Embed):
     #             await ctx.respond(embed = result)
-    #         case isChannel if isinstance(result, str):
+    #         case _ if isinstance(result, str):
     #             await viewEgo(guild_data, result)
     #         case None:
     #             await viewEgo(guild_data)
@@ -399,11 +399,11 @@ class ServerCommands(commands.Cog):
     #     if guild_data.players:
     #         maker = oop.ChannelMaker(ctx.guild, 'players')
     #         await maker.initialize()
-    #     for playerID in list(guild_data.players): #Identify player issues
+    #     for player_ID in list(guild_data.players): #Identify player issues
     #
-    #         player = Player(playerID, ctx.guild_id)
+    #         player = Player(player_ID, ctx.guild_id)
     #
-    #         member = get(ctx.guild.members, id = playerID)
+    #         member = get(ctx.guild.members, id = player_ID)
     #         if not member: #User left the server but is still considered a player
     #             oldChannel = get(ctx.guild.text_channel_IDs, id = player.channel_ID)
     #             if oldChannel:
@@ -414,10 +414,10 @@ class ServerCommands(commands.Cog):
     #             lastNode = guild_data.nodes.get(player.location, None)
     #             if lastNode:
     #                 if lastNode.occupants:
-    #                     lastNode.removeOccupants({playerID})
+    #                     lastNode.removeOccupants({player_ID})
     #
     #             await player.delete()
-    #             guild_data.players.pop(playerID)
+    #             guild_data.players.pop(player_ID)
     #             continue
     #
     #         if player.channel_ID not in channel_IDs: #User is missing their channel_ID

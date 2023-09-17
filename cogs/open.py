@@ -29,57 +29,80 @@ class OpenCommands(commands.Cog):
         if word:
 
             glossary_terms = {
-                'graph' : "A __graph__ (a.k.a. __network__), is a math thing: basically, there's\
-                    dots (__nodes__) and there may or may not be connections between those dots\
-                    (__edges__). That's basically it.\n\nFor us, though, all that matters is that\
-                    __nodes__ are __locations__ and __edges__ are connections between them.",
-                'network' : "See __graph__.",
-                'node' : "A __node__ is a dot on a __graph__. If it's connected to any other\
-                __node__s, that's called an __edge__. For us, a \"__node__\" has a couple things--\
-                the __location__ is represents, the __permissions__ for it, and the Discord channel\
-                for that __node__, which isn't visible to the players.",
-                'location' : "The actual place represented by a __node__, like a kitchen. These\
-                must be big enough to fit the __player__s, and small enough that anyone in one part of\
-                the node can reasonably be expected to hear/see anything in any other part of the\
-                __location__. Every __player__ is located in some __location__ at any point in time.",
-                'permissions' : "Who's allowed to travel into/through a __node__ or an __edge__.\
-                This mostly affects __movement__, where a __player__ is denied access to a place\
-                because there's no route to their destination after accounting for their __permissions__.",
-                'edges' : "Connections between __node__s on a __graph__. Any time two __locations__ are\
-                connected for __movement__ or __sound__, an __edge__ should exist. Usually a door,\
-                but it can be a hallway, bridge, elevator, portal... Can only let people through who\
-                satisfy the __permissions__, but sound can travel freely.",
-                'movement' : "The way that __player__s change which __location__ along the __graph__\
-                their __presence__ is in. When they try to move to a new __location__, they need a\
-                path along the __edges__ from where they are to their destination __node__, such that\
-                they have permission to access every node and edge along the way.",
-                'presence' : "The __location__ that a __player__ will hear all __sound__ in. Anytime\
-                someone speaks in the same __location__, the __player__s who are present will hear.\
-                __Presence__ also means that you'll see everyone in a room when you walk in, and\
-                they'll see you.",
-                'sound' : "Everything that __player__s are notified of. Includes everything spoken\
-                by a __player__ in the same __location__, but may include __indirect__ sound from\
-                __neighbor__ __node__s. Note that you trasmit all the same kind of noise as they do.",
-                'indirect' : "As opposed to __sound__ that is __direct__, __indirect__ sound can only\
-                by faintly made out, and only voices or small segments of the speech may be heard.\
-                __Indirect__ sound is usually heard through __edges__ to __neighbor__ __nodes__,\
-                and can be heard __direct__ly by __eavesdropping__.",
-                'direct' : "As opposed to __sound__ that is __indirect__, __direct__ sound can be\
-                fully heard, including identifying the speaker and what they're saying. Usually heard\
-                through the __player__ being in the same __location__ as the speaker, or by __eavesdropping__.",
-                'neighbor' : "A __node__ that is connected to another __node__ along one of its __edges__.\
-                Fun fact: if a __node__ has an edge that points *to* another one, and it's only one-way,\
-                they're not technically neighbors (even though this `/help` command defines them as such).\
-                Instead, the origin would be the \"ancestor\" and the destination would be its \"successor.\"",
-                'player' : 'People who have __presence__ at a __location__, can hear __sound__ from __node__s\
-                they __neighbor__ as well as from other people in the same place. Capable of __movement__\
-                and __eavesdropping__. In short, everyone who is placed in the __graph__.',
-                'underlined' : "What-- no, \"__underlined__\" was so you can see what an __underlined__\
-                word looked like, you're not supposed to actually search it. Goof."}
+                'graph' : "A __graph__ is just a collection of __node__s that are" +
+                    " connected by __edge__s. Technically, a __graph__ could have" +
+                    " only one __node__, or not even have any __edge__s. It's a" +
+                    " whole branch of mathematics you can look up--__graph__ theory!",
+                'network' : "A __network__ is another name for a __graph__. It's a" +
+                    " little confusing considering '__graph__' makes you think of" +
+                    " line __graph__s, and '__network__s' make you think of cell" +
+                    " phone coverage. For this bot, we'll just call it a __graph__.",
+                'node' : "A __node__ is a singular point on a __graph__. It may be" +
+                    " connected to other __node__s; those paths are called" +
+                    " __edge__s. In the context of this bot, a __node__ is a __location__" +
+                    " in the roleplay environment that __player__s can exist within.",
+                'edge' : "An __edge__ is a connection between two __node__s" +
+                    " within a __graph__. Edges may be one-way only, so that" +
+                    " __player__s can only __move__ along it in one __direct__ion, or" +
+                    " it can be two way. Players use __edge__s for __move__ment" +
+                    " as well as for __audio__.",
+                'location' : "A __location__ is a place within the roleplay world" +
+                    " that __player__s can __move__ to. They are represented with" +
+                    "a Discord channel, a __node__, and any __edge__s that it may" +
+                    " share that connect it to other __node__s. Locations are about" +
+                    " the size of a room and everyone who's inside is __visible__ to" +
+                    " everyone else.",
+                'audio' : "When a __player__ speaks, every other __player__ in the" +
+                    " same __location__ can hear __direct__ly. Players in __neighbor__" +
+                    " __location__s can hear in__direct__ly-- unless that person is" +
+                    " currently eavesdropping on that __location__ the speaker" +
+                    " is in, in which case, they'll hear everything __direct__ly.",
+                'direct' : "When a __player__ speaks, other occupants in the" +
+                    " same __location__ will __direct__ly hear, as well as occupants" +
+                    " in __neighbor__ing __location__s that are overhearing. These" +
+                    " __direct__ listeners will hear word-for-word what was said.",
+                'indirect' : "When a __player__ speaks, other __player__s in" +
+                    " __neighbor__ing __location__s who are not eavesdropping on" +
+                    " that __player__'s __location__ will in__direct__ly hear the speaker." +
+                    " These listeners will be able to identify the speaker, " +
+                    " and will be able to identify where it's coming from, but" +
+                    " will not be able to make out the content of what was said.",
+                'visible' : "When a __player__ chooses to look around their" +
+                    " current __location__, they see every other __player__ around." +
+                    " They also see (and are seen by) __player__s who enter" +
+                    " their __location__, they see them as they leave (and what" +
+                    " __direct__ion they go).",
+                'move' : "Since __character__s have a presence inside their" +
+                    "__location__, they can't instantly teleport between where they" +
+                    " are and where they want to be. Instead, they '__move__' " +
+                    " along the shortest path between these places, and " +
+                    " __player__s along the way see the __character__ and where they " +
+                    " came from, along with where they went to.",
+                'character' : "A __character__ is the fictional roleplay figure who" +
+                    " is acted out via a __player__'s text messages. When a __player__'s" +
+                    " texts are 'proxied' by the bot into other __player__ channels, it " +
+                    " is the __character__'s name and the __character__'s profile picture " +
+                    " that is displayed. Characters occupy a __location__ in the __graph__.",
+                'player' : "A __player__ is the nonfictitous user who roleplays on" +
+                    " Discord. Players are only privy to what their __character__" +
+                    " knows, and can /move, /look, and /eavesdrop," +
+                    " among other things.",
+                'whitelist' : "Nodes and __edge__s can have restrictions on what" +
+                    " __player__s are allowed to __move__ through them on the __graph__." +
+                    " They can restrict based on a list of approved __player__s," +
+                    " approved roles, or both: anyone who's approved on" +
+                    " either list may pass.",
+                'neighbor' : "A __neighbor__ __node__ is one that's connected to a" +
+                    " given __node__ with an __edge__. A __neighbor__ __player__ is one that's" +
+                    " in a __neighbor__ __node__. Neighbors are usually talked about in" +
+                    " the context of eavesdropping for __direct__ listening, or so that" +
+                    " __neighbor__ __player__s are alerted when a __node__ gets deleted, for" +
+                    "example.",
+                'underlined' : "🤨"}
 
             if word in glossary_terms:
                 embed, _ = await mbd(
-                    f'Help for "{word}"',
+                    f'{word.capitalize()} explanation:',
                     glossary_terms[word],
                     "Clear things up, I hope?")
             else:
@@ -98,23 +121,24 @@ class OpenCommands(commands.Cog):
             await interaction.response.defer()
 
             title_prefix = 'Player Tutorial, Page'
-            page_content = {'Intro' : "Welcome, this guide" + \
-                                    " will tell you everything you need to know as" + \
-                                    " a player. Let's begin.",
-                            'Player Channels': "Players have their own channel" + \
-                                    " for roleplaying. All speech and movement, etc, is" + \
-                                    " done through there.",
-                            'Locations': "Your character exists in some location." + \
-                                    " You can check where you are with `/look`.",
-                            'Movement': "You can `/move` to a new place. Certain" + \
-                                    " places or routes might have limits on who's allowed" + \
-                                    " in.",
-                            'Visibility': "You're able to see people in the same" + \
-                                    " location as you, even if they're only passing by.",
-                            'Sound': "Normally, you can only hear people in the" + \
-                                    " same location as you, and vice versa.",
-                            'Eavesdropping': "If you want, you can `/eavesdrop` on" + \
-                                    " people in a location next to you to hear what's going on.",
+            page_content = {'Intro' : "Welcome, this guide" +
+                                " will tell you everything you need to know as" +
+                                " a __player__. Let's begin.",
+                            'Player Channels': "Players have their own channel" +
+                                " for roleplaying. All speech and __move__ment, etc, is" +
+                                " done through there.",
+                            'Locations': "Your __character__ exists in some __location__." +
+                                " You can check where you are with /look.",
+                            'Movement': "You can /move to a new place. Certain" +
+                                " __location__s or routes might have limits on who's allowed" +
+                                " in.",
+                            'Visibility': "You're able to see people in the same" +
+                                " __location__ as you, even if they're only passing by.",
+                            'Sound': "Normally, you can only hear people in the" +
+                                " same __location__ as you, and vice versa.",
+                            'Eavesdropping': "If you want, you can /eavesdrop on" +
+                                " people in a __location__ next to you to __direct__ly hear" +
+                                " what's going on.",
                             'Fin': "And that's about it! Enjoy the game."}
 
             if interaction.guild_id:
@@ -122,7 +146,7 @@ class OpenCommands(commands.Cog):
                 if player_data.location:
                     page_content['Player Channels'] += " You're a" + \
                         " player in this server, so you'll use" + \
-                        f" <#{player_data.channelID}>."
+                        f" <#{player_data.channel_ID}>."
                     page_content['Locations'] += " Right now, you're" + \
                         f" in **#{player_data.location}**."
 

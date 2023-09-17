@@ -23,9 +23,8 @@ class OwnerCommands(commands.Cog):
 
         for cog in loaded_cogs:
 
-            if cog != 'cogs.owner':
-                self.prox.unload_extension(cog)
-                self.prox.load_extension(cog)
+            self.prox.unload_extension(cog)
+            self.prox.load_extension(cog)
 
 
         embed, _ = await mbd(

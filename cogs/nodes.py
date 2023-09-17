@@ -6,13 +6,13 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get
 
-from libraries.classes import GuildData, DialogueView, ChannelMaker
-from libraries.universal import mbd, loading, identify_node_channel
+from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
+from libraries.universal import mbd, loading, identify_node_channel, \
+    no_changes, prevent_spam
 from libraries.formatting import discordify, unique_name, format_whitelist, \
-    format_nodes, embolden
+    format_nodes, embolden, format_players
 from libraries.autocomplete import complete_nodes
-from data.listeners import to_direct_listeners
-#    direct_listeners, queue_refresh
+from data.listeners import to_direct_listeners, queue_refresh
 
 
 #Classes
@@ -102,14 +102,7 @@ class NodeCommands(commands.Cog):
     @node.command(
         name = 'delete',
         description = 'Delete a node.')
-    async def delete(
-        self,
-        ctx: ApplicationContext,
-        node: Option(
-            str,
-            description = 'Call this command in a node (or name it) to narrow it down.',
-            autocomplete = complete_nodes,
-            required = False)):
+    async def delete(self, ctx: ApplicationContext, node: Option(str, description = 'Call this command in a node (or name it) to narrow it down.', autocomplete = complete_nodes, required = False)):
 
         await ctx.defer(ephemeral = True)
 
@@ -149,8 +142,8 @@ class NodeCommands(commands.Cog):
                     await to_direct_listeners(
                         embed,
                         interaction.guild,
-                        guild_data.nodes[name].channelID,
-                        onlyOccs = True)
+                        guild_data.nodes[name].channel_ID,
+                        occupants_only = True)
 
                     embed, _ = await mbd(
                         'Neighbor node(s) deleted.',
@@ -158,7 +151,7 @@ class NodeCommands(commands.Cog):
                         "I'm sure it's for the best.")
                     neighbor_node_channel = get(
                         interaction.guild.text_channels,
-                        id = guild_data.nodes[name].channelID)
+                        id = guild_data.nodes[name].channel_ID)
                     await neighbor_node_channel.send(embed = embed)
 
                 #Delete nodes and their edges
@@ -231,195 +224,188 @@ class NodeCommands(commands.Cog):
                 await ctx.respond(embed = embed, view = view)
 
         return
-#
-#     @node.command(
-#         name = 'review',
-#         description = 'Inspect and/or edit one or more nodes.')
-#     async def review(
-#         self,
-#         ctx: ApplicationContext,
-#         node: Option(
-#             str,
-#             'Either call this command inside a node or name it here.',
-#             autocomplete = complete_nodes,
-#             required = False)):
-#
-#         await ctx.defer(ephemeral = True)
-#
-#         guild_data = GuildData(ctx.guild_id)
-#
-#         async def reviseNodes(nodeNames: list):
-#
-#             revisingNodes = await guild_data.filter_nodes(nodeNames)
-#
-#             title = f'Reviewing {len(revisingNodes)} node(s).'
-#             intro = f"• Selected node(s): {await format_nodes(revisingNodes.values())}"
-#
-#             occupants = await guild_data.getUnifiedOccupants(revisingNodes.values())
-#             description = f"\n• Occupants: {await oop.Format.players(occupants) if occupants else 'There are no people here.'}"
-#
-#             neighbors = await guild_data.neighbors(revisingNodes.keys())
-#             if neighbors:
-#                 localNodes = await guild_data.filter_nodes(list(neighbors) + nodeNames)
-#                 subgraph = await guild_data.toGraph(localNodes)
-#                 graphView = (await guild_data.toMap(subgraph), 'full')
-#             else:
-#                 description += '\n• Edges: No other nodes are connected to the selected node(s).'
-#                 graphView = None
-#
-#             hasWhitelist = any(node.allowedRoles or node.allowedPlayers for node in revisingNodes.values())
-#
-#             async def refreshEmbed():
-#
-#                 fullDescription = intro
-#                 if view.name():
-#                     newName = await oop.Format.newName(view.name(), guild_data.nodes.keys())
-#                     fullDescription += f', renaming to **#{newName}**.'
-#                 fullDescription += description
-#
-#                 fullDescription += await view.whitelist(revisingNodes.values())
-#
-#                 embed, _ = await mbd(
-#                     title,
-#                     fullDescription,
-#                     'You can rename a node if you have only one selected.',
-#                     graphView)
-#                 return embed
-#
-#             async def submitNode(interaction: Interaction):
-#
-#                 await loading(interaction)
-#
-#                 nonlocal revisingNodes
-#                 newName = await oop.Format.newName(view.name(), guild_data.nodes.keys())
-#
-#                 if not any([newName, view.roles(), view.players(), view.clearing]):
-#                     await fn.noChanges(interaction)
-#                     return
-#
-#                 description = ''
-#
-#                 if view.clearing:
-#                     description += '\n• Removed the whitelist(s).'
-#                     for name, node in revisingNodes.items():
-#
-#                         await guild_data.nodes[name].clearWhitelist()
-#                         embed, _ = await mbd(
-#                             'Opening up.',
-#                             'You somehow feel like this place just easier to get to.',
-#                             'For better or for worse.')
-#                         await to_direct_listeners(embed,
-#                             interaction.guild,
-#                             node.channelID,
-#                             onlyOccs = True)
-#
-#                 if view.roles() or view.players():
-#                     if view.roles():
-#                         description += '\n• Edited the roles whitelist(s).'
-#                     if view.players():
-#                         description += '\n• Edited the player whitelist(s).'
-#
-#                     embed, _ = await mbd(
-#                         'Strange.',
-#                         "There's a sense that this place just changed in some way.",
-#                         "Only time will tell if you'll be able to return here as easily as you came.")
-#
-#                     for name, node in revisingNodes.items():
-#                         await to_direct_listeners(embed,
-#                             interaction.guild,
-#                             node.channelID,
-#                             onlyOccs = True)
-#
-#                         await guild_data.nodes[name].setRoles(view.roles())
-#                         await guild_data.nodes[name].setPlayers(view.players())
-#
-#                 if newName:
-#
-#                     oldName = list(revisingNodes.keys())[0]
-#                     renamedNode = guild_data.nodes.pop(oldName)
-#                     guild_data.nodes[newName] = renamedNode
-#
-#                     description += f"\n• Renamed **#{oldName}** to {renamedNode.mention}."
-#
-#
-#                     #Correct locationName in player data
-#                     for ID in renamedNode.occupants:
-#                         player = oop.Player(ID, channel.guild.id)
-#                         player.location = newName
-#                         await player.save()
-#
-#                     #Rename edges
-#                     for node in guild_data.nodes.values():
-#                         for neighbor in list(node.neighbors):
-#                             if neighbor == oldName:
-#                                 node.neighbors[newName] = node.neighbors.pop(oldName)
-#
-#                 await guild_data.save()
-#
-#                 if newName: #Gotta save first sorry
-#                     nodeChannel = get(interaction.guild.text_channels, id = renamedNode.channelID)
-#                     await nodeChannel.edit(name = newName)
-#
-#                 await queueRefresh(interaction.guild)
-#
-#                 embed, _ = await mbd(
-#                     'Edited.',
-#                     description,
-#                     'Another successful revision.')
-#                 for node in revisingNodes.values():
-#                     nodeChannel = get(interaction.guild.text_channels, id = node.channelID)
-#                     await nodeChannel.send(embed = embed)
-#
-#                 return await fn.noCopies(
-#                     (interaction.channel.name in revisingNodes or interaction.channel.name == newName),
-#                     embed,
-#                     interaction)
-#
-#             view = DialogueView(ctx.guild, refreshEmbed)
-#             await view.addRoles()
-#             await view.addPlayers(guild_data.players)
-#             await view.addSubmit(submitNode)
-#             if len(revisingNodes) == 1:
-#                 await view.add_rename(nodeNames[0])
-#             if hasWhitelist:
-#                 await view.addClear()
-#             await view.add_cancel()
-#             embed = await refreshEmbed()
-#             _, file = await mbd(
-#                 imageDetails = graphView)
-#
-#             await ctx.respond(embed = embed, view = view, file = file, ephemeral = True)
-#             return
-#
-#         result = await identify_node_channel(guild_data.nodes.keys(), ctx.channel.name, node)
-#         match result:
-#             case isMessage if isinstance(result, Embed):
-#                 await ctx.respond(embed = result)
-#             case isChannel if isinstance(result, str):
-#                 await reviseNodes([result])
-#             case None:
-#
-#                 embed, _ = await mbd(
-#                     'Review node(s)?',
-#                     "You can revise a node three ways:" + \
-#                         "\n• Call this command inside of a node channel." + \
-#                         "\n• Do `/node review #node-channel`." + \
-#                         "\n• Select multiple node channels with the list below.",
-#                     'This will allow you to view the nodes, their edges, and their whitelists.')
-#
-#                 async def submit_nodes(interaction: Interaction):
-#                     await ctx.delete()
-#                     await reviseNodes(view.nodes())
-#                     return
-#
-#                 view = DialogueView()
-#                 nodes = [name for name, node in guild_data.nodes.items() if node.channelID != ctx.channel_id]
-#                 await view.add_nodes(nodes, submit_nodes)
-#                 await view.add_cancel()
-#                 await ctx.respond(embed = embed, view = view)
-#
-#         return
-#
+
+    @node.command(
+        name = 'review',
+        description = 'Inspect and/or edit one or more nodes.')
+    async def review(self, ctx: ApplicationContext, node: Option(str, description = 'Either call this command inside a node or name it here.', autocomplete = complete_nodes, required = False)):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        async def revise_nodes(node_names: list):
+
+            reviewing_nodes = await guild_data.filter_nodes(node_names)
+
+            title = f'Reviewing {len(reviewing_nodes)} node(s).'
+            intro = f"• Selected node(s): {await format_nodes(reviewing_nodes.values())}"
+
+            occupants = await guild_data.get_all_occupants(reviewing_nodes.values())
+            final_part = f"\n• Occupants: {await format_players(occupants) if occupants else 'There are no people here.'}"
+
+            neighbors = await guild_data.neighbors(reviewing_nodes.keys())
+            if neighbors:
+                impacted_nodes = await guild_data.filter_nodes(list(neighbors) + node_names)
+                subgraph = await guild_data.toGraph(impacted_nodes)
+                graphView = (await guild_data.toMap(subgraph), 'full')
+            else:
+                final_part += '\n• Edges: No other nodes are connected to the selected node(s).'
+                graphView = None
+
+            has_whitelist = any(node.allowed_roles or node.allowed_players for node in reviewing_nodes.values())
+
+            async def refresh_embed():
+
+                description = intro
+                if view.name():
+                    new_name = await unique_name(view.name(), guild_data.nodes.keys())
+                    description += f', renaming to **#{new_name}**.'
+                description += final_part
+
+                description += await view.format_whitelist(reviewing_nodes.values())
+
+                embed, _ = await mbd(
+                    title,
+                    description,
+                    'You can rename a node if you have only one selected.',
+                    graphView)
+                return embed
+
+            async def submit_node(interaction: Interaction):
+
+                await loading(interaction)
+
+                nonlocal reviewing_nodes
+                new_name = await unique_name(view.name(), guild_data.nodes.keys())
+
+                if not any([new_name, view.roles(), view.players(), view.clearing]):
+                    await no_changes(interaction)
+                    return
+
+                description = ''
+
+                if view.clearing:
+                    description += '\n• Removed the whitelist(s).'
+                    for name, node in reviewing_nodes.items():
+
+                        await guild_data.nodes[name].clearWhitelist()
+                        embed, _ = await mbd(
+                            'Opening up.',
+                            'You somehow feel like this place just easier to get to.',
+                            'For better or for worse.')
+                        await to_direct_listeners(embed,
+                            interaction.guild,
+                            node.channel_ID,
+                            occupants_only = True)
+
+                if view.roles() or view.players():
+                    if view.roles():
+                        description += '\n• Edited the roles whitelist(s).'
+                    if view.players():
+                        description += '\n• Edited the player whitelist(s).'
+
+                    embed, _ = await mbd(
+                        'Strange.',
+                        "There's a sense that this place just changed in some way.",
+                        "Only time will tell if you'll be able to return here as easily as you came.")
+
+                    for name, node in reviewing_nodes.items():
+                        await to_direct_listeners(embed,
+                            interaction.guild,
+                            node.channel_ID,
+                            occupants_only = True)
+
+                        await guild_data.nodes[name].set_roles(view.roles())
+                        await guild_data.nodes[name].set_players(view.players())
+
+                if new_name:
+
+                    old_name = list(reviewing_nodes.keys())[0]
+                    node_data = guild_data.nodes.pop(old_name)
+                    guild_data.nodes[new_name] = node_data
+
+                    description += f"\n• Renamed **#{old_name}** to {node_data.mention}."
+
+
+                    #Correct locationName in player data
+                    for ID in node_data.occupants:
+                        player = Player(ID, interaction.channel.guild.id)
+                        player.location = new_name
+                        await player.save()
+
+                    #Rename edges
+                    for node in guild_data.nodes.values():
+                        for neighbor in list(node.neighbors):
+                            if neighbor == old_name:
+                                node.neighbors[new_name] = node.neighbors.pop(old_name)
+
+                await guild_data.save()
+
+                if new_name: #Gotta save first sorry
+                    nodeChannel = get(interaction.guild.text_channels, id = node_data.channel_ID)
+                    await nodeChannel.edit(name = new_name)
+
+                await queue_refresh(interaction.guild)
+
+                embed, _ = await mbd(
+                    'Edited.',
+                    description,
+                    'Another successful revision.')
+                for node in reviewing_nodes.values():
+                    nodeChannel = get(interaction.guild.text_channels, id = node.channel_ID)
+                    await nodeChannel.send(embed = embed)
+
+                return await prevent_spam(
+                    (interaction.channel.name in reviewing_nodes or interaction.channel.name == new_name),
+                    embed,
+                    interaction)
+
+            view = DialogueView(ctx.guild, refresh_embed)
+            await view.add_roles()
+            await view.add_players(guild_data.players)
+            await view.add_submit(submit_node)
+            if len(reviewing_nodes) == 1:
+                await view.add_rename(node_names[0])
+            if has_whitelist:
+                await view.add_clear()
+            await view.add_cancel()
+            embed = await refresh_embed()
+            _, file = await mbd(
+                image_details = graphView)
+
+            await ctx.respond(embed = embed, view = view, file = file, ephemeral = True)
+            return
+
+        result = await identify_node_channel(guild_data.nodes.keys(), ctx.channel.name, node)
+        match result:
+            case _ if isinstance(result, Embed):
+                await ctx.respond(embed = result)
+            case _ if isinstance(result, str):
+                await revise_nodes([result])
+            case None:
+
+                embed, _ = await mbd(
+                    'Review node(s)?',
+                    "You can revise a node three ways:" + \
+                        "\n• Call this command inside of a node channel." + \
+                        "\n• Do `/node review #node-channel`." + \
+                        "\n• Select multiple node channels with the list below.",
+                    'This will allow you to view the nodes, their edges, and their whitelists.')
+
+                async def submit_nodes(interaction: Interaction):
+                    await ctx.delete()
+                    await revise_nodes(view.nodes())
+                    return
+
+                view = DialogueView()
+                nodes = [name for name, node in guild_data.nodes.items() if node.channel_ID != ctx.channel_id]
+                await view.add_nodes(nodes, submit_nodes)
+                await view.add_cancel()
+                await ctx.respond(embed = embed, view = view)
+
+        return
+
 #     @commands.Cog.listener()
 #     async def on_guild_channel_delete(
 #         self,
@@ -428,7 +414,7 @@ class NodeCommands(commands.Cog):
 #         guild_data = GuildData(channel.guild.id)
 #
 #         for name, node in guild_data.nodes.items():
-#             if channel.id == node.channelID:
+#             if channel.id == node.channel_ID:
 #
 #                 if not node.occupants:
 #
@@ -441,8 +427,8 @@ class NodeCommands(commands.Cog):
 #                         await to_direct_listeners(
 #                             embed,
 #                             channel.guild,
-#                             guild_data.nodes[neighborName].channelID,
-#                             onlyOccs = True)
+#                             guild_data.nodes[neighborName].channel_ID,
+#                             occupants_only = True)
 #
 #                         embed, _ = await mbd(
 #                             'Neighbor node(s) deleted.',
@@ -450,28 +436,28 @@ class NodeCommands(commands.Cog):
 #                             "I'm sure it's for the best.")
 #                         neighbor_node_channel = get(
 #                             channel.guild.text_channels,
-#                             id = guild_data.nodes[neighborName].channelID,)
+#                             id = guild_data.nodes[neighborName].channel_ID,)
 #                         await neighbor_node_channel.send(embed = embed)
 #
 #                         await guild_data.deleteEdge(name, neighborName)
 #
 #                     await guild_data.delete_node(name)
-#                     directListeners.pop(node.channelID, None)
+#                     directListeners.pop(node.channel_ID, None)
 #                     await guild_data.save()
 #                     return
 #
 #                 maker = oop.ChannelMaker(channel.guild, 'nodes')
 #                 await maker.initialize()
 #                 newChannel = await maker.newChannel(name)
-#                 node.channelID = newChannel.id
+#                 node.channel_ID = newChannel.id
 #                 await guild_data.save()
 #
-#                 await queueRefresh(channel.guild)
+#                 await queue_refresh(channel.guild)
 #
 #                 embed, _ = await mbd(
 #                     'Not so fast.',
 #                     "There's still people inside this node:" + \
-#                         f" {await oop.Format.players(node.occupants)}" + \
+#                         f" {await format_players(node.occupants)}" + \
 #                         " to be specific. Either delete them as players" + \
 #                         " with `/player delete` or move them out with " + \
 #                         " `/player tp`.",
@@ -480,8 +466,8 @@ class NodeCommands(commands.Cog):
 #                 return
 #
 #         for ID in guild_data.players:
-#             player = oop.Player(ID, channel.guild.id)
-#             if player.channelID == channel.id:
+#             player = Player(ID, channel.guild.id)
+#             if player.channel_ID == channel.id:
 #
 #                 oldNode = guild_data.nodes[player.location]
 #                 await oldNode.removeOccupants({ID})
@@ -489,7 +475,7 @@ class NodeCommands(commands.Cog):
 #                 guild_data.players.discard(ID)
 #                 await guild_data.save()
 #
-#                 await queueRefresh(channel.guild)
+#                 await queue_refresh(channel.guild)
 #
 #                 playerEmbed, _ = await mbd(
 #                     'Where did they go?',
@@ -498,14 +484,14 @@ class NodeCommands(commands.Cog):
 #                 await to_direct_listeners(
 #                     playerEmbed,
 #                     channel.guild,
-#                     oldNode.channelID,
-#                     onlyOccs = True)
+#                     oldNode.channel_ID,
+#                     occupants_only = True)
 #
 #                 nodeEmbed, _ = await mbd(
 #                     'Fewer players.',
 #                     f'Removed <@{ID}> from the game (and this node).',
 #                     'You can view all remaining players with /player find.')
-#                 nodeChannel = get(channel.guild.channels, id = oldNode.channelID)
+#                 nodeChannel = get(channel.guild.channels, id = oldNode.channel_ID)
 #                 if nodeChannel:
 #                     await nodeChannel.send(embed = nodeEmbed)
 #                 return
@@ -522,25 +508,25 @@ class NodeCommands(commands.Cog):
 #
 #         foundNode = False
 #         for node in guild_data.nodes.values():
-#             if beforeChannel.id == node.channelID:
+#             if beforeChannel.id == node.channel_ID:
 #
 #                 if beforeChannel.name not in guild_data.nodes \
 #                     and afterChannel.name in guild_data.nodes:
 #                     return #Already good
 #
-#                 newName = await oop.Format.newName(afterChannel.name, guild_data.nodes.keys())
+#                 new_name = await unique_name(afterChannel.name, guild_data.nodes.keys())
 #
-#                 if newName != afterChannel.name:
-#                     await afterChannel.edit(name = newName)
+#                 if new_name != afterChannel.name:
+#                     await afterChannel.edit(name = new_name)
 #                     return
 #
-#                 oldName = next(name for name, candidate in guild_data.nodes.items() if candidate is node)
-#                 guild_data.nodes[newName] = guild_data.nodes.pop(oldName)
+#                 old_name = next(name for name, candidate in guild_data.nodes.items() if candidate is node)
+#                 guild_data.nodes[new_name] = guild_data.nodes.pop(old_name)
 #
 #                 #Correct location name for occupants
 #                 for ID in node.occupants:
-#                     player = oop.Player(ID, channel.guild.id)
-#                     player.location = newName
+#                     player = Player(ID, channel.guild.id)
+#                     player.location = new_name
 #                     await player.save()
 #
 #                 embed, _ = await mbd(
@@ -559,7 +545,7 @@ class NodeCommands(commands.Cog):
 #             #Fix the edges too
 #             for neighbor in list(node.neighbors.keys()):
 #                 if neighbor == beforeChannel.name:
-#                     node.neighbors[newName] = node.neighbors.pop(beforeChannel.name)
+#                     node.neighbors[new_name] = node.neighbors.pop(beforeChannel.name)
 #
 #         await guild_data.save()
 #         return
@@ -572,12 +558,12 @@ class NodeCommands(commands.Cog):
 #
 #         guild_data = GuildData(channel.guild.id)
 #
-#         if get(guild_data.nodes.values(), channelID = channel.id):
+#         if get(guild_data.nodes.values(), channel_ID = channel.id):
 #             brokenWebhooks.add(channel)
 #         else:
 #             for ID in guild_data.players:
-#                 player = oop.Player(ID, channel.guild.id)
-#                 if player.channelID == channel.id:
+#                 player = Player(ID, channel.guild.id)
+#                 if player.channel_ID == channel.id:
 #                     brokenWebhooks.add(channel)
 #                     break
 #

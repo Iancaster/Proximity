@@ -83,12 +83,7 @@ async def relay(msg: Message):
 
     return
 
-async def to_direct_listeners(
-    embed: Embed,
-    guild: Interaction,
-    channel_ID: int,
-    exclude: int = 0,
-    occupants_only: bool = False):
+async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int, exclude: int = 0, occupants_only: bool = False):
 
     if guild.id not in updated_guild_IDs:
         print(f'Waiting for updated listeners in server: {guild.name}.')
