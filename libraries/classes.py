@@ -8,6 +8,7 @@ from discord.ui import View, Select, Button, Modal, InputText
 
 from libraries.universal import mbd
 from libraries.formatting import discordify, format_whitelist
+from data.listeners import direct_listeners, indirect_listeners
 
 #Data Libraries
 from attr import s, ib, Factory
@@ -431,17 +432,17 @@ class GuildData:
 
         return neighbors
 
-    async def edge_count(self, nodes: dict = {}):
+    async def count_edges(self, nodes: dict = {}):
 
         included_nodes = nodes if nodes else self.nodes
         visited_nodes = set()
 
         for name, node in included_nodes.items():
-            edge_count = sum(1 for neighbor, edge in node.neighbors.items() \
+            count_edges = sum(1 for neighbor, edge in node.neighbors.items() \
                 if neighbor not in visited_nodes)
             visited_nodes.add(name)
 
-        return edge_count
+        return count_edges
 
     async def format_edges(self, neighbors: dict):
 
@@ -601,12 +602,12 @@ class GuildData:
 
     async def delete(self):
 
-        guild_con = connect('guildDB.db')
+        guild_con = connect(getcwd() + '/data/guildDB.db')
         cursor = guild_con.cursor()
 
         for node in self.nodes:
             cursor.execute("""DELETE FROM messages WHERE
-                            locationChannelID = ?""", (node.channel_ID,))
+                            location_channel_ID = ?""", (node.channel_ID,))
 
         cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
         cursor.execute("DELETE FROM player_data WHERE guild_ID = ?", (self.guild_ID,))
@@ -615,7 +616,7 @@ class GuildData:
         print(f'Guild deleted, ID: {self.guild_ID}.')
         return
 
-    async def clear(self, guild: Guild, direct_listeners: dict, indirect_listeners: dict):
+    async def clear(self, guild: Guild):
 
         for player_ID in self.players:
 

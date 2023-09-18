@@ -1,12 +1,13 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Embed
+from discord import ApplicationContext, Embed, Interaction
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from libraries.classes import GuildData, Player
+from libraries.classes import GuildData, Player, DialogueView
 from libraries.formatting import format_whitelist, format_players
+from libraries.universal import mbd, loading
 
 #Classes
 class ServerCommands(commands.Cog):
@@ -20,9 +21,7 @@ class ServerCommands(commands.Cog):
     @server.command(
         name = 'debug',
         description = 'View debug info for the server.')
-    async def debug(
-        self,
-        ctx: ApplicationContext):
+    async def debug(self, ctx: ApplicationContext):
 
         await ctx.defer(ephemeral = True)
 
@@ -97,69 +96,62 @@ class ServerCommands(commands.Cog):
         await ctx.respond(embed = embed)
         return
 
-    # @server.command(
-    #     name = 'clear',
-    #     description = 'Delete all server data.')
-    # async def clear(
-    #     self,
-    #     ctx: ApplicationContext):
-    #
-    #     await ctx.defer(ephemeral = True)
-    #
-    #     guild_data = GuildData(ctx.guild_id)
-    #
-    #     # db.newGuildDB()
-    #     # db.newPlayerDB()
-    #
-    #     if not (guild_data.nodes or guild_data.players):
-    #
-    #         embed, _ = await mbd(
-    #             'No data to delete!',
-    #             'Data is only made when you edit the graph or player count.',
-    #             'Wish granted?')
-    #         await ctx.respond(embed = embed)
-    #         return
-    #
-    #     async def deleteData(interaction: Interaction):
-    #
-    #         await loading(interaction)
-    #
-    #         global directListeners, indirectListeners
-    #
-    #         directListeners, indirectListeners = await guild_data.clear(
-    #             ctx.guild,
-    #             directListeners,
-    #             indirectListeners)
-    #
-    #         embed, _ = await mbd(
-    #             'See you.',
-    #             "The following has been deleted: \n• All guild data.\n• All nodes and their channel_IDs." + \
-    #                 "\n• All location messages.\n• All edges.\n• All player info and their channel_IDs.",
-    #             'You can always make them again if you change your mind.')
-    #
-    #         try:
-    #             await interaction.followup.edit_message(
-    #                 message_id = interaction.message.id,
-    #                 embed = embed,
-    #                 view = None)
-    #         except:
-    #             pass
-    #
-    #         return
-    #
-    #     view = oop.DialogueView()
-    #     await view.addEvilConfirm(deleteData)
-    #     await view.addCancel()
-    #     embed, _ = await mbd(
-    #         'Delete all data?',
-    #         f"You're about to delete {len(guild_data.nodes)} nodes" + \
-    #             f" and {await guild_data.edgeCount()} edges, alongside" + \
-    #             f" player data for {len(guild_data.players)} people.",
-    #         'This will also delete associated channel_IDs from the server.')
-    #
-    #     await ctx.respond(embed = embed, view = view)
-    #     return
-    #
+    @server.command(
+        name = 'clear',
+        description = 'Delete all server data.')
+    async def clear(self, ctx: ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        # import helpers.databaseInitialization as db
+        # db.create_guild_db()
+
+        if not (guild_data.nodes or guild_data.players):
+
+            embed, _ = await mbd(
+                'No data to delete!',
+                'Data is only made when you edit the graph or player count.',
+                'Wish granted?')
+            await ctx.respond(embed = embed)
+            return
+
+        async def delete_data(interaction: Interaction):
+
+            await loading(interaction)
+
+            await guild_data.clear(ctx.guild)
+
+            embed, _ = await mbd(
+                'See you.',
+                "The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
+                    "\n• All location messages.\n• All edges.\n• All player info and their channels.",
+                'You can always make them again if you change your mind.')
+
+            try:
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)
+            except:
+                pass
+
+            return
+
+        view = DialogueView()
+        await view.add_confirm(delete_data)
+        await view.add_cancel()
+        embed, _ = await mbd(
+            'Delete all data?',
+            f"You're about to delete {len(guild_data.nodes)} nodes" + \
+                f" and {await guild_data.count_edges()} edges, alongside" + \
+                f" player data for {len(guild_data.players)} people.",
+            'This will also delete associated channels from the server.')
+
+        await ctx.respond(embed = embed, view = view)
+        return
+
     # @server.command(
     #     name = 'settings',
     #     description = 'Review server options.')
@@ -180,7 +172,7 @@ class ServerCommands(commands.Cog):
     #         await ctx.respond(embed = embed)
     #         return
     #
-    #     async def deleteData(interaction: Interaction):
+    #     async def delete_data(interaction: Interaction):
     #
     #         await loading(interaction)
     #
@@ -207,13 +199,13 @@ class ServerCommands(commands.Cog):
     #
     #         return
     #
-    #     view = oop.DialogueView()
-    #     await view.addEvilConfirm(deleteData)
-    #     await view.addCancel()
+    #     view = DialogueView()
+    #     await view.add_confirm(delete_data)
+    #     await view.add_cancel()
     #     embed, _ = await mbd(
     #         'Delete all data?',
     #         f"You're about to delete {len(guild_data.nodes)} nodes" + \
-    #             f" and {await guild_data.edgeCount()} edges, alongside" + \
+    #             f" and {await guild_data.count_edges()} edges, alongside" + \
     #             f" player data for {len(guild_data.players)} people.",
     #         'This will also delete associated channel_IDs from the server.')
     #

@@ -3,7 +3,6 @@
 #Import-ant Libraries
 from discord import Guild, Message, Embed, Interaction
 from asyncio import sleep
-from libraries.classes import Player
 from libraries.universal import mbd
 
 #Variables
@@ -31,7 +30,13 @@ async def relay(msg: Message):
             await sleep(1)
         print(f'Updated {msg.guild.name}!')
 
-    speaker = Player(msg.author.id, msg.guild.id)
+    try:
+        from libraries.classes import Player
+        speaker = Player(msg.author.id, msg.guild.id)
+    except ImportError:
+        speaker = None
+        print('Uh oh, cjeck relay() plese')
+
     speaker_name = speaker.name if speaker.name else msg.author.display_name
     speaker_avatar = speaker.avatar if speaker.avatar else msg.author.display_avatar.url
 
