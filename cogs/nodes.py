@@ -247,8 +247,8 @@ class NodeCommands(commands.Cog):
             neighbors = await guild_data.neighbors(reviewing_nodes.keys())
             if neighbors:
                 impacted_nodes = await guild_data.filter_nodes(list(neighbors) + node_names)
-                subgraph = await guild_data.toGraph(impacted_nodes)
-                graphView = (await guild_data.toMap(subgraph), 'full')
+                subgraph = await guild_data.to_graph(impacted_nodes)
+                graphView = (await guild_data.to_map(subgraph), 'full')
             else:
                 final_part += '\n• Edges: No other nodes are connected to the selected node(s).'
                 graphView = None

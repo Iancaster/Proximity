@@ -1,13 +1,15 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Embed, Interaction
+from discord import ApplicationContext, Embed, Interaction, Option
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from libraries.classes import GuildData, Player, DialogueView
+from libraries.classes import GuildData, Player, DialogueView, \
+    ChannelMaker, Edge
 from libraries.formatting import format_whitelist, format_players
-from libraries.universal import mbd, loading
+from libraries.universal import mbd, loading, identify_node_channel
+from libraries.autocomplete import complete_nodes
 
 #Classes
 class ServerCommands(commands.Cog):
@@ -18,9 +20,7 @@ class ServerCommands(commands.Cog):
         guild_only = True,
         guild_ids = [1114005940392439899])
 
-    @server.command(
-        name = 'debug',
-        description = 'View debug info for the server.')
+    @server.command(name = 'debug', description = 'View debug info for the server.')
     async def debug(self, ctx: ApplicationContext):
 
         await ctx.defer(ephemeral = True)
@@ -48,29 +48,10 @@ class ServerCommands(commands.Cog):
             for neighbor in node.neighbors.keys():
                 description += f'\n-- Neighbors: **#{neighbor}**'
 
-        already_included_nodes = set()
-        for name, node in guild_data.nodes.items():
-
-            for neighbor, edge in node.neighbors.items():
-
-                if neighbor in already_included_nodes:
-                    continue
-
-                match edge.directionality:
-                    case 0:
-                        description += f"\n• {neighbor} -> {name}"
-
-                    case 1:
-                        description += f"\n• {name} <-> {neighbor}"
-
-                    case 2:
-                        description += f"\n• {name} -> {neighbor}"
-
-            already_included_nodes.add(name)
 
         embed.add_field(
             name = 'Server Data: guilds.guilds.db',
-            value = description[:1000],
+            value = description[:1500],
             inline = False)
 
         players_description = f'\n• Players: {await format_players(guild_data.players)}'
@@ -96,9 +77,7 @@ class ServerCommands(commands.Cog):
         await ctx.respond(embed = embed)
         return
 
-    @server.command(
-        name = 'clear',
-        description = 'Delete all server data.')
+    @server.command(name = 'clear', description = 'Delete all server data.')
     async def clear(self, ctx: ApplicationContext):
 
         await ctx.defer(ephemeral = True)
@@ -150,6 +129,107 @@ class ServerCommands(commands.Cog):
             'This will also delete associated channels from the server.')
 
         await ctx.respond(embed = embed, view = view)
+        return
+
+    @server.command(name = 'view', description = 'View the entire graph or just a portion.')
+    async def view(self, ctx: ApplicationContext, node: Option(str, description = 'Specify a node to highlight?', autocomplete = complete_nodes, required = False)):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        async def view_ego_graph(guild_data: dict, center_node_name: str = None):
+
+            #Nothing provided
+            if not center_node_name:
+                server_map = await guild_data.to_map()
+                embed, file = await mbd(
+                    'Complete graph',
+                    'Here is a view of every node and edge.',
+                    'To view only a single node and its neighbors, use /server view #node.',
+                    (server_map, 'full'))
+
+                await ctx.respond(embed = embed, file = file, ephemeral = True)
+                return
+
+            #If something provided
+            center_node = guild_data.nodes[center_node_name]
+            included = center_node.neighbors.keys() + [center_node_name]
+            graph = await guild_data.to_graph(included)
+            server_map = await guild_data.to_map(graph)
+
+            embed, file = await mbd(
+                f"{center_node.mention}'s neighbors",
+                "Here is the node, plus any neighbors.",
+                'To view every node and edge, call /server view, without the #node.',
+                (server_map, 'full'))
+
+            await ctx.respond(embed = embed, file = file, ephemeral = True)
+            return
+
+        result = await identify_node_channel(guild_data.nodes.keys(), node)
+        match result:
+            case _ if isinstance(result, Embed):
+                await ctx.respond(embed = result)
+            case _ if isinstance(result, str):
+                await view_ego_graph(guild_data, result)
+            case None:
+                await view_ego_graph(guild_data)
+
+        return
+
+    @server.command(name = 'quick', description = 'Create a quick example graph.')
+    async def quick(self, ctx: ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        both_ways = Edge(
+            directionality = 1,
+            allowed_roles = set(),
+            allowed_players = set())
+
+        node_data = {
+            'the-kitchen' : {
+                'the-dining-room' : both_ways},
+            'the-dining-room' : {
+                'the-kitchen' : both_ways,
+                'the-living-room' : both_ways},
+            'the-living-room' : {
+                'the-dining-room' : both_ways,
+                'the-bedroom' : both_ways},
+            'the-bedroom' : {
+                'the-living-room' : both_ways}}
+
+        maker = ChannelMaker(ctx.guild, 'nodes')
+        await maker.initialize()
+        for node_name, node_edges in node_data.items():
+
+            if node_name in guild_data.nodes:
+                await guild_data.delete_node(node_name, ctx.guild.text_channels)
+
+            node_channel = await maker.create_channel(node_name)
+            await guild_data.create_node(node_name, node_channel.id)
+
+
+
+        for node_name, node_edges in node_data.items():
+
+            for neighbor_name, edge_data in node_edges.items():
+
+                await guild_data.set_edge(node_name, neighbor_name, edge_data)
+
+        await guild_data.save()
+
+        embed, _ = await mbd(
+            'Done.',
+            "Made an example graph composed of a household layout. If there were any" + \
+                " nodes/edges that were already present from a previous `/server quick` call," + \
+                " they've been overwritten.",
+            'Your other data is untouched.')
+
+        await ctx.respond(embed = embed)
         return
 
     # @server.command(
@@ -212,62 +292,7 @@ class ServerCommands(commands.Cog):
     #     await ctx.respond(embed = embed, view = view)
     #     return
     #
-    # @server.command(
-    #     name = 'view',
-    #     description = 'View the entire graph or just a portion.')
-    # async def view(
-    #     self,
-    #     ctx: ApplicationContext,
-    #     node: discord.Option(
-    #         str,
-    #         'Specify a node to highlight?',
-    #         autocomplete = oop.Auto.nodes,
-    #         required = False)):
-    #
-    #     await ctx.defer(ephemeral = True)
-    #
-    #     guild_data = GuildData(ctx.guild_id)
-    #
-    #     async def viewEgo(guild_data: dict, centerName: str = None):
-    #
-    #         #Nothing provided
-    #         if not centerName:
-    #             map = await guild_data.toMap()
-    #             embed, file = await mbd(
-    #                 'Complete graph',
-    #                 'Here is a view of every node and edge.',
-    #                 'To view only a single node and its neighbors, use /server view #node.',
-    #                 (map, 'full'))
-    #
-    #             await ctx.respond(embed = embed, file = file, ephemeral = True)
-    #             return
-    #
-    #         #If something provided
-    #         center = guild_data.nodes[centerName]
-    #         included = center.neighbors.keys() + [centerName]
-    #         graph = await guild_data.toGraph(included)
-    #         map = await guild_data.toMap(graph)
-    #
-    #         embed, file = await mbd(
-    #             f"{center.mention}'s neighbors",
-    #             "Here is the node, plus any neighbors.",
-    #             'To view every node and edge, call /server view without the #node.',
-    #             (map, 'full'))
-    #
-    #         await ctx.respond(embed = embed, file = file, ephemeral = True)
-    #         return
-    #
-    #     result = await fn.identifyNodeChannel(guild_data.nodes.keys(), node)
-    #     match result:
-    #         case _ if isinstance(result, Embed):
-    #             await ctx.respond(embed = result)
-    #         case _ if isinstance(result, str):
-    #             await viewEgo(guild_data, result)
-    #         case None:
-    #             await viewEgo(guild_data)
-    #
-    #     return
-    #
+
     # @server.command(
     #     name = 'fix',
     #     description = 'Fix certain issues with the server.')
@@ -478,54 +503,7 @@ class ServerCommands(commands.Cog):
     #     await ctx.respond(embed = embed)
     #     return
 
-    # @server.command( ##testing
-    #     name = 'quick',
-    #     description = 'Create a quick example graph.')
-    # async def quick(
-    #     self,
-    #     ctx: ApplicationContext):
 
-    #     await ctx.defer(ephemeral = True)
-
-    #     guild_data = GuildData(ctx.guild_id)
-
-    #     exampleNodes = ['the-kitchen', 'the-living-room', 'the-dining-room', 'the-bedroom']
-
-    #     maker = oop.ChannelMaker(ctx.guild, 'nodes')
-    #     await maker.initialize()
-    #     for name in exampleNodes:
-
-    #         if name in guild_data.nodes:
-    #             await guild_data.deleteNode(name, ctx.guild.text_channel_IDs)
-
-    #         newChannel = await maker.newChannel(name)
-    #         await guild_data.newNode(name, newChannel.id)
-
-
-    #     newEdges = {
-    #         ('the-kitchen', 'the-dining-room') : {},
-    #         ('the-dining-room', 'the-kitchen') : {},
-    #         ('the-living-room', 'the-dining-room') : {},
-    #         ('the-dining-room', 'the-living-room') : {},
-    #         ('the-dining-room', 'the-kitchen') : {},
-    #         ('the-kitchen', 'the-dining-room') : {},
-    #         ('the-living-room', 'the-bedroom') : {},
-    #         ('the-bedroom', 'the-living-room') : {}}
-    #     guild_data['edges'].update(newEdges)
-    #     db.updateGuild(con, guild_data, ctx.guild_id)
-    #     con.close()
-
-    #     await guild_data.save()
-
-    #     embed, _ = await mbd(
-    #         'Done.',
-    #         "Made an example graph composed of a household layout. If there were any" + \
-    #             " nodes/edges that were already present from a previous `/server quick` call," + \
-    #             " they've been overwritten.",
-    #         'Your other data is untouched.')
-
-    #     await ctx.respond(embed = embed)
-    #     return
 
 def setup(prox):
     prox.add_cog(ServerCommands(prox), override = True)

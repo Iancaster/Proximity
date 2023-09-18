@@ -380,11 +380,11 @@ class GuildData:
             origin in self.nodes[destination].neighbors:
 
             if overwrite:
-                priorEdge = True
+                prior_edge = True
             else:
                 return True
         else:
-            priorEdge = False
+            prior_edge = False
 
         match edge.directionality:
 
@@ -412,7 +412,7 @@ class GuildData:
                     directionality = 0)
                 self.nodes[destination].neighbors[origin] = newEdge
 
-        return priorEdge
+        return prior_edge
 
     async def delete_edge(self, origin: str, destination: str):
         self.nodes[origin].neighbors.pop(destination)
@@ -505,12 +505,12 @@ class GuildData:
 
         return graph
 
-    async def to_map(self, graph = None, edgeColor: str = []):
+    async def to_map(self, graph = None, edge_color: str = []):
 
         if not graph:
             graph = await self.to_graph()
-        if not edgeColor:
-            edgeColor = ['black'] * len(graph.edges)
+        if not edge_color:
+            edge_color = ['black'] * len(graph.edges)
 
         positions = shell_layout(graph)
 
@@ -559,7 +559,7 @@ class GuildData:
                 pos = {origin : (ox, oy),
                     destination: (dx, dy)},
                 edgelist = [(origin, destination)],
-                edge_color = edgeColor[index],
+                edge_color = edge_color[index],
                 width = 3.0,
                 arrowstyle =
                     ArrowStyle('-|>'),
