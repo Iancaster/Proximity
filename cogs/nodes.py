@@ -18,6 +18,11 @@ from data.listeners import to_direct_listeners, queue_refresh, \
 
 #Classes
 class NodeCommands(commands.Cog):
+    """
+    Commnds specific to nodes and their functions.
+    Also includes listener functions that keep the
+    bot syncronized with the server.
+    """
 
     node = SlashCommandGroup(
         name = 'node',
@@ -243,10 +248,10 @@ class NodeCommands(commands.Cog):
             if neighbors:
                 impacted_nodes = await guild_data.filter_nodes(list(neighbors) + node_names)
                 subgraph = await guild_data.to_graph(impacted_nodes)
-                graphView = (await guild_data.to_map(subgraph), 'full')
+                graph_view = (await guild_data.to_map(subgraph), 'full')
             else:
                 final_part += '\n• Edges: No other nodes are connected to the selected node(s).'
-                graphView = None
+                graph_view = None
 
             has_whitelist = any(node.allowed_roles or node.allowed_players for node in reviewing_nodes.values())
 
@@ -264,7 +269,7 @@ class NodeCommands(commands.Cog):
                     title,
                     description,
                     'You can rename a node if you have only one selected.',
-                    graphView)
+                    graph_view)
                 return embed
 
             async def submit_node(interaction: Interaction):
@@ -367,7 +372,7 @@ class NodeCommands(commands.Cog):
             await view.add_cancel()
             embed = await refresh_embed()
             _, file = await mbd(
-                image_details = graphView)
+                image_details = graph_view)
 
             await ctx.respond(embed = embed, view = view, file = file, ephemeral = True)
             return

@@ -11,18 +11,13 @@ from libraries.classes import DialogueView, Player, Paginator
 
 #Classes
 class OpenCommands(commands.Cog):
+    """
+    These are commands that are "open" to the public.
+    They can be called anywhere and by anyone.
+    """
 
-    @commands.slash_command(
-        name = 'help',
-        description = 'Definitions, usage, and a tutorial.',
-        guild_ids = [1114005940392439899])
-    async def help(
-        self,
-        ctx: ApplicationContext,
-        word: Option(
-            str,
-            description = 'Get help on a specific term?',
-            required = False)):
+    @commands.slash_command(name = 'help', description = 'Definitions, usage, and a tutorial.')
+    async def help(self, ctx: ApplicationContext, word: Option( str, description = 'Get help on a specific term?', required = False)):
 
         await ctx.defer(ephemeral = True)
         word = word.lower() if word else ''
@@ -104,7 +99,8 @@ class OpenCommands(commands.Cog):
                 embed, _ = await mbd(
                     f'{word.capitalize()} explanation:',
                     glossary_terms[word],
-                    "Clear things up, I hope?")
+                    'Clear things up, I hope?')
+
             else:
                 embed, _ = await mbd(
                     'What was that?',
@@ -116,9 +112,20 @@ class OpenCommands(commands.Cog):
             await ctx.respond(embed = embed)
             return
 
-        async def player_tutorial(interaction: Interaction):
+        async def leatherbound(interaction, pages): #Because it wraps the paginators haha
 
             await interaction.response.defer()
+
+            title_prefix, page_content = await pages(interaction)
+            paginator = Paginator(
+                interaction,
+                title_prefix,
+                page_content)
+            await paginator.refresh_embed()
+
+            return
+
+        async def player_tutorial(interaction: Interaction):
 
             title_prefix = 'Player Tutorial, Page'
             page_content = {'Intro' : "Welcome, this guide" +
@@ -150,29 +157,21 @@ class OpenCommands(commands.Cog):
                     page_content['Locations'] += " Right now, you're" + \
                         f" in **#{player_data.location}**."
 
-            paginator = Paginator(
-                interaction,
-                title_prefix,
-                page_content)
-            await paginator.refresh_embed()
-            return
+            return title_prefix, page_content
 
-        async def host_tutorial(interaction: Interaction):
+        async def server_setup(interaction: Interaction):
 
-            await interaction.response.defer()
-
-            title_prefix = 'Host Tutorial, Page'
-            page_content = {'Intro': "Buckle up, this guide is" + \
-                                " a little longer than the Player one. I trust" + \
-                                " you brought snacks. Let's begin.",
-                            'The Goal': "I let the players move around" + \
-                                    " between places, so your job is to tell me" + \
-                                    " what the places are and how players can" + \
-                                    " move around between them.",
-                            'Nodes': "Locations that the players" + \
-                                " can go inside are called nodes. Nodes should" + \
-                                " be about the size of a room. Use `/node new`" + \
-                                " to make them.",
+            title_prefix = 'New Server, Step'
+            page_content = {'Intro': "Hey! If you're interested in starting a" + \
+                                " new roleplay, it's pretty simple. Let's start.",
+                            'Template': "If you don't have a server established," + \
+                                    " you can start with this template here," + \
+                                    " which has the roles, channels, and settings" + \
+                                    " prepared for you already:" + \
+                                    " https://discord.new/4UXDgqfJ894a",
+                            'Invite': "Once your server looks good, you can invite" + \
+                                " me by clicking my profile. The big button under" + \
+                                " my name will add me to whichever server you pick.",
                             'Edges': "Edges are the connections between nodes." + \
                                 " An edge just means that there is a direct path" + \
                                 " between two nodes that you can walk through. Maybe it's" + \
@@ -201,12 +200,7 @@ class OpenCommands(commands.Cog):
                 # 'Edges' : 'assets/edgeExample.png',
                 # 'Graph' : 'assets/edgeIllustrated.png'}
 
-            paginator = Paginator(
-                interaction,
-                title_prefix,
-                page_content)
-            await paginator.refresh_embed()
-            return
+            return title_prefix, page_content
 
         embed, _ = await mbd(
             'Hello!',
@@ -215,18 +209,18 @@ class OpenCommands(commands.Cog):
                 " __underlined__ words I use, just say `/help (underlined word)`.",
             "I'll be here if/when you need me.")
 
-        view = DialogueView()
-        player_button = Button(
-            label = 'Help for Players',
-            style = ButtonStyle.success)
-        player_button.callback = player_tutorial
-        view.add_item(player_button)
+        buttons = {
+            'Help for Players' : player_tutorial,
+            'Server Setup' : server_setup}
 
-        host_button = Button(
-            label = 'Help for Hosts',
-            style = ButtonStyle.success)
-        host_button.callback = host_tutorial
-        view.add_item(host_button)
+        view = DialogueView()
+        for button_label, button_callback in buttons.items():
+
+            player_button = Button(
+                label = button_label,
+                style = ButtonStyle.success)
+            player_button.callback = button_callback
+            view.add_item(player_button)
 
         await view.add_cancel()
         await ctx.respond(embed = embed, view = view)

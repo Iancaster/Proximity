@@ -6,8 +6,12 @@ from discord.ext import commands
 from libraries.universal import mbd
 
 
-#Functions
+#Classes
 class OwnerCommands(commands.Cog):
+    """
+    Commands that only Lancaster can use.
+    Maybe in the future I'll enforce that.
+    """
 
     def __init__(self, bot: Bot):
         self.prox = bot

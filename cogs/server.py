@@ -13,6 +13,11 @@ from libraries.autocomplete import complete_nodes
 
 #Classes
 class ServerCommands(commands.Cog):
+    """
+    Commands related to managing
+    broad aspects of a server, like
+    clearing all data for example.
+    """
 
     server = SlashCommandGroup(
         name = 'server',
@@ -320,7 +325,7 @@ class ServerCommands(commands.Cog):
     #     incorrectWebhooks = []
     #
     #     if guild_data.nodes:
-    #         maker = oop.ChannelMaker(ctx.guild, 'nodes')
+    #         maker = ChannelMaker(ctx.guild, 'nodes')
     #         await maker.initialize()
     #     for name, node in list(guild_data.nodes.items()): #Fix node issues
     #
@@ -369,16 +374,16 @@ class ServerCommands(commands.Cog):
     #
     #     if ghostNodeMentions:
     #         description += "\n• These nodes were deleted without using `/node delete`," + \
-    #             f" but were just regenerated: {await oop.Format.words(ghostNodeMentions)}."
+    #             f" but were just regenerated: {await format_words(ghostNodeMentions)}."
     #
     #     if misnomerNodeMentions:
     #         description += "\n• Corrected the name(s) of the following" + \
     #             " channel_ID(s) that were renamed not using `/node review`:" + \
-    #             f" {await oop.Format.words(misnomerNodeMentions)}."
+    #             f" {await format_words(misnomerNodeMentions)}."
     #
     #     if incorrectWebhooks:
     #         description += "\n• Fixed the webhook(s) for the following" + \
-    #         f" node channel_ID(s): {await oop.Format.words(incorrectWebhooks)}."
+    #         f" node channel_ID(s): {await format_words(incorrectWebhooks)}."
     #
     #     await guild_data.save()
     #
@@ -396,17 +401,17 @@ class ServerCommands(commands.Cog):
     #         if name not in noAccess}
     #
     #     if noAccess:
-    #         noAccessMentions = await oop.Format.nodes(noAccess.values())
+    #         noAccessMentions = await format_nodes(noAccess.values())
     #         description += "\n• The following nodes have no edges for entry or exit, meaning" + \
     #             f" **players can only come or go through** `/player tp`**:** {noAccessMentions}."
     #
     #     if noExits:
-    #         noExitsMentions = await oop.Format.nodes(noExits.values())
+    #         noExitsMentions = await format_nodes(noExits.values())
     #         description += "\n• The following nodes have no edges for exiting, meaning" + \
     #             f" **players can get trapped:** {noExitsMentions}."
     #
     #     if noEntrances:
-    #         noEntrancesMentions = await oop.Format.nodes(noEntrances.values())
+    #         noEntrancesMentions = await format_nodes(noEntrances.values())
     #         description += "\n• The following nodes have no edges or entrances, meaning" + \
     #             f" **players will never enter:** {noEntrancesMentions}."
     #
@@ -414,7 +419,7 @@ class ServerCommands(commands.Cog):
     #     missingPlayers = []
     #     wrongWebhooks = []
     #     if guild_data.players:
-    #         maker = oop.ChannelMaker(ctx.guild, 'players')
+    #         maker = ChannelMaker(ctx.guild, 'players')
     #         await maker.initialize()
     #     for player_ID in list(guild_data.players): #Identify player issues
     #
@@ -472,22 +477,22 @@ class ServerCommands(commands.Cog):
     #
     #             wrongWebhooks.append(playerChannel.mention)
     #
-    #     await queueRefresh(ctx.guild)
+    #     await queue_refresh(ctx.guild)
     #
     #     if noChannelMentions:
     #         description += "\n• The following players got back" + \
-    #         f" their deleted player channel_IDs: {await oop.Format.words(noChannelMentions)}."
+    #         f" their deleted player channel_IDs: {await format_words(noChannelMentions)}."
     #
     #     if missingPlayers:
     #         description += f"\n• Deleted data and any remaining player" + \
     #             f" channel_IDs for {len(missingPlayers)} players who left" + \
     #             " the server without ever being officially removed as" + \
     #             " players. My best guess for the name(s) of those who" + \
-    #             f" left is {await oop.Format.words(missingPlayers)}."
+    #             f" left is {await format_words(missingPlayers)}."
     #
     #     if wrongWebhooks:
     #         description += "\n• Fixed the webhook(s) for the following" + \
-    #         f" player channel_ID(s: {await oop.Format.words(wrongWebhooks)}."
+    #         f" player channel_ID(s: {await format_words(wrongWebhooks)}."
     #
     #     if not description:
     #         description += "Congratulations! This server has no detectable issues." + \

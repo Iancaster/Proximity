@@ -318,6 +318,7 @@ class GuildData:
         return
 
     async def filter_nodes(self, node_names: iter):
+        """iter(node_names) -> {node_name : node_data}"""
         return {name : self.nodes[name] for name in node_names}
 
     async def get_all_occupants(self, nodes: iter):

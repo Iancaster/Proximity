@@ -11,7 +11,12 @@ from libraries.classes import ListenerManager
 from libraries.universal import mbd
 
 #Classes
-class AutoCommands(commands.Cog):
+class Autonomous(commands.Cog):
+    """
+    This is the cog responsible for keeping they
+    Listeners up to date. When someone speaks, the
+    bot needs to know who to relay the message to.
+    """
 
     def __init__(self, bot: Bot):
         self.update_listeners.start()
@@ -74,4 +79,4 @@ class AutoCommands(commands.Cog):
 
 
 def setup(prox):
-    prox.add_cog(AutoCommands(prox), override = True)
+    prox.add_cog(Autonomous(prox), override = True)

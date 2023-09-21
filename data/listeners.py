@@ -100,10 +100,10 @@ async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int,
     directs = direct_listeners.get(channel_ID, [])
     for channel, eavesdropping in directs:
 
-        if channel.id == exclude: #To prevent echos
+        if channel.id == exclude:
             continue
 
-        if eavesdropping and occupants_only: #Cant be overheard
+        if eavesdropping and occupants_only:
             continue
 
         try:

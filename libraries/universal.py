@@ -116,3 +116,17 @@ async def prevent_spam(test, embed: Embed, interaction: Interaction):
             view = None)
 
     return
+
+async def no_nodes_selected(interaction: Interaction, singular: bool = False):
+
+    embed, _ = await mbd(
+        'No nodes selected!',
+        'Please select a valid node first.' if singular else \
+            "You've got to select some.",
+        'Try calling the command again.')
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id,
+        embed = embed,
+        view = None,
+        attachments = [])
+    return

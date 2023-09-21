@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 #Import-ant Libraries
-from discord import Bot, Game, Status
+from discord import Bot, Game
 from time import time
 import data.data as data
 from dotenv import load_dotenv
