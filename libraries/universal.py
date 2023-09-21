@@ -130,3 +130,15 @@ async def no_nodes_selected(interaction: Interaction, singular: bool = False):
         view = None,
         attachments = [])
     return
+
+async def no_edges(interaction: Interaction):
+    embed, _ = await mbd(
+        'No edges!',
+        "You've got to select at least one.",
+        'Try calling the command again.')
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id,
+        embed = embed,
+        view = None,
+        attachments = [])
+    return

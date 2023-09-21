@@ -289,7 +289,7 @@ class NodeCommands(commands.Cog):
                     description += '\n• Removed the whitelist(s).'
                     for name, node in reviewing_nodes.items():
 
-                        await guild_data.nodes[name].clearWhitelist()
+                        await guild_data.nodes[name].clear_whitelist()
                         embed, _ = await mbd(
                             'Opening up.',
                             'You somehow feel like this place just easier to get to.',

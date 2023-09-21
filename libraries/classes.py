@@ -525,7 +525,7 @@ class GuildData:
         draw_networkx_labels(graph, pos = positions, font_weight = 'bold')
 
         index = 0
-        letter_spacing = 0.029
+        letter_spacing = 0.03
         for origin, destination in graph.edges:
 
             ox, oy = positions[origin]
@@ -1097,7 +1097,7 @@ class DialogueView(View):
                 " to use the old format_whitelist, or if you select any roles or players below, to use that."
 
         if self.roles() or self.players():
-            return "\n• New format_whitelist(s)-- will overwrite the old format_whitelist:" + \
+            return "\n• New whitelist(s)-- will overwrite the old format_whitelist:" + \
                 f" {await format_whitelist(self.roles(), self.players())}"
 
         first_component = next(iter(components))
@@ -1108,10 +1108,10 @@ class DialogueView(View):
 
         if any(com.allowed_roles != first_component.allowed_roles or \
                com.allowed_players != first_component.allowed_players for com in components):
-            return '\n• Whitelists: Multiple different format_whitelists.'
+            return '\n• Whitelists: Multiple different whitelists.'
 
         else:
-            return "\n• Whitelists: Every part has the same format_whitelist. " + \
+            return "\n• Whitelists: Every part has the same whitelist. " + \
                 await format_whitelist(first_component.allowed_roles, \
                     first_component.allowed_players)
 

@@ -228,10 +228,10 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #             await guildData.save()
 #
 #             for channel_ID, player_IDs in leavingNodes.items():
-#                 deletedMentions = await format_players(player_IDs)
+#                 deleted_mentions = await format_players(player_IDs)
 #                 embed, _ = await mbd(
 #                     'Fewer players.',
-#                     f'Removed {deletedMentions} from the game (and this node).',
+#                     f'Removed {deleted_mentions} from the game (and this node).',
 #                     'You can view all remaining players with /player find.')
 #                 node_channel = get(interaction.guild.text_channels, id = channel_ID)
 #                 await node_channel.send(embed = embed)
@@ -256,7 +256,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #
 #         view = (ctx.guild, refresh_embed)
 #         await view.add_players(guildData.players)
-#         await view.addEvilConfirm(deletePlayers)
+#         await view.add_confirm(deletePlayers)
 #         await view.add_cancel()
 #         embed = await refresh_embed()
 #         await ctx.respond(embed = embed, view = view)
@@ -295,22 +295,22 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #
 #             async def refresh_embed(interaction: Interaction = None):
 #
-#                 fullDescription = intro
+#                 full_description = intro
 #                 if view.name():
-#                     fullDescription += f'\n• New Character Name: *{view.name()}*'
-#                 fullDescription += description
+#                     full_description += f'\n• New Character Name: *{view.name()}*'
+#                 full_description += description
 #
 #                 if view.url():
 #                     try:
 #                         response = requests.head(view.url())
 #                         if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
-#                             fullDescription += '\n\nSetting a new character avatar.'
+#                             full_description += '\n\nSetting a new character avatar.'
 #                             avatarDisplay = (view.url(), 'thumb')
 #                         else:
-#                             fullDescription += '\n\nCharacter avatars have to be a still image.'
+#                             full_description += '\n\nCharacter avatars have to be a still image.'
 #                             avatarDisplay = ('assets/badLink.png', 'thumb')
 #                     except:
-#                         fullDescription += '\n\nThe avatar URL you provided is broken.'
+#                         full_description += '\n\nThe avatar URL you provided is broken.'
 #                         avatarDisplay = ('assets/badLink.png', 'thumb')
 #                 elif playerData.avatar:
 #                     avatarDisplay = (playerData.avatar, 'thumb')
@@ -322,7 +322,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #                     except:
 #                         avatarDisplay = None
 #
-#                     fullDescription += "\n\nChoose an avatar for this character's" + \
+#                     full_description += "\n\nChoose an avatar for this character's" + \
 #                         " proxy by uploading a file URL. Do `/player review avatar:(URL)`." + \
 #                         " You'll want it to be a permanent URL like Imgur."
 #
@@ -338,12 +338,12 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #
 #                 embed, file = await mbd(
 #                     'Player review',
-#                     fullDescription,
+#                     full_description,
 #                     footer,
 #                     avatarDisplay)
 #                 return embed, file
 #
-#             async def refreshMessage(interaction: Interaction):
+#             async def refresh_message(interaction: Interaction):
 #                 embed, file = await refresh_embed()
 #                 await interaction.response.edit_message(embed = embed, file = file)
 #                 return
@@ -353,7 +353,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #                 await loading(interaction)
 #
 #                 if not (view.name() or view.url()):
-#                     await fn.no_changes(interaction)
+#                     await no_changes(interaction)
 #                     return
 #
 #                 description = ''
@@ -380,8 +380,8 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #             view = (ctx.guild)
 #             await view.add_submit(submitReview)
 #             existing = playerData.name if playerData.name else ''
-#             await view.addName(existing = existing, skipCheck = True, callback = refreshMessage)
-#             await view.addURL(callback = refreshMessage)
+#             await view.addName(existing = existing, skipCheck = True, callback = refresh_message)
+#             await view.addURL(callback = refresh_message)
 #             await view.add_cancel()
 #             embed, file = await refresh_embed()
 #             await ctx.respond(embed = embed, file = file, view = view, ephemeral = True)

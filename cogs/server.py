@@ -159,7 +159,7 @@ class ServerCommands(commands.Cog):
 
             #If something provided
             center_node = guild_data.nodes[center_node_name]
-            included = center_node.neighbors.keys() + [center_node_name]
+            included = list(center_node.neighbors.keys()) + [center_node_name]
             graph = await guild_data.to_graph(included)
             server_map = await guild_data.to_map(graph)
 
