@@ -15,9 +15,7 @@ class OwnerCommands(commands.Cog):
     @commands.slash_command(
         description = 'Reloads all the cogs.',
         guild_ids = [1114005940392439899])
-    async def refresh(
-        self,
-        ctx: ApplicationContext):
+    async def refresh(self, ctx: ApplicationContext):
 
         loaded_cogs = list(self.prox.extensions.keys())
 

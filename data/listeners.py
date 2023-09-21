@@ -119,3 +119,4 @@ async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int,
                 f" {channel.guild.name}. It's probably fine.")
 
     return
+

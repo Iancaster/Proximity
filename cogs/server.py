@@ -431,7 +431,7 @@ class ServerCommands(commands.Cog):
     #             lastNode = guild_data.nodes.get(player.location, None)
     #             if lastNode:
     #                 if lastNode.occupants:
-    #                     lastNode.removeOccupants({player_ID})
+    #                     lastNode.remove_occupants({player_ID})
     #
     #             await player.delete()
     #             guild_data.players.pop(player_ID)

@@ -2,7 +2,7 @@
 
 #Import-ant Libraries
 from discord import Guild, Member, PermissionOverwrite, Interaction, \
-    ComponentType, InputTextStyle, ButtonStyle, MISSING
+    ComponentType, InputTextStyle, ButtonStyle, MISSING, TextChannel
 from discord.utils import get
 from discord.ui import View, Select, Button, Modal, InputText
 
@@ -99,7 +99,7 @@ class Node(Component):
         self.occupants |= occupant_IDs
         return
 
-    async def removeOccupants(self, occupant_IDs: iter):
+    async def remove_occupants(self, occupant_IDs: iter):
 
         if not isinstance(occupant_IDs, set):
             occupant_IDs = set(occupant_IDs)
@@ -390,27 +390,27 @@ class GuildData:
 
             case 0:
                 self.nodes[origin].neighbors[destination] = edge
-                newEdge = Edge(
+                new_edge = Edge(
                     allowed_roles = edge.allowed_roles,
                     allowed_players = edge.allowed_players,
                     directionality = 2)
-                self.nodes[destination].neighbors[origin] = newEdge
+                self.nodes[destination].neighbors[origin] = new_edge
 
             case 1:
                 self.nodes[origin].neighbors[destination] = edge
-                newEdge = Edge(
+                new_edge = Edge(
                     allowed_roles = edge.allowed_roles,
                     allowed_players = edge.allowed_players,
                     directionality = 1)
-                self.nodes[destination].neighbors[origin] = newEdge
+                self.nodes[destination].neighbors[origin] = new_edge
 
             case 2:
                 self.nodes[origin].neighbors[destination] = edge
-                newEdge = Edge(
+                new_edge = Edge(
                     allowed_roles = edge.allowed_roles,
                     allowed_players = edge.allowed_players,
                     directionality = 0)
-                self.nodes[destination].neighbors[origin] = newEdge
+                self.nodes[destination].neighbors[origin] = new_edge
 
         return prior_edge
 
@@ -641,6 +641,108 @@ class GuildData:
 
         await self.delete()
         return
+
+@s(auto_attribs = True)
+class ListenerManager:
+    guild: Guild = ib(default = None)
+    guild_data: dict = Factory(dict)
+    guild_directs: dict = Factory(dict)
+    guild_indirects: dict = Factory(dict)
+    cached_channels: dict = Factory(dict)
+    cached_players: dict = Factory(dict)
+
+    def __attrs_post_init__(self):
+
+        self.guild_data = GuildData(self.guild.id)
+
+        return
+
+    async def _add_direct(self, speaker: int, listener: TextChannel, eavesdropping: bool = False):
+
+        self.guild_directs.setdefault(speaker, [])
+        self.guild_directs[speaker].append((listener, eavesdropping))
+
+        return
+
+    async def _add_indirect(self, speaker: int, speaker_location: str, listener: TextChannel):
+
+        self.guild_indirects.setdefault(speaker, [])
+        self.guild_indirects[speaker].append((speaker_location, listener))
+
+        return
+
+    async def _load_channel(self, channel_ID: int):
+
+        channel = self.cached_channels.get(channel_ID, None)
+        if not channel:
+            channel = get(self.guild.text_channels, id = channel_ID)
+            self.cached_channels[channel_ID] = channel
+
+        return channel
+
+    async def _load_player(self, player_ID: int):
+
+        player = self.cached_players.get(player_ID, None)
+
+        if not player:
+            player = Player(player_ID, self.guild.id)
+            self.cached_players[player_ID] = player
+
+        return player
+
+    async def clean_listeners(self):
+
+        for player_ID in self.guild_data.players:
+
+            player = await self._load_player(player_ID)
+            direct_listeners.pop(player.channel_ID, None)
+            indirect_listeners.pop(player.channel_ID, None)
+
+        for node in self.guild_data.nodes.values():
+
+            direct_listeners.pop(node.channel_ID, None)
+
+        return
+
+    async def build_listeners(self):
+
+        for name, node in self.guild_data.nodes.items(): #For every node in the graph
+
+            #Get node channel
+            channel = await self._load_channel(node.channel_ID)
+
+            for ID in node.occupants: #For each occupant...
+
+                player = await self._load_player(ID)
+                player_channel = await self._load_channel(player.channel_ID)
+
+                await self._add_direct(player.channel_ID, channel) #Node listens to player
+                await self._add_direct(node.channel_ID, player_channel) #Player listens to node
+
+                for occupant in node.occupants: #Add all other occupants as listeners...
+
+                    if occupant == ID: #Skip yourself.
+                        continue
+
+                    other_occupant = await self._load_player(occupant)
+                    await self._add_direct(other_occupant.channel_ID, player_channel) #Add them as a listener to you.
+
+                for neighbor_node_name in node.neighbors.keys():
+
+                    neighbor_node = self.guild_data.nodes[neighbor_node_name]
+
+                    for neighbor_occ_ID in neighbor_node.occupants: #For every person in the neighbor node...
+
+                        neighbor_player = await self._load_player(neighbor_occ_ID)
+                        neighbor_player_channel = await self._load_channel(neighbor_player.channel_ID)
+
+                        if neighbor_player.eavesdropping == name: #If they're eavesdropping on us...
+                            await self._add_direct(player.channel_ID, neighbor_player_channel, True)
+                            await self._add_direct(node.channel_ID, neighbor_player_channel, True)
+                        else: #Otherwise...
+                            await self._add_indirect(player.channel_ID, player.location, neighbor_player_channel)
+
+        return self.guild_directs, self.guild_indirects
 
 #Dialogues
 @s(auto_attribs = True)
@@ -1132,3 +1234,4 @@ class Paginator():
                 file = file if file else MISSING) #Might be attachments = MISSING
 
         return
+
