@@ -300,10 +300,9 @@ class NodeCommands(commands.Cog):
                             occupants_only = True)
 
                 if view.roles() or view.players():
-                    if view.roles():
-                        description += '\n• Edited the roles whitelist(s).'
-                    if view.players():
-                        description += '\n• Edited the player whitelist(s).'
+
+                    description += '\n• New whitelist: ' + \
+                        await format_whitelist(view.roles(), view.players())
 
                     embed, _ = await mbd(
                         'Strange.',

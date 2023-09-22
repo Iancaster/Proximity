@@ -71,9 +71,9 @@ class Autonomous(commands.Cog):
                 return
 
         # import json
-        # printableListeners = {speakerID : [channel.name for channel, _ in listeners]
-        #    for speakerID, listeners in direct_listeners.items()}
-        # print(f"Direct listeners: {json.dumps(printableListeners, indent = 4)}")
+        # human_readable_listeners = {speaker_ID : [channel.name for channel, _ in listeners]
+        #    for speaker_ID, listeners in direct_listeners.items()}
+        # print(f"Direct listeners: {json.dumps(human_readable_listeners, indent = 4)}")
 
         return
 

@@ -217,6 +217,14 @@ class ServerCommands(commands.Cog):
             node_channel = await maker.create_channel(node_name)
             await guild_data.create_node(node_name, node_channel.id)
 
+            embed, _ = await mbd(
+                'Cool, example node.',
+                'This node was just made to demonstrate what' + \
+                    " a server's graph might look like, but apart" + \
+                    " from this message, it's exactly the same.",
+                "So you can still change the whitelist with /node review.")
+            await node_channel.send(embed = embed)
+
 
 
         for node_name, node_edges in node_data.items():
@@ -331,9 +339,9 @@ class ServerCommands(commands.Cog):
     #
     #         if node.channel_ID not in channel_IDs: #Node was deleted in server only
     #
-    #             newChannel = await maker.newChannel(name)
-    #             ghostNodeMentions.append(newChannel.mention)
-    #             node.channel_ID = newChannel.id
+    #             new_channel = await maker.create_channel(name)
+    #             ghostNodeMentions.append(new_channel.mention)
+    #             node.channel_ID = new_channel.id
     #
     #             whitelist = await format_whitelist(node.allowed_roles, node.allowed_players)
     #             embed, _ = await mbd(
@@ -341,7 +349,7 @@ class ServerCommands(commands.Cog):
     #             f"**Important!** Don't delete this one!" + \
     #                 f"\n\nAnyways, here's who is allowed:\n{whitelist}",
     #             "Unfortunately, I couldn't save the edges this may have had.")
-    #             await newChannel.send(embed = embed)
+    #             await new_channel.send(embed = embed)
     #             continue
     #
     #         newName = None
@@ -445,7 +453,7 @@ class ServerCommands(commands.Cog):
     #         if player.channel_ID not in channel_IDs: #User is missing their channel_ID
     #             noChannelMentions.append(member.mention)
     #
-    #             channel_ID = await maker.newChannel(member.display_name, member)
+    #             channel_ID = await maker.create_channel(member.display_name, member)
     #
     #             player.channel_ID = channel_ID.id
     #             await player.save()

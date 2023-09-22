@@ -91,6 +91,7 @@ async def identify_node_channel(node_names: dict, origin_channel_name: str = '',
     else:
         return None
 
+#Checks
 async def no_changes(interaction: Interaction):
 
     embed, _ = await mbd(
@@ -131,7 +132,7 @@ async def no_nodes_selected(interaction: Interaction, singular: bool = False):
         attachments = [])
     return
 
-async def no_edges(interaction: Interaction):
+async def no_edges_selected(interaction: Interaction):
     embed, _ = await mbd(
         'No edges!',
         "You've got to select at least one.",
@@ -141,4 +142,16 @@ async def no_edges(interaction: Interaction):
         embed = embed,
         view = None,
         attachments = [])
+    return
+
+async def no_people_selected(interaction: Interaction):
+
+    embed, _ = await mbd(
+        'Who?',
+        "You didn't select any valid people.",
+        'You can call the command again and specify someone new.')
+    await interaction.followup.edit_message(
+        message_id = interaction.message.id,
+        embed = embed,
+        view = None)
     return

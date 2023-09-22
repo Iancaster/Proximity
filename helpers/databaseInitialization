@@ -11,7 +11,7 @@ def access_DB(DB: str):
     data_directory = getcwd() + '/data/'
 
     try:
-        connection = connect(f'{data_directory}/{DB}DB.db')
+        connection = connect(f'{data_directory}/{DB}.db')
         return connection
 
     except Error as problem:
@@ -35,22 +35,17 @@ def create_guild_DB():
 
     data_directory = getcwd() + '/data/'
 
-    if path.isfile(data_directory + 'guildDB.db'):
-        remove(data_directory + 'guildDB.db')
+    if path.isfile(data_directory + 'guild.db'):
+        remove(data_directory + 'guild.db')
 
     connection = access_DB('guild')
 
     tables = {'Guilds' : """CREATE TABLE guilds
                 (guild_ID INTEGER PRIMARY KEY,
                 nodes TEXT);""",
-            'Messages' : """CREATE TABLE messages
-                (location_channel_ID INTEGER PRIMARY KEY,
-                title TEXT,
-                description TEXT,
-                footer TEXT);""",
-            'Players' : """CREATE TABLE player_Data
+            'Players' : """CREATE TABLE player_data
                 (guild_ID INTEGER PRIMARY KEY,
-                players TEXT);"""}
+                players_list TEXT);"""}
 
     if isinstance(connection, Connection):
         print(f'New guild database created, version {version}.')
@@ -68,14 +63,14 @@ def create_player_DB():
 
     data_directory = getcwd() + '/data/'
 
-    if path.isfile(data_directory + 'playerDB.db'):
-        remove(data_directory + 'playerDB.db')
+    if path.isfile(data_directory + 'player.db'):
+        remove(data_directory + 'player.db')
 
     connection = access_DB('player')
 
     table = """CREATE TABLE players
                 (player_ID integer PRIMARY KEY,
-                player_Data TEXT);"""
+                relevant_data TEXT);"""
 
     if isinstance(connection, Connection):
         print(f'New players database created, version {version}.')
@@ -141,10 +136,10 @@ def get_all_players(con):
 
 
 #Internal
-def count_rows(con, tableName):
+def count_rows(con, table_name):
 
     cursor = con.cursor()
-    cursor.execute(f"""SELECT COUNT(*) FROM {tableName}""")
+    cursor.execute(f"""SELECT COUNT(*) FROM {table_name}""")
     rowCount = cursor.fetchone()[0]
 
     return rowCount

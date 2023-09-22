@@ -147,7 +147,7 @@ class Player:
             return {field_name: data for field_name, data in zip(fields, players)}
 
 
-        player_con = connect(getcwd() + '/data/playerDB.db')
+        player_con = connect(getcwd() + '/data/player.db')
         player_con.row_factory = return_dict
         cursor = player_con.cursor()
         cursor.execute(f"""SELECT * FROM players WHERE player_ID = {self.id}""")
@@ -169,7 +169,7 @@ class Player:
 
     async def save(self):
 
-        player_con = connect('playerDB.db')
+        player_con = connect(getcwd() + '/data/player.db')
         cursor = player_con.cursor()
 
         self.as_dict[self.guild_ID] = {
@@ -185,7 +185,7 @@ class Player:
 
         self.as_dict.pop(self.guild_ID, None)
 
-        player_con = connect('playerDB.db')
+        player_con = connect(getcwd() + '/data/player.db')
         cursor = player_con.cursor()
 
         if self.as_dict:
@@ -258,7 +258,7 @@ class GuildData:
             fields = [column[0] for column in cursor.description]
             return {column_name: data for column_name, data in zip(fields, guild)}
 
-        guild_con = connect(getcwd() + '/data/guildDB.db')
+        guild_con = connect(getcwd() + '/data/guild.db')
         guild_con.row_factory = return_dictionary
         cursor = guild_con.cursor()
 
@@ -281,7 +281,7 @@ class GuildData:
         player_data = cursor.fetchone()
 
         if player_data:
-            self.players = set(int(player) for player in player_data['players'].split())
+            self.players = set(int(player) for player in player_data['players_list'].split())
 
         guild_con.close()
         return
@@ -584,17 +584,17 @@ class GuildData:
 
     async def save(self):
 
-        guild_con = connect(getcwd() + '/data/guildDB.db')
+        guild_con = connect(getcwd() + '/data/guild.db')
         cursor = guild_con.cursor()
 
-        nodes = {nodeName : await node.__dict__() for nodeName, node in self.nodes.items()}
+        nodes = {node_name : await node.__dict__() for node_name, node in self.nodes.items()}
         serialized_nodes = dumps(nodes)
         encoded_nodes = b64encode(serialized_nodes)
         cursor.execute("INSERT or REPLACE INTO guilds(guild_ID, nodes) VALUES(?, ?)",
             (self.guild_ID, encoded_nodes))
 
         player_data = ' '.join([str(player_ID) for player_ID in self.players])
-        cursor.execute("INSERT or REPLACE INTO player_data(guild_ID, players) VALUES(?, ?)",
+        cursor.execute("INSERT or REPLACE INTO player_data(guild_ID, players_list) VALUES(?, ?)",
             (self.guild_ID, player_data))
 
         guild_con.commit()
@@ -603,7 +603,7 @@ class GuildData:
 
     async def delete(self):
 
-        guild_con = connect(getcwd() + '/data/guildDB.db')
+        guild_con = connect(getcwd() + '/data/guild.db')
         cursor = guild_con.cursor()
 
         for node in self.nodes:
@@ -787,7 +787,7 @@ class DialogueView(View):
             max_roles = len(self.guild.roles)
 
         role_select = Select(
-            placeholder = 'Which roles to add?',
+            placeholder = 'Which roles to allow?',
             select_type = ComponentType.role_select,
             min_values = 0,
             max_values = max_roles)

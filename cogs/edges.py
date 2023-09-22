@@ -8,7 +8,7 @@ from discord.utils import get
 
 from libraries.classes import GuildData, DialogueView, Edge
 from libraries.universal import mbd, loading, identify_node_channel, \
-    no_nodes_selected, no_edges, no_changes
+    no_nodes_selected, no_edges_selected, no_changes
 from libraries.formatting import format_whitelist, format_colors, \
     format_nodes, embolden
 from libraries.autocomplete import complete_nodes
@@ -224,7 +224,7 @@ class EdgeCommands(commands.Cog):
                     return
 
                 view = DialogueView(ctx.guild)
-                await view.add_nodes(guild_data.nodes, submit_nodes, manyNodes = False)
+                await view.add_nodes(guild_data.nodes, submit_nodes, select_multiple = False)
                 await view.add_cancel()
                 await ctx.respond(embed = embed, view = view)
 
@@ -261,9 +261,9 @@ class EdgeCommands(commands.Cog):
                 if not view.edges():
                     full_description += ':'
                 else:
-                    selectedNeighbors = {name : neighbors[name] for name in view.edges()}
+                    selected_neighbors = {name : neighbors[name] for name in view.edges()}
                     full_description += ", but you'll be deleting the following:" + \
-                        await guild_data.format_edges(selectedNeighbors)
+                        await guild_data.format_edges(selected_neighbors)
 
 
                 edge_colors = await format_colors(graph, origin_node_name, view.edges(), 'red')
@@ -379,7 +379,7 @@ class EdgeCommands(commands.Cog):
                     return
 
                 view = DialogueView()
-                await view.add_nodes(guild_data.nodes.keys(), submit_nodes, manyNodes = False)
+                await view.add_nodes(guild_data.nodes.keys(), submit_nodes, select_multiple = False)
                 await view.add_cancel()
                 await ctx.respond(embed = embed, view = view)
 
@@ -449,7 +449,7 @@ class EdgeCommands(commands.Cog):
 
                 #Screen for invalid submissions
                 if not view.edges():
-                    await no_edges(interaction)
+                    await no_edges_selected(interaction)
                     return
 
                 if not any([view.roles(), view.players(), view.clearing]):
@@ -562,7 +562,7 @@ class EdgeCommands(commands.Cog):
                     return
 
                 view = DialogueView()
-                await view.add_nodes(guild_data.nodes.keys(), submit_nodes, manyNodes = False)
+                await view.add_nodes(guild_data.nodes.keys(), submit_nodes, select_multiple = False)
                 await view.add_cancel()
                 await ctx.respond(embed = embed, view = view)
 
