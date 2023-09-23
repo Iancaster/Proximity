@@ -28,7 +28,6 @@ async def relay(msg: Message):
         updated_guild_IDs.add(msg.guild)
         while msg.guild.id not in updated_guild_IDs:
             await sleep(1)
-        print(f'Updated {msg.guild.name}!')
 
     try:
         from libraries.classes import Player
@@ -95,7 +94,6 @@ async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int,
         outdated_guilds.add(guild)
         while guild.id not in updated_guild_IDs:
             await sleep(1)
-        print(f'Updated {guild.name}!')
 
     directs = direct_listeners.get(channel_ID, [])
     for channel, eavesdropping in directs:

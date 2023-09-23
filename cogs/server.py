@@ -472,8 +472,8 @@ class ServerCommands(commands.Cog):
     #                 'You can always type /help to get more help.')
     #             await channel_ID.send(embed = embed)
     #
-    #         playerChannel = get(ctx.guild.text_channel_IDs, id = player.channel_ID)
-    #         playerWebhooks = await playerChannel.webhooks()
+    #         player_channel = get(ctx.guild.text_channel_IDs, id = player.channel_ID)
+    #         playerWebhooks = await player_channel.webhooks()
     #         if len(playerWebhooks) != 1:
     #
     #             for webhook in playerWebhooks:
@@ -483,7 +483,7 @@ class ServerCommands(commands.Cog):
     #                 avatar = file.read()
     #                 await channel_ID.create_webhook(name = 'Proximity', avatar = avatar)
     #
-    #             wrongWebhooks.append(playerChannel.mention)
+    #             wrongWebhooks.append(player_channel.mention)
     #
     #     await queue_refresh(ctx.guild)
     #

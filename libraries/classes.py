@@ -655,6 +655,8 @@ class ListenerManager:
     def __attrs_post_init__(self):
 
         self.guild_data = GuildData(self.guild.id)
+        print(f'All channels are: {self.guild.text_channels}')
+
 
         return
 

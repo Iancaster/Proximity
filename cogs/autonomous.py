@@ -36,8 +36,10 @@ class Autonomous(commands.Cog):
             direct_listeners.update(directs)
             indirect_listeners.update(indirects)
 
-            outdated_guilds.remove(guild)
+            #outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
+
+            print(f'Updated {guild.name}!')
 
         if broken_webhook_channels:
 
@@ -74,6 +76,7 @@ class Autonomous(commands.Cog):
         # human_readable_listeners = {speaker_ID : [channel.name for channel, _ in listeners]
         #    for speaker_ID, listeners in direct_listeners.items()}
         # print(f"Direct listeners: {json.dumps(human_readable_listeners, indent = 4)}")
+        print(direct_listeners)
 
         return
 

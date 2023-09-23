@@ -9,7 +9,7 @@ from discord.commands import SlashCommandGroup
 from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
 from libraries.formatting import format_words, format_players
 from libraries.universal import mbd, loading, no_nodes_selected, \
-    no_people_selected
+    no_people_selected, prevent_spam
 from data.listeners import to_direct_listeners, queue_refresh
 
 #Classes
@@ -155,116 +155,115 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
         await ctx.respond(embed = embed, view = view)
         return
 
-#     @player.command(
-#         name = 'delete',
-#         description = 'Remove a player from the game (but not the server).')
-#     async def delete(
-#         self,
-#         ctx: ApplicationContext):
-#
-#         await ctx.defer(ephemeral = True)
-#
-#         guild_data = GuildData(ctx.guild_id)
-#
-#         async def refresh_embed():
-#
-#             if view.players():
-#                 player_mentions = await format_players(view.players())
-#                 description = f'Remove {player_mentions} from the game?'
-#             else:
-#                 description = "For all the players you list, this command will:" + \
-#                 "\n• Delete their player channel.\n• Remove them as occupants in" + \
-#                 " the location they're in.\n• Remove their ability to play, returning" + \
-#                 " them to the state they were in before they were added as a player." + \
-#                 "\n\nIt will not:\n• Kick or ban them from the server.\n• Delete their" + \
-#                 " messages.\n• Keep them from using the bot in other servers."
-#
-#             embed, _ = await mbd(
-#                 'Delete player(s)?',
-#                 description,
-#                 "This won't remove them from the server.")
-#             return embed
-#
-#         async def deletePlayers(interaction: Interaction):
-#
-#             await interaction.response.defer()
-#
-#             deletingIDs = set(int(ID) for ID in view.players() if ID in guild_data.players)
-#
-#             if not deletingIDs:
-#                 await fn.noPeople(interaction)
-#                 return
-#
-#             leavingNodes = {}
-#             for ID in deletingIDs:
-#
-#                 player_data = Player(ID, ctx.guild_id)
-#
-#                 occupiedNode = guild_data.nodes[player_data.location]
-#
-#                 await occupiedNode.removeOccupants({ID})
-#
-#                 playerMention = f'<@{ID}>'
-#                 playerEmbed, _ = await mbd(
-#                     'Where did they go?',
-#                     f"You look around, but {playerMention} seems to have vanished into thin air.",
-#                     "You get the impression you won't be seeing them again.")
-#                 await to_direct_listeners(
-#                     playerEmbed,
-#                     interaction.guild,
-#                     occupiedNode.channel_ID,
-#                     occupants_only = True)
-#
-#                 leavingNodes.setdefault(occupiedNode.channel_ID, [])
-#                 leavingNodes[occupiedNode.channel_ID].append(ID)
-#
-#                 playerChannel = get(interaction.guild.text_channels, id = player_data.channel_ID)
-#                 if playerChannel:
-#                     await playerChannel.delete()
-#
-#                 #Delete their data
-#                 await player_data.delete()
-#
-#                 #Remove them from server player list
-#                 guild_data.players.discard(ID)
-#
-#             await guild_data.save()
-#
-#             for channel_ID, player_IDs in leavingNodes.items():
-#                 deleted_mentions = await format_players(player_IDs)
-#                 embed, _ = await mbd(
-#                     'Fewer players.',
-#                     f'Removed {deleted_mentions} from the game (and this node).',
-#                     'You can view all remaining players with /player find.')
-#                 node_channel = get(interaction.guild.text_channels, id = channel_ID)
-#                 await node_channel.send(embed = embed)
-#
-#             await queue_refresh(interaction.guild)
-#
-#             deletingMentions = await format_players(deletingIDs)
-#             description = f"Successfully removed {deletingMentions} from the game."
-#
-#             embed, _ = await mbd(
-#                 'Delete player results.',
-#                 description,
-#                 'Hasta la vista.')
-#             try:
-#                 await fn.noCopies(
-#                     (interaction.channel_id in leavingNodes),
-#                     embed,
-#                     interaction)
-#             except:
-#                 pass
-#             return
-#
-#         view = (ctx.guild, refresh_embed)
-#         await view.add_players(guild_data.players)
-#         await view.add_confirm(deletePlayers)
-#         await view.add_cancel()
-#         embed = await refresh_embed()
-#         await ctx.respond(embed = embed, view = view)
-#         return
-#
+    @player.command(
+        name = 'delete',
+        description = 'Remove a player from the game (but not the server).')
+    async def delete(
+        self,
+        ctx: ApplicationContext):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        async def refresh_embed():
+
+            if view.players():
+                player_mentions = await format_players(view.players())
+                description = f'Remove {player_mentions} from the game?'
+            else:
+                description = "For all the players you list, this command will:" + \
+                "\n• Delete their player channel.\n• Remove them as occupants in" + \
+                " the location they're in.\n• Remove their ability to play, returning" + \
+                " them to the state they were in before they were added as a player." + \
+                "\n\nIt will not:\n• Kick or ban them from the server.\n• Delete their" + \
+                " messages.\n• Keep them from using the bot in other servers."
+
+            embed, _ = await mbd(
+                'Delete player(s)?',
+                description,
+                "This won't remove them from the server.")
+            return embed
+
+        async def delete_players(interaction: Interaction):
+
+            await interaction.response.defer()
+
+            deleting_player_IDs = set(int(ID) for ID in view.players() if ID in guild_data.players)
+
+            if not deleting_player_IDs:
+                await no_people_selected(interaction)
+                return
+
+            vacating_nodes = {}
+            for ID in deleting_player_IDs:
+
+                player_data = Player(ID, ctx.guild_id)
+
+                occupied_node = guild_data.nodes[player_data.location]
+
+                await occupied_node.removeOccupants({ID})
+
+                player_embed, _ = await mbd(
+                    'Where did they go?',
+                    f"You look around, but <@{ID}> seems to have vanished into thin air.",
+                    "You get the impression you won't be seeing them again.")
+                await to_direct_listeners(
+                    player_embed,
+                    interaction.guild,
+                    occupied_node.channel_ID,
+                    occupants_only = True)
+
+                vacating_nodes.setdefault(occupied_node.channel_ID, [])
+                vacating_nodes[occupied_node.channel_ID].append(ID)
+
+                player_channel = get(interaction.guild.text_channels, id = player_data.channel_ID)
+                if player_channel:
+                    await player_channel.delete()
+
+                #Delete their data
+                await player_data.delete()
+
+                #Remove them from server player list
+                guild_data.players.discard(ID)
+
+            await guild_data.save()
+
+            for channel_ID, player_IDs in vacating_nodes.items():
+                deleted_mentions = await format_players(player_IDs)
+                embed, _ = await mbd(
+                    'Fewer players.',
+                    f'Removed {deleted_mentions} from the game (and this node).',
+                    'You can view all remaining players with /player find.')
+                node_channel = get(interaction.guild.text_channels, id = channel_ID)
+                await node_channel.send(embed = embed)
+
+            await queue_refresh(interaction.guild)
+
+            deleting_mentions = await format_players(deleting_player_IDs)
+            description = f"Successfully removed {deleting_mentions} from the game."
+
+            embed, _ = await mbd(
+                'Delete player results.',
+                description,
+                'Hasta la vista.')
+            try:
+                await prevent_spam(
+                    (interaction.channel_id in vacating_nodes),
+                    embed,
+                    interaction)
+            except:
+                pass
+            return
+
+        view = (ctx.guild, refresh_embed)
+        await view.add_players(guild_data.players)
+        await view.add_confirm(delete_players)
+        await view.add_cancel()
+        embed = await refresh_embed()
+        await ctx.respond(embed = embed, view = view)
+        return
+
 #     @player.command(
 #         name = 'review',
 #         description = 'Review player data.')
@@ -513,7 +512,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #                 return
 #
 #             if not view.players():
-#                 await fn.noPeople(interaction)
+#                 await no_people_selected(interaction)
 #                 return
 #
 #             node_name = view.nodes()[0]
@@ -589,7 +588,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #                 'Teleport results.',
 #                 description,
 #                 'Woosh.')
-#             await fn.noCopies(
+#             await prevent_spam(
 #                 (interaction.channel_id in exitingNodes or interaction.channel_id == node.channel_ID),
 #                 embed,
 #                 interaction)
