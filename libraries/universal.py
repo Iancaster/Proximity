@@ -1,6 +1,6 @@
 
 #Import-ant Libraries
-from discord import Embed, MISSING, File, Interaction
+from discord import Embed, MISSING, File, Interaction, Member
 from requests import head
 
 
@@ -23,7 +23,7 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
         case _ if image_details[1] == 'thumb':
 
-            file = File('/./assets/badLink.png', filename = 'image.png')
+            file = File('/././assets/bad_link.png', filename = 'image.png')
             embed.set_thumbnail(url = 'attachment://image.png')
 
             try:
@@ -90,6 +90,43 @@ async def identify_node_channel(node_names: dict, origin_channel_name: str = '',
 
     else:
         return None
+
+async def identify_player_channel(player: Member, player_IDs: set, origin_channel_id: int, guild_ID: int):
+
+    if not player_IDs:
+
+        embed, _ = await mbd(
+            'Easy, bronco.',
+            "You've got no players to work with.",
+            'Add some first with /player new.')
+
+        return embed
+
+    if player:
+
+        if player.id in player_IDs:
+            return player.id
+
+        else:
+
+            embed, _ = await mbd(
+                'Who?',
+                f"{player.mention} isn't a player.",
+                'Maybe that was a typo.')
+
+            return embed
+
+    from libraries.classes import Player
+
+    for ID in player_IDs:
+
+        player = Player(ID, guild_ID)
+
+        if origin_channel_id == player.channel_ID:
+
+            return player.id
+
+    return None
 
 #Checks
 async def no_changes(interaction: Interaction):

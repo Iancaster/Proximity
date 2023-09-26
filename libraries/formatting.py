@@ -30,15 +30,17 @@ async def format_roles(role_IDs: iter):
 async def format_players(player_IDs: iter):
     return await format_words([f'<@{ID}>' for ID in player_IDs])
 
-# async def format_characters(player_IDs: iter, guild_ID: int):
-#
-#     characters = []
-#     for ID in player_IDs:
-#         player = Player(ID, guild_ID)
-#         name = f'**{player.name}**' if player.name else f'<@{ID}>'
-#         characters.append(name)
-#
-#     return await format_words(characters)
+async def format_characters(player_IDs: iter, guild_ID: int):
+
+    from libraries.classes import Player
+
+    characters = []
+    for ID in player_IDs:
+        player = Player(ID, guild_ID)
+        name = f'**{player.name}**' if player.name else f'<@{ID}>'
+        characters.append(name)
+
+    return await format_words(characters)
 
 async def format_whitelist(allowed_roles: iter = set(), allowed_players: iter = set()):
 

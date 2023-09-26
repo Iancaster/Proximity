@@ -17,9 +17,6 @@ bot = Bot(intents = data.intents, owner_id = data.owner_id)
 @bot.listen()
 async def on_connect():
 
-    from data.listeners import outdated_guilds
-    outdated_guilds.update(await bot.fetch_guilds().flatten())
-
     await bot.change_presence(activity = Game(data.activity))
     print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
 

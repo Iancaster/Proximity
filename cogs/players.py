@@ -1,16 +1,18 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Interaction
-from discord.utils import get
+from discord import ApplicationContext, Interaction, Embed, Member, Option
+from discord.utils import get, get_or_fetch
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
 from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
 from libraries.formatting import format_words, format_players
 from libraries.universal import mbd, loading, no_nodes_selected, \
-    no_people_selected, prevent_spam
+    no_people_selected, prevent_spam, identify_player_channel
 from data.listeners import to_direct_listeners, queue_refresh
+
+from requests import head
 
 #Classes
 class PlayerCommands(commands.Cog): #Create a listener to delete players when they leave the server
@@ -23,11 +25,10 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
     player = SlashCommandGroup(
         name = 'player',
         description = "Manage players.",
+        guild_ids = [1114005940392439899],
         guild_only = True)
 
-    @player.command(
-        name = 'new',
-        description = 'Add a new player to the server.')
+    @player.command(name = 'new', description = 'Add a new player to the server.')
     async def new(self, ctx: ApplicationContext):
 
         await ctx.defer(ephemeral = True)
@@ -155,269 +156,277 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
         await ctx.respond(embed = embed, view = view)
         return
 
-    @player.command(
-        name = 'delete',
-        description = 'Remove a player from the game (but not the server).')
-    async def delete(
-        self,
-        ctx: ApplicationContext):
+    @player.command(name = 'delete', description = 'Remove a player from the game (but not the server).')
+    async def delete(self, ctx: ApplicationContext, player: Option( Member, description = 'Who to remove?', default = None)):
 
         await ctx.defer(ephemeral = True)
 
         guild_data = GuildData(ctx.guild_id)
 
-        async def refresh_embed():
+        async def delete_players(deleting_player_IDs: set):
 
-            if view.players():
-                player_mentions = await format_players(view.players())
-                description = f'Remove {player_mentions} from the game?'
-            else:
-                description = "For all the players you list, this command will:" + \
-                "\n• Delete their player channel.\n• Remove them as occupants in" + \
-                " the location they're in.\n• Remove their ability to play, returning" + \
-                " them to the state they were in before they were added as a player." + \
-                "\n\nIt will not:\n• Kick or ban them from the server.\n• Delete their" + \
-                " messages.\n• Keep them from using the bot in other servers."
+            player_mentions = await format_players(deleting_player_IDs)
+            description = f'Remove {player_mentions} from the game?' + \
+                "\n\n For deleted players, this command will:" + \
+                "\n• Delete their player channel.\n• Remove them as" + \
+                " occupants in the location they're in.\n• Remove their" + \
+                " ability to play, returning them to the state they were" + \
+                " in before they were added as a player." + \
+                "\n\nIt will **not**:\n• Kick or ban them from the server." + \
+                "\n• Delete their messages.\n• Keep them from using the" + \
+                " bot in other servers."
 
             embed, _ = await mbd(
-                'Delete player(s)?',
+                f'Delete {len(deleting_player_IDs)} player(s)?',
                 description,
-                "This won't remove them from the server.")
-            return embed
+                "This is mostly reversible.")
 
-        async def delete_players(interaction: Interaction):
+            async def confirm_delete(interaction: Interaction):
 
-            await interaction.response.defer()
+                await interaction.response.defer()
 
-            deleting_player_IDs = set(int(ID) for ID in view.players() if ID in guild_data.players)
+                nonlocal deleting_player_IDs
 
-            if not deleting_player_IDs:
-                await no_people_selected(interaction)
+                guild_data.players -= set(deleting_player_IDs)
+                await guild_data.save() #to appease the on_channel_delete listener
+
+                vacating_nodes = {}
+                for ID in deleting_player_IDs:
+
+                    player_data = Player(ID, ctx.guild_id)
+                    occupied_node = guild_data.nodes[player_data.location]
+
+                    await occupied_node.remove_occupants({ID})
+
+                    vacating_nodes.setdefault(occupied_node.channel_ID, [])
+                    vacating_nodes[occupied_node.channel_ID].append(ID)
+
+                    player_channel = get(interaction.guild.text_channels, id = player_data.channel_ID)
+                    if player_channel:
+                        await player_channel.delete()
+
+                    #Delete their data
+                    await player_data.delete()
+
+                await guild_data.save()
+
+                for channel_ID, deleted_occupants in vacating_nodes.items():
+
+                    deleted_mentions = await format_players(deleted_occupants)
+
+                    player_embed, _ = await mbd(
+                        'Where did they go?',
+                        f"You look around, but {deleted_mentions} seems" + \
+                            " to have vanished into thin air.",
+                        "You get the impression you won't be seeing them again.")
+                    await to_direct_listeners(
+                        player_embed,
+                        interaction.guild,
+                        occupied_node.channel_ID,
+                        occupants_only = True)
+
+                    embed, _ = await mbd(
+                        'Fewer players.',
+                        f'Removed {deleted_mentions} from the game (and this node).',
+                        'Someone can view all remaining players with /player find.')
+                    node_channel = get(interaction.guild.text_channels, id = channel_ID)
+                    await node_channel.send(embed = embed)
+
+                await queue_refresh(interaction.guild)
+
+                deleting_mentions = await format_players(deleting_player_IDs)
+                description = f"Successfully removed {deleting_mentions} from the game."
+
+                embed, _ = await mbd(
+                    'Delete player results.',
+                    description,
+                    'Hasta la vista.')
+                try:
+                    await prevent_spam(
+                        (interaction.channel_id in vacating_nodes),
+                        embed,
+                        interaction)
+                except:
+                    pass
                 return
 
-            vacating_nodes = {}
-            for ID in deleting_player_IDs:
-
-                player_data = Player(ID, ctx.guild_id)
-
-                occupied_node = guild_data.nodes[player_data.location]
-
-                await occupied_node.removeOccupants({ID})
-
-                player_embed, _ = await mbd(
-                    'Where did they go?',
-                    f"You look around, but <@{ID}> seems to have vanished into thin air.",
-                    "You get the impression you won't be seeing them again.")
-                await to_direct_listeners(
-                    player_embed,
-                    interaction.guild,
-                    occupied_node.channel_ID,
-                    occupants_only = True)
-
-                vacating_nodes.setdefault(occupied_node.channel_ID, [])
-                vacating_nodes[occupied_node.channel_ID].append(ID)
-
-                player_channel = get(interaction.guild.text_channels, id = player_data.channel_ID)
-                if player_channel:
-                    await player_channel.delete()
-
-                #Delete their data
-                await player_data.delete()
-
-                #Remove them from server player list
-                guild_data.players.discard(ID)
-
-            await guild_data.save()
-
-            for channel_ID, player_IDs in vacating_nodes.items():
-                deleted_mentions = await format_players(player_IDs)
-                embed, _ = await mbd(
-                    'Fewer players.',
-                    f'Removed {deleted_mentions} from the game (and this node).',
-                    'You can view all remaining players with /player find.')
-                node_channel = get(interaction.guild.text_channels, id = channel_ID)
-                await node_channel.send(embed = embed)
-
-            await queue_refresh(interaction.guild)
-
-            deleting_mentions = await format_players(deleting_player_IDs)
-            description = f"Successfully removed {deleting_mentions} from the game."
-
-            embed, _ = await mbd(
-                'Delete player results.',
-                description,
-                'Hasta la vista.')
-            try:
-                await prevent_spam(
-                    (interaction.channel_id in vacating_nodes),
-                    embed,
-                    interaction)
-            except:
-                pass
+            view = DialogueView(ctx.guild)
+            await view.add_confirm(confirm_delete)
+            await view.add_cancel()
+            await ctx.respond(embed = embed, view = view)
             return
 
-        view = (ctx.guild, refresh_embed)
-        await view.add_players(guild_data.players)
-        await view.add_confirm(delete_players)
-        await view.add_cancel()
-        embed = await refresh_embed()
-        await ctx.respond(embed = embed, view = view)
+        result = await identify_player_channel(player, guild_data.players, ctx.channel.id, ctx.guild_id)
+        match result:
+            case _ if isinstance(result, Embed):
+                await ctx.respond(embed = result)
+            case _ if isinstance(result, int):
+                await delete_players([result])
+            case None:
+                embed, _ = await mbd(
+                    'Delete Player(s)?',
+                    "You can delete a player three ways:" + \
+                        "\n• Call this command inside of a player channel." + \
+                        "\n• Do `/player delete @player`." + \
+                        "\n• Select multiple players with the list below.",
+                    "This won't delete them, there's more details and a prompt after this.")
+
+                async def submit_players(interaction: Interaction):
+                    await ctx.delete()
+                    await delete_players(view.players())
+                    return
+
+                view = DialogueView(guild = ctx.guild)
+                await view.add_players(guild_data.players, callback = submit_players)
+                await view.add_cancel()
+                await ctx.respond(embed = embed, view = view)
+
         return
 
-#     @player.command(
-#         name = 'review',
-#         description = 'Review player data.')
-#     async def review(
-#         self,
-#         ctx: ApplicationContext,
-#         player: Option(
-#             discord.Member,
-#             'Who to review?',
-#             default = None)):
-#
-#         await ctx.defer(ephemeral = True)
-#
-#         guild_data = GuildData(ctx.guild_id)
-#
-#         async def reviewPlayer(player_ID: int):
-#
-#             player_data = Player(player_ID, ctx.guild_id)
-#
-#             intro = f'• Mention: <@{player_ID}>'
-#             if player_data.name:
-#                 intro += f'\n• Character Name: {player_data.name}'
-#
-#             locationNode = guild_data.nodes[player_data.location]
-#             description = f'\n• Location: {locationNode.mention}'
-#             description += f'\n• Player Channel: <#{player_data.channel_ID}>'
-#
-#             if player_data.eavesdropping:
-#                 eavesNode = guild_data.nodes[player_data.eavesdropping]
-#                 description += f'\n• Eavesdropping: {eavesNode.mention}'
-#
-#             async def refresh_embed(interaction: Interaction = None):
-#
-#                 full_description = intro
-#                 if view.name():
-#                     full_description += f'\n• New Character Name: *{view.name()}*'
-#                 full_description += description
-#
-#                 if view.url():
-#                     try:
-#                         response = requests.head(view.url())
-#                         if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
-#                             full_description += '\n\nSetting a new character avatar.'
-#                             avatarDisplay = (view.url(), 'thumb')
-#                         else:
-#                             full_description += '\n\nCharacter avatars have to be a still image.'
-#                             avatarDisplay = ('assets/badLink.png', 'thumb')
-#                     except:
-#                         full_description += '\n\nThe avatar URL you provided is broken.'
-#                         avatarDisplay = ('assets/badLink.png', 'thumb')
-#                 elif player_data.avatar:
-#                     avatarDisplay = (player_data.avatar, 'thumb')
-#                 else:
-#
-#                     try:
-#                         member = await get_or_fetch(ctx.guild, 'member', id = player_ID)
-#                         avatarDisplay = (member.display_avatar.url, 'thumb')
-#                     except:
-#                         avatarDisplay = None
-#
-#                     full_description += "\n\nChoose an avatar for this character's" + \
-#                         " proxy by uploading a file URL. Do `/player review avatar:(URL)`." + \
-#                         " You'll want it to be a permanent URL like Imgur."
-#
-#                 noData = []
-#                 if not player_data.name and not view.name():
-#                     noData.append('has no character name override')
-#                 if not player_data.eavesdropping:
-#                     noData.append("isn't eavesdropping on anyone")
-#                 if noData:
-#                     footer = f'This user {await format_words(noData)}.'
-#                 else:
-#                     footer = "And that's everything."
-#
-#                 embed, file = await mbd(
-#                     'Player review',
-#                     full_description,
-#                     footer,
-#                     avatarDisplay)
-#                 return embed, file
-#
-#             async def refresh_message(interaction: Interaction):
-#                 embed, file = await refresh_embed()
-#                 await interaction.response.edit_message(embed = embed, file = file)
-#                 return
-#
-#             async def submitReview(interaction: Interaction):
-#
-#                 await loading(interaction)
-#
-#                 if not (view.name() or view.url()):
-#                     await no_changes(interaction)
-#                     return
-#
-#                 description = ''
-#                 if view.name():
-#                     player_data.name = view.name()
-#                     description += f'• Changed their character name to *{view.name()}.*'
-#
-#                 if view.url():
-#                     player_data.avatar = view.url()
-#                     description += f'\n• Changed their character avatar.'
-#
-#                 await player_data.save()
-#
-#                 embed, _ = await mbd(
-#                     'Review results',
-#                     description,
-#                     'Much better.')
-#                 await interaction.followup.edit_message(
-#                     message_id = interaction.message.id,
-#                     embed = embed,
-#                     view = None)
-#                 return
-#
-#             view = (ctx.guild)
-#             await view.add_submit(submitReview)
-#             existing = player_data.name if player_data.name else ''
-#             await view.addName(existing = existing, skipCheck = True, callback = refresh_message)
-#             await view.addURL(callback = refresh_message)
-#             await view.add_cancel()
-#             embed, file = await refresh_embed()
-#             await ctx.respond(embed = embed, file = file, view = view, ephemeral = True)
-#             return
-#
-#         if player:
-#
-#             if player.id in guild_data.players:
-#                 await reviewPlayer(player.id)
-#                 return
-#
-#             embed, _ = await mbd(
-#                 'Them?',
-#                 f"But {player.mention} isn't a player in this server.",
-#                 "Try someone else.")
-#             await ctx.respond(embed = embed)
-#             return
-#
-#         async def submitPlayer(interaction: Interaction):
-#             await ctx.delete()
-#             await reviewPlayer(list(view.players())[0])
-#             return
-#
-#         embed, _ = await mbd(
-#             'Who to review?',
-#             f"Select who you'd like to review. You can also do" + \
-#                 " `/player review @player-name`.",
-#             "Or just choose someone below.")
-#         view = (guild = ctx.guild)
-#         await view.add_players(guild_data.players, onlyOne = True, callback = submitPlayer)
-#         await view.add_cancel()
-#         await ctx.respond(embed = embed, view = view)
-#         return
-#
+    @player.command(name = 'review', description = 'Review player data.')
+    async def review(self, ctx: ApplicationContext, player: Option(Member, description = 'Who to review?', default = None)):
+
+        await ctx.defer(ephemeral = True)
+
+        guild_data = GuildData(ctx.guild_id)
+
+        async def review_player(player_ID: int):
+
+            player_data = Player(player_ID, ctx.guild_id)
+
+            intro = f'• Mention: <@{player_ID}>'
+            if player_data.name:
+                intro += f'\n• Character Name: {player_data.name}'
+
+            location_node = guild_data.nodes[player_data.location]
+            description = f'\n• Location: {location_node.mention}'
+            description += f'\n• Player Channel: <#{player_data.channel_ID}>'
+
+            if player_data.eavesdropping:
+                eavesNode = guild_data.nodes[player_data.eavesdropping]
+                description += f'\n• Eavesdropping: {eavesNode.mention}'
+
+            async def refresh_embed(interaction: Interaction = None):
+
+                full_description = intro
+                if view.name():
+                    full_description += f'\n• New Character Name: *{view.name()}*'
+                full_description += description
+
+                if view.url():
+                    try:
+                        response = head(view.url())
+                        if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
+                            full_description += '\n\nSetting a new character avatar.'
+                            avatarDisplay = (view.url(), 'thumb')
+                        else:
+                            full_description += '\n\nCharacter avatars have to be a still image.'
+                            avatarDisplay = ('assets/bad_link.png', 'thumb')
+                    except:
+                        full_description += '\n\nThe avatar URL you provided is broken.'
+                        avatarDisplay = ('assets/bad_link.png', 'thumb')
+                elif player_data.avatar:
+                    avatarDisplay = (player_data.avatar, 'thumb')
+                else:
+
+                    try:
+                        member = await get_or_fetch(ctx.guild, 'member', id = player_ID)
+                        avatarDisplay = (member.display_avatar.url, 'thumb')
+                    except:
+                        avatarDisplay = None
+
+                    full_description += "\n\nChoose an avatar for this character's" + \
+                        " proxy by uploading a file URL. It's better for it to be" + \
+                        " a permanent URL like Imgur, but it can be any picture URL."
+
+                noData = []
+                if not player_data.name and not view.name():
+                    noData.append('has no character name override')
+                if not player_data.eavesdropping:
+                    noData.append("isn't eavesdropping on anyone")
+                if noData:
+                    footer = f'This user {await format_words(noData)}.'
+                else:
+                    footer = "And that's everything."
+
+                embed, file = await mbd(
+                    'Player review',
+                    full_description,
+                    footer,
+                    avatarDisplay)
+                return embed, file
+
+            async def refresh_message(interaction: Interaction):
+                embed, file = await refresh_embed()
+                await interaction.response.edit_message(embed = embed, file = file)
+                return
+
+            async def submit_review(interaction: Interaction):
+
+                await loading(interaction)
+
+                if not (view.name() or view.url()):
+                    await no_changes(interaction)
+                    return
+
+                description = ''
+                if view.name():
+                    player_data.name = view.name()
+                    description += f'• Changed their character name to *{view.name()}.*'
+
+                if view.url():
+                    player_data.avatar = view.url()
+                    description += f'\n• Changed their character avatar.'
+
+                await player_data.save()
+
+                embed, _ = await mbd(
+                    'Review results',
+                    description,
+                    'Much better.')
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = None)
+                return
+
+            view = DialogueView(ctx.guild)
+            await view.add_submit(submit_review)
+            existing = player_data.name if player_data.name else ''
+            await view.add_rename(existing = existing, bypass_formatting = True, callback = refresh_message)
+            await view.add_URL(callback = refresh_message)
+            await view.add_cancel()
+            embed, file = await refresh_embed()
+            await ctx.respond(embed = embed, file = file, view = view, ephemeral = True)
+            return
+
+        result = await identify_player_channel(player, guild_data.players, ctx.channel.id, ctx.guild_id)
+        match result:
+            case _ if isinstance(result, Embed):
+                await ctx.respond(embed = result)
+            case _ if isinstance(result, int):
+                await review_player(result)
+            case None:
+                embed, _ = await mbd(
+                    'Review Player?',
+                    "You can review a player three ways:" + \
+                        "\n• Call this command inside of a player channel." + \
+                        "\n• Do `/player review @player`." + \
+                        "\n• Select a player from the list below.",
+                    "This will let you change their character info.")
+
+                async def submit_player(interaction: Interaction):
+                    await ctx.delete()
+                    await review_player(list(view.players())[0])
+                    return
+
+                view = DialogueView(guild = ctx.guild)
+                await view.add_players(guild_data.players, True, submit_player)
+                await view.add_cancel()
+                await ctx.respond(embed = embed, view = view)
+
+        return
+
 #     @player.command(
 #         name = 'find',
 #         description = 'Locate the players.')
@@ -425,7 +434,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #         self,
 #         ctx: ApplicationContext,
 #         player: Option(
-#             discord.Member,
+#             Member,
 #             description = 'Find anyone in particular?',
 #             default = None)):
 #
@@ -527,11 +536,11 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 #                 ID = int(ID)
 #                 player_data = Player(ID, ctx.guild_id)
 #
-#                 oldNode = guild_data.nodes[player_data.location]
-#                 await oldNode.removeOccupants({ID})
+#                 old_node = guild_data.nodes[player_data.location]
+#                 await old_node.remove_occupants({ID})
 #
-#                 exitingNodes.setdefault(oldNode.channel_ID, [])
-#                 exitingNodes[oldNode.channel_ID].append(ID)
+#                 exitingNodes.setdefault(old_node.channel_ID, [])
+#                 exitingNodes[old_node.channel_ID].append(ID)
 #
 #                 player_data.location = node_name
 #                 player_data.eavesdropping = None

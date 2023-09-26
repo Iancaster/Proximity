@@ -212,7 +212,7 @@ class NodeCommands(commands.Cog):
                     "You can delete a node three ways:" + \
                         "\n• Call this command inside of a node channel." + \
                         "\n• Do `/node delete #node-channel`." + \
-                        "\n• Select multiple node channels with the list below.",
+                        "\n• Select multiple nodes with the list below.",
                     'This will remove the node(s), all its edges, and any corresponding channels.')
 
                 async def submit_nodes(interaction: Interaction):
@@ -470,7 +470,6 @@ class NodeCommands(commands.Cog):
 
             if player.channel_ID != channel.id:
                 continue
-
 
             last_location = guild_data.nodes[player.location]
             await last_location.remove_occupants({ID})

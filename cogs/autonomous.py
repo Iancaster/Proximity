@@ -1,12 +1,13 @@
 
 
 #Import-ant Libraries
-from discord import Bot
+from discord import Bot, Message
 from discord.ext import commands, tasks
 
 
 from data.listeners import direct_listeners, indirect_listeners, \
-    outdated_guilds, updated_guild_IDs, broken_webhook_channels
+    outdated_guilds, updated_guild_IDs, broken_webhook_channels, \
+    relay
 from libraries.classes import ListenerManager
 from libraries.universal import mbd
 
@@ -20,6 +21,7 @@ class Autonomous(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.update_listeners.start()
+        self.prox = bot
 
     def cog_unload(self):
         self.update_listeners.cancel()
@@ -36,10 +38,10 @@ class Autonomous(commands.Cog):
             direct_listeners.update(directs)
             indirect_listeners.update(indirects)
 
-            #outdated_guilds.remove(guild)
+            outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
 
-            print(f'Updated {guild.name}!')
+            print(f'Updated {len(direct_listeners) + len(indirect_listeners)} channels in {guild.name}!')
 
         if broken_webhook_channels:
 
@@ -76,10 +78,22 @@ class Autonomous(commands.Cog):
         # human_readable_listeners = {speaker_ID : [channel.name for channel, _ in listeners]
         #    for speaker_ID, listeners in direct_listeners.items()}
         # print(f"Direct listeners: {json.dumps(human_readable_listeners, indent = 4)}")
-        print(direct_listeners)
 
         return
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+
+        for guild in self.prox.guilds:
+            outdated_guilds.add(guild)
+            print(f'Added {guild.name} to the queue of servers needing updated listeners.')
+
+        return
+
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        if not message.webhook_id:
+            await relay(message)
 
 def setup(prox):
     prox.add_cog(Autonomous(prox), override = True)

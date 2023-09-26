@@ -653,11 +653,7 @@ class ListenerManager:
     cached_players: dict = Factory(dict)
 
     def __attrs_post_init__(self):
-
         self.guild_data = GuildData(self.guild.id)
-        print(f'All channels are: {self.guild.text_channels}')
-
-
         return
 
     async def _add_direct(self, speaker: int, listener: TextChannel, eavesdropping: bool = False):
@@ -678,7 +674,7 @@ class ListenerManager:
 
         channel = self.cached_channels.get(channel_ID, None)
         if not channel:
-            channel = get(self.guild.text_channels, id = channel_ID)
+            channel = get(self.channels, id = channel_ID)
             self.cached_channels[channel_ID] = channel
 
         return channel
@@ -708,6 +704,8 @@ class ListenerManager:
         return
 
     async def build_listeners(self):
+
+        self.channels = await self.guild.fetch_channels()
 
         for name, node in self.guild_data.nodes.items(): #For every node in the graph
 
