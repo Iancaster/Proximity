@@ -9,7 +9,8 @@ from discord.commands import SlashCommandGroup
 from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
 from libraries.formatting import format_words, format_players
 from libraries.universal import mbd, loading, no_nodes_selected, \
-    no_people_selected, prevent_spam, identify_player_channel
+    no_people_selected, prevent_spam, identify_player_channel, \
+    no_changes
 from data.listeners import to_direct_listeners, queue_refresh
 
 from requests import head
@@ -302,11 +303,15 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
             description = f'\n• Location: {location_node.mention}'
             description += f'\n• Player Channel: <#{player_data.channel_ID}>'
 
+            valid_url = False
+
             if player_data.eavesdropping:
-                eavesNode = guild_data.nodes[player_data.eavesdropping]
-                description += f'\n• Eavesdropping: {eavesNode.mention}'
+                eavesdropping_node = guild_data.nodes[player_data.eavesdropping]
+                description += f'\n• Eavesdropping: {eavesdropping_node.mention}'
 
             async def refresh_embed(interaction: Interaction = None):
+
+                nonlocal valid_url
 
                 full_description = intro
                 if view.name():
@@ -318,34 +323,40 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                         response = head(view.url())
                         if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
                             full_description += '\n\nSetting a new character avatar.'
-                            avatarDisplay = (view.url(), 'thumb')
+                            avatar_display = (view.url(), 'thumb')
+                            valid_url = True
                         else:
                             full_description += '\n\nCharacter avatars have to be a still image.'
-                            avatarDisplay = ('assets/bad_link.png', 'thumb')
+                            avatar_display = ('bad_link.png', 'thumb')
+                            valid_url = False
+
+
                     except:
                         full_description += '\n\nThe avatar URL you provided is broken.'
-                        avatarDisplay = ('assets/bad_link.png', 'thumb')
-                elif player_data.avatar:
-                    avatarDisplay = (player_data.avatar, 'thumb')
-                else:
+                        avatar_display = ('bad_link.png', 'thumb')
+                        view_url = False
 
+                elif player_data.avatar:
+                    avatar_display = (player_data.avatar, 'thumb')
+
+                else:
                     try:
                         member = await get_or_fetch(ctx.guild, 'member', id = player_ID)
-                        avatarDisplay = (member.display_avatar.url, 'thumb')
+                        avatar_display = (member.display_avatar.url, 'thumb')
                     except:
-                        avatarDisplay = None
+                        avatar_display = None
 
                     full_description += "\n\nChoose an avatar for this character's" + \
                         " proxy by uploading a file URL. It's better for it to be" + \
                         " a permanent URL like Imgur, but it can be any picture URL."
 
-                noData = []
+                footnotes = []
                 if not player_data.name and not view.name():
-                    noData.append('has no character name override')
+                    footnotes.append('has no character name override')
                 if not player_data.eavesdropping:
-                    noData.append("isn't eavesdropping on anyone")
-                if noData:
-                    footer = f'This user {await format_words(noData)}.'
+                    footnotes.append("isn't eavesdropping on anyone")
+                if footnotes:
+                    footer = f'This user {await format_words(footnotes)}.'
                 else:
                     footer = "And that's everything."
 
@@ -353,7 +364,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                     'Player review',
                     full_description,
                     footer,
-                    avatarDisplay)
+                    avatar_display)
                 return embed, file
 
             async def refresh_message(interaction: Interaction):
@@ -362,6 +373,8 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                 return
 
             async def submit_review(interaction: Interaction):
+
+                nonlocal valid_url
 
                 await loading(interaction)
 
@@ -375,8 +388,13 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                     description += f'• Changed their character name to *{view.name()}.*'
 
                 if view.url():
-                    player_data.avatar = view.url()
-                    description += f'\n• Changed their character avatar.'
+
+                    if valid_url:
+                        player_data.avatar = view.url()
+                        description += '\n• Changed their character avatar.'
+                    else:
+                        description += "\n• Couldn't change the avatar, invalid URL."
+
 
                 await player_data.save()
 

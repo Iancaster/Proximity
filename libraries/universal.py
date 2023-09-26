@@ -2,6 +2,7 @@
 #Import-ant Libraries
 from discord import Embed, MISSING, File, Interaction, Member
 from requests import head
+from os import path, getcwd
 
 
 #Dialogues
@@ -23,7 +24,10 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
         case _ if image_details[1] == 'thumb':
 
-            file = File('/././assets/bad_link.png', filename = 'image.png')
+            bad_link = path.join(getcwd(), 'assets', 'bad_link.png')
+
+
+            file = File(bad_link, filename = 'image.png')
             embed.set_thumbnail(url = 'attachment://image.png')
 
             try:
