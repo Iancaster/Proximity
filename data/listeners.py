@@ -29,12 +29,8 @@ async def relay(msg: Message):
         while msg.guild.id not in updated_guild_IDs:
             await sleep(1)
 
-    try:
-        from libraries.classes import Player
-        speaker = Player(msg.author.id, msg.guild.id)
-    except ImportError:
-        speaker = None
-        print('Uh oh, cjeck relay() plese')
+    from libraries.classes import Player
+    speaker = Player(msg.author.id, msg.guild.id)
 
     speaker_name = speaker.name if speaker.name else msg.author.display_name
     speaker_avatar = speaker.avatar if speaker.avatar else msg.author.display_avatar.url
@@ -47,7 +43,7 @@ async def relay(msg: Message):
             embed, _ = await mbd(
                 f'{speaker_name}:',
                 msg.content[:2000],
-                'You hear everything.')
+                'You can hear it all from here.')
             await webhook.send(
                 username = speaker_name,
                 avatar_url = speaker_avatar,

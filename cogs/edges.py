@@ -14,15 +14,13 @@ from libraries.formatting import format_whitelist, format_colors, \
 from libraries.autocomplete import complete_nodes
 from data.listeners import queue_refresh, to_direct_listeners
 
-
 #Classes
 class EdgeCommands(commands.Cog):
 
     edge = SlashCommandGroup(
         name = 'edge',
         description = 'Manage edges between nodes.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @edge.command(name = 'new', description = 'Connect nodes.')
     async def new(self, ctx: ApplicationContext, origin: Option(str, description = 'Either call this command inside a node or name it here.', autocomplete = complete_nodes, required = False)):
@@ -385,10 +383,8 @@ class EdgeCommands(commands.Cog):
 
         return
 
-    @edge.command(
-        name = 'allow',
-        description = 'Choose who is allowed in an edge.')
-    async def allow(self, ctx: ApplicationContext, origin: Option(str, description = 'Either call this command inside a node or name it here.', autocomplete = complete_nodes, required = False)):
+    @edge.command(name = 'review', description = 'Choose who is allowed in an edge.')
+    async def review(self, ctx: ApplicationContext, origin: Option(str, description = 'Either call this command inside a node or name it here.', autocomplete = complete_nodes, required = False)):
 
         await ctx.defer(ephemeral = True)
 
@@ -402,7 +398,7 @@ class EdgeCommands(commands.Cog):
                 embed, _ = await mbd(
                     'No edges.',
                     f'{origin_node.mention} has no edges to modify.',
-                    "So...that's that.")
+                    "You can make some with /edge new.")
                 await ctx.respond(embed = embed, ephemeral = True)
                 return
 
@@ -549,11 +545,11 @@ class EdgeCommands(commands.Cog):
             case None:
 
                 embed, _ = await mbd(
-                    'Change allowances?',
+                    'Review edges?',
                     "You can review edge whitelists three ways:\n\
                     • Call this command inside of a node channel.\n\
                     • Do `/edge allow #node-channel`.\n\
-                    • Select a node channel with the list below.",
+                    • Select a node with the list below.",
                     "This is just to select the origin, you'll see the edges next.")
 
                 async def submit_nodes(interaction: Interaction):

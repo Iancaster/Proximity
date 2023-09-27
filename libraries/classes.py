@@ -183,6 +183,8 @@ class Player:
 
     async def delete(self):
 
+        direct_listeners.pop(self.channel_ID, None)
+        indirect_listeners.pop(self.channel_ID, None)
         self.as_dict.pop(self.guild_ID, None)
 
         player_con = connect(getcwd() + '/data/player.db')
@@ -321,7 +323,7 @@ class GuildData:
         """iter(node_names) -> {node_name : node_data}"""
         return {name : self.nodes[name] for name in node_names}
 
-    async def get_all_occupants(self, nodes: iter):
+    async def get_all_occupants(self, nodes: iter = nodes):
         occupants = set()
         for node in nodes:
             occupants |= node.occupants
@@ -336,18 +338,19 @@ class GuildData:
 
         for name, node in self.nodes.items():
 
-            if (name == origin
-                or not node.allowed_players
-                or player_ID in node.allowed_players
-                or any(ID in node.allowed_roles for ID in role_IDs)):
+            if name == origin:
+                graph.add_node(name)
+                accessible_nodes.add(name)
 
+            elif ((not node.allowed_players) or (player_ID in node.allowed_players)) \
+                and ((not node.allowed_roles) or any(ID in node.allowed_roles for ID in role_IDs)):
                 graph.add_node(name)
                 accessible_nodes.add(name)
 
             else:
                 inaccessible_nodes.add(name)
 
-                completed_edges = set()
+        completed_edges = set()
 
         for name in accessible_nodes:
 
@@ -416,8 +419,8 @@ class GuildData:
         return prior_edge
 
     async def delete_edge(self, origin: str, destination: str):
-        self.nodes[origin].neighbors.pop(destination)
-        self.nodes[destination].neighbors.pop(origin)
+        self.nodes[origin].neighbors.pop(destination, None)
+        self.nodes[destination].neighbors.pop(origin, None)
         return
 
     async def neighbors(self, node_names: iter, exclusive: bool = True):
@@ -476,13 +479,14 @@ class GuildData:
         return
 
     #Guild Data
-    async def to_graph(self, nodes: dict = {}):
+    async def to_graph(self, nodes: dict = None):
+
         graph = DiGraph()
 
-        included_nodes = nodes if nodes else self.nodes
+        nodes = self.nodes if not nodes else nodes
 
         completed_edges = set()
-        for name, node in included_nodes.items():
+        for name, node in nodes.items():
             graph.add_node(
                 name,
                 channel_ID = node.channel_ID)
@@ -506,7 +510,7 @@ class GuildData:
 
         return graph
 
-    async def to_map(self, graph = None, edge_color: str = []):
+    async def to_map(self, graph: DiGraph = None, edge_color: str = []):
 
         if not graph:
             graph = await self.to_graph()
@@ -872,8 +876,10 @@ class DialogueView(View):
         else:
             max_values = 1
 
+        placeholder = 'Which nodes to select?' if select_multiple else 'Which node?'
+
         node_select = Select(
-            placeholder = 'Which node(s) to select?',
+            placeholder = placeholder,
             min_values = 1,
             max_values = max_values)
 

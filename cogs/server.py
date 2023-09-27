@@ -1,7 +1,8 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Embed, Interaction, Option
+from discord import ApplicationContext, Embed, Interaction, \
+    Option, Guild
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
@@ -22,8 +23,7 @@ class ServerCommands(commands.Cog):
     server = SlashCommandGroup(
         name = 'server',
         description = 'Manage the server as a whole.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @server.command(name = 'debug', description = 'View debug info for the server.')
     async def debug(self, ctx: ApplicationContext):
@@ -109,7 +109,7 @@ class ServerCommands(commands.Cog):
 
             embed, _ = await mbd(
                 'See you.',
-                "The following has been deleted: \n• All guild data.\n• All nodes and their channels." + \
+                "The following has been deleted: \n• All server data.\n• All nodes and their channels." + \
                     "\n• All location messages.\n• All edges.\n• All player info and their channels.",
                 'You can always make them again if you change your mind.')
 
@@ -197,13 +197,15 @@ class ServerCommands(commands.Cog):
 
         node_data = {
             'the-kitchen' : {
-                'the-dining-room' : both_ways},
+                'the-dining-room' : both_ways,
+                'the-living-room' : both_ways},
             'the-dining-room' : {
                 'the-kitchen' : both_ways,
                 'the-living-room' : both_ways},
             'the-living-room' : {
                 'the-dining-room' : both_ways,
-                'the-bedroom' : both_ways},
+                'the-bedroom' : both_ways,
+                'the-kitchen' : both_ways},
             'the-bedroom' : {
                 'the-living-room' : both_ways}}
 
@@ -224,8 +226,6 @@ class ServerCommands(commands.Cog):
                     " from this message, it's exactly the same.",
                 "So you can still change the whitelist with /node review.")
             await node_channel.send(embed = embed)
-
-
 
         for node_name, node_edges in node_data.items():
 
@@ -278,7 +278,7 @@ class ServerCommands(commands.Cog):
     #
     #         embed, _ = await mbd(
     #             'See you.',
-    #             "The following has been deleted: \n• All guild data.\n• All nodes and their channel_IDs." + \
+    #             "The following has been deleted: \n• All server data.\n• All nodes and their channel_IDs." + \
     #                 "\n• All location messages.\n• All edges.\n• All player info and their channel_IDs.",
     #             'You can always make them again if you change your mind.')
     #
@@ -516,6 +516,12 @@ class ServerCommands(commands.Cog):
     #     await ctx.respond(embed = embed)
     #     return
 
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild: Guild):
+
+        guild_data = GuildData(guild.id)
+        await guild_data.clear(guild)
+        return
 
 
 def setup(prox):

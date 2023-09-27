@@ -2,8 +2,8 @@
 
 #Import-ant Libraries
 from discord import Bot, Message
-from discord.ext import commands, tasks
-
+from discord.ext import commands
+from asyncio import sleep
 
 from data.listeners import direct_listeners, indirect_listeners, \
     outdated_guilds, updated_guild_IDs, broken_webhook_channels, \
@@ -20,13 +20,9 @@ class Autonomous(commands.Cog):
     """
 
     def __init__(self, bot: Bot):
-        self.update_listeners.start()
         self.prox = bot
+        return
 
-    def cog_unload(self):
-        self.update_listeners.cancel()
-
-    @tasks.loop(seconds = 5.0)
     async def update_listeners(self):
 
         for guild in list(outdated_guilds):
@@ -74,12 +70,11 @@ class Autonomous(commands.Cog):
                 broken_webhook_channels.discard(channel)
                 return
 
-        # import json
-        # human_readable_listeners = {speaker_ID : [channel.name for channel, _ in listeners]
-        #    for speaker_ID, listeners in direct_listeners.items()}
-        # print(f"Direct listeners: {json.dumps(human_readable_listeners, indent = 4)}")
-
-        return
+        # print('Direct listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
+        #     f' {[channel.name for channel, _ in listeners]}' \
+        #     for speaker_ID, listeners in direct_listeners.items()))
+        await sleep(5)
+        return await self.update_listeners()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -88,7 +83,7 @@ class Autonomous(commands.Cog):
             outdated_guilds.add(guild)
             print(f'Added {guild.name} to the queue of servers needing updated listeners.')
 
-        return
+        return await self.update_listeners()
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):

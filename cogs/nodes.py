@@ -8,7 +8,7 @@ from discord.utils import get
 
 from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
 from libraries.universal import mbd, loading, identify_node_channel, \
-    no_changes, prevent_spam
+    no_changes, no_redundancies
 from libraries.formatting import discordify, unique_name, format_whitelist, \
     format_nodes, embolden, format_players
 from libraries.autocomplete import complete_nodes
@@ -27,8 +27,7 @@ class NodeCommands(commands.Cog):
     node = SlashCommandGroup(
         name = 'node',
         description = 'Manage the nodes of your graph.',
-        guild_only = True,
-        guild_ids = [1114005940392439899])
+        guild_only = True)
 
     @node.command(name = 'new', description = 'Create a new node.')
     async def new(self, ctx: ApplicationContext, name: Option(str, description = 'What should it be called?', default = 'new-node')):
@@ -209,9 +208,10 @@ class NodeCommands(commands.Cog):
             case None:
                 embed, _ = await mbd(
                     'Delete Node(s)?',
-                    "You can delete a node three ways:" + \
+                    "You can delete a node four ways:" + \
                         "\n• Call this command inside of a node channel." + \
                         "\n• Do `/node delete #node-channel`." + \
+                        "\n• Delete the node's channel." + \
                         "\n• Select multiple nodes with the list below.",
                     'This will remove the node(s), all its edges, and any corresponding channels.')
 
@@ -355,7 +355,7 @@ class NodeCommands(commands.Cog):
                     node_channel = get(interaction.guild.text_channels, id = node.channel_ID)
                     await node_channel.send(embed = embed)
 
-                return await prevent_spam(
+                return await no_redundancies(
                     (interaction.channel.name in reviewing_nodes or interaction.channel.name == new_name),
                     embed,
                     interaction)
@@ -422,6 +422,9 @@ class NodeCommands(commands.Cog):
                 node.channel_ID = remade_channel.id
                 await guild_data.save()
 
+
+                direct_listeners.pop(channel.id, None)
+                broken_webhook_channels.add(remade_channel)
                 await queue_refresh(channel.guild)
 
                 embed, _ = await mbd(
@@ -454,7 +457,10 @@ class NodeCommands(commands.Cog):
                 neighbor_node_channel = get(
                     channel.guild.text_channels,
                     id = guild_data.nodes[neighbor_node_name].channel_ID,)
-                await neighbor_node_channel.send(embed = embed)
+                try:
+                    await neighbor_node_channel.send(embed = embed)
+                except AttributeError:
+                    pass
 
                 await guild_data.delete_edge(name, neighbor_node_name)
 
@@ -502,7 +508,6 @@ class NodeCommands(commands.Cog):
 
         return
 
-    #"Optimized" node listener, needs work, CHATGPT sucks
     @commands.Cog.listener()
     async def on_guild_channel_update(self, old_version, new_version):
 
@@ -551,7 +556,6 @@ class NodeCommands(commands.Cog):
             'Another successful revision.')
         await new_version.send(embed=embed)
         return
-
 
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel):

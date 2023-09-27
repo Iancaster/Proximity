@@ -112,11 +112,10 @@ class OpenCommands(commands.Cog):
             await ctx.respond(embed = embed)
             return
 
-        async def leatherbound(interaction, pages): #Because it wraps the paginators haha
+        async def leatherbound(interaction, title_prefix, page_content): #Because it wraps the paginators haha
 
             await interaction.response.defer()
 
-            title_prefix, page_content = await pages(interaction)
             paginator = Paginator(
                 interaction,
                 title_prefix,
@@ -157,7 +156,62 @@ class OpenCommands(commands.Cog):
                     page_content['Locations'] += " Right now, you're" + \
                         f" in **#{player_data.location}**."
 
-            return title_prefix, page_content
+            return await leatherbound(interaction, title_prefix, page_content)
+
+        async def command_list(interaction: Interaction):
+            title_prefix = 'Command List, Page'
+            page_content = {
+                'Intro' :
+                    "Hello! The first few pages will be for players, the next" + \
+                    " few go over administrator/host commands, and then" + \
+                    " there's some bonus commands at the end. Let's begin.",
+                'Open' :
+                    "Open (access) commands can be called by anyone," + \
+                    " anywhere, at any time. For now, this only includes the" + \
+                    " `/help` command, which covers the glossary, command" + \
+                    " list, player guide, and 	server setup tutorial.",
+                'Player' :
+                    "Commands meant to be used by players." + \
+                    "\n\n**Limitations**"  + \
+                        "\n• Can only be used within a server." + \
+                        "\n• Can only be used by players added by an admin." + \
+                    "\n\n**Commands**" + \
+                        "\n• `/look`: Shows you who else is nearby," + \
+                            " as well as lets you view the location description." + \
+                        "\n• `/map`: Lets you see the places you can go." + \
+                            " Some places are restricted, and some places" + \
+                            " might not have a path to them from where you" + \
+                            " are-- also, some servers limit the range at how" + \
+                            " much of the map you can see at once." + \
+                        "\n• `/move <location>`: Lets you move to" + \
+                            " a place you can access. If you specify a location" + \
+                            " when calling the command, you can skip the" + \
+                            " dropdown menu and go straight to the confirmation."
+                        "\n• `/eavesdrop`: Calling this command by itself" + \
+                            " will tell you who you hear nearby, if anyone. It also" + \
+                            " gives you a menu that lets you pick someplace" + \
+                            " nearby to eavesdrop on. Call it again to cancel.",
+                'Nodes' :
+                    "Commands that admins can use to mess with nodes (locations.)" + \
+                    " All these commands begin with '`/node`." + \
+                    "\n\n**Limitations**"  + \
+                        "\n• Can only be used within a server." + \
+                        "\n• Can only be used by admins." + \
+                        "\n• Except for `/node new`, requires nodes exist."
+                    "\n\n**Commands**" + \
+                        "\n*The following commands have a `<name>` option, where you" + \
+                        " can specify a node name as you call the command.*"
+                        "\n\n• `new <name>`: Create a new node. If no `<name>`," + \
+                            " you'll have to set one with the modal dialogue. You can" + \
+                            " also set a whitelist for who can access this place." + \
+                        "\n\n*If no `<name>` is given, the following commands will also " + \
+                            " check if you're calling them from within a node, and if so," + \
+                            " target that node. Otherwise, they will provide you a dropdown.*" + \
+                        "\n\n• `delete <name>`: Delete a node (if no players are inside)."  + \
+                        "\n• `review <name>`: Change a node's name and/or whitelist."
+                            }
+
+            await leatherbound(interaction, title_prefix, page_content)
 
         async def server_setup(interaction: Interaction):
 
@@ -200,7 +254,8 @@ class OpenCommands(commands.Cog):
                 # 'Edges' : 'assets/edgeExample.png',
                 # 'Graph' : 'assets/edgeIllustrated.png'}
 
-            return title_prefix, page_content
+            return await leatherbound(interaction, title_prefix, page_content)
+
 
         embed, _ = await mbd(
             'Hello!',
@@ -211,6 +266,7 @@ class OpenCommands(commands.Cog):
 
         buttons = {
             'Help for Players' : player_tutorial,
+            'Commands' : command_list,
             'Server Setup' : server_setup}
 
         view = DialogueView()

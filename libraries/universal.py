@@ -1,6 +1,7 @@
 
 #Import-ant Libraries
-from discord import Embed, MISSING, File, Interaction, Member
+from discord import Embed, MISSING, File, Interaction, Member, \
+    ApplicationContext
 from requests import head
 from os import path, getcwd
 
@@ -62,6 +63,18 @@ async def loading(interaction: Interaction):
         attachments = [])
     return
 
+async def moving(interaction: Interaction):
+
+    embed, _ = await mbd(
+        'Moving...',
+        'Getting into position.',
+        'Usually takes less than five seconds.')
+    await interaction.response.edit_message(
+        embed = embed,
+        view = None,
+        attachments = [])
+    return
+
 #Guild
 async def identify_node_channel(node_names: dict, origin_channel_name: str = '', presented_channel_name: str = ''):
 
@@ -95,7 +108,7 @@ async def identify_node_channel(node_names: dict, origin_channel_name: str = '',
     else:
         return None
 
-async def identify_player_channel(player: Member, player_IDs: set, origin_channel_id: int, guild_ID: int):
+async def identify_player_id(player: Member, player_IDs: set, origin_channel_id: int = 0, guild_ID: int = 0):
 
     if not player_IDs:
 
@@ -146,7 +159,7 @@ async def no_changes(interaction: Interaction):
         attachments = [])
     return
 
-async def prevent_spam(test, embed: Embed, interaction: Interaction):
+async def no_redundancies(test, embed: Embed, interaction: Interaction):
 
     if test:
         await interaction.delete_original_response()
@@ -195,4 +208,13 @@ async def no_people_selected(interaction: Interaction):
         message_id = interaction.message.id,
         embed = embed,
         view = None)
+    return
+
+async def no_membership(ctx: ApplicationContext):
+
+    embed, _ = await mbd(
+        'Easy there.',
+        "You're not a player in this server, so you're not able to do this.",
+        'You can ask the server owner to make you a player?')
+    await ctx.respond(embed = embed)
     return
