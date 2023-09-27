@@ -162,54 +162,102 @@ class OpenCommands(commands.Cog):
             title_prefix = 'Command List, Page'
             page_content = {
                 'Intro' :
-                    "Hello! The first few pages will be for players, the next" + \
-                    " few go over administrator/host commands, and then" + \
+                    "Hello! The first few pages will be for __player__s, the next" +
+                    " few go over administrator/host commands, and then" +
                     " there's some bonus commands at the end. Let's begin.",
                 'Open' :
-                    "Open (access) commands can be called by anyone," + \
-                    " anywhere, at any time. For now, this only includes the" + \
-                    " `/help` command, which covers the glossary, command" + \
-                    " list, player guide, and 	server setup tutorial.",
+                    "Open (access) commands can be called by anyone," +
+                    " anywhere, at any time. For now, this only includes the" +
+                    " `/help` command, which covers the glossary, command" +
+                    " list, __player__ guide, and server setup tutorial.",
                 'Player' :
-                    "Commands meant to be used by players." + \
-                    "\n\n**Limitations**"  + \
-                        "\n• Can only be used within a server." + \
-                        "\n• Can only be used by players added by an admin." + \
-                    "\n\n**Commands**" + \
-                        "\n• `/look`: Shows you who else is nearby," + \
-                            " as well as lets you view the location description." + \
-                        "\n• `/map`: Lets you see the places you can go." + \
-                            " Some places are restricted, and some places" + \
-                            " might not have a path to them from where you" + \
-                            " are-- also, some servers limit the range at how" + \
-                            " much of the map you can see at once." + \
-                        "\n• `/move <location>`: Lets you move to" + \
-                            " a place you can access. If you specify a location" + \
-                            " when calling the command, you can skip the" + \
-                            " dropdown menu and go straight to the confirmation."
-                        "\n• `/eavesdrop`: Calling this command by itself" + \
-                            " will tell you who you hear nearby, if anyone. It also" + \
-                            " gives you a menu that lets you pick someplace" + \
-                            " nearby to eavesdrop on. Call it again to cancel.",
-                'Nodes' :
-                    "Commands that admins can use to mess with nodes (locations.)" + \
-                    " All these commands begin with '`/node`." + \
-                    "\n\n**Limitations**"  + \
-                        "\n• Can only be used within a server." + \
-                        "\n• Can only be used by admins." + \
-                        "\n• Except for `/node new`, requires nodes exist."
-                    "\n\n**Commands**" + \
-                        "\n*The following commands have a `<name>` option, where you" + \
-                        " can specify a node name as you call the command.*"
-                        "\n\n• `new <name>`: Create a new node. If no `<name>`," + \
-                            " you'll have to set one with the modal dialogue. You can" + \
-                            " also set a whitelist for who can access this place." + \
-                        "\n\n*If no `<name>` is given, the following commands will also " + \
-                            " check if you're calling them from within a node, and if so," + \
-                            " target that node. Otherwise, they will provide you a dropdown.*" + \
-                        "\n\n• `delete <name>`: Delete a node (if no players are inside)."  + \
-                        "\n• `review <name>`: Change a node's name and/or whitelist."
-                            }
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be a __player__." +
+                    "\n\nCommands" +
+                        "\n• `/look`: Shows you nearby __player__s, __location__s," +
+                            " and the __location__ description (if one is set)." +
+                        "\n• `/map`: Lets you see the places you can go." +
+                            " However, some places are restricted, and some" +
+                            " places might not have a way to them from here." +
+                            " Also, some servers limit the view distance." +
+                        "\n• `/move <location>`: Move somewhere." +
+                            " If you specify a __location__ when calling the command," +
+                            " you can skip straight to the confirmation."
+                        "\n• `/eavesdrop`: By itself, this will tell you who you" +
+                            " hear nearby. Plus you can pick someplace" +
+                            " nearby to eavesdrop on. Walk away or call" +
+                            " it again to cancel.",
+                'Node' :
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be an admin." +
+                    "\n\nCommands" +
+                        "\n*These all have a <name> option, for you to " +
+                            " optionally name a __node__ as you call the command.*" +
+                        "\n\n• `/node new <name>`: Create a new __node__. If" +
+                            " no <name>, you'll can set one with the modal" +
+                            " dialogue. You can also set a __whitelist__." +
+                        "\n\n*If there's no <name> is given, these next two commands" +
+                            " will check if you're in a __node__ channel and target that." +
+                            " If you're not, they will provide you a dropdown.*" +
+                        "\n\n• `/node delete <name>`: Delete a __node__ (if" +
+                            " no __player__s are inside)." +
+                        "\n• `/node review <name>`: Change a __node__'s" +
+                            " name and/or __whitelist__-- also shows you its occupants.",
+                'Edge' :
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be an admin." +
+                        "\n• There must be more than one __node__." +
+                    "\n\nCommands" +
+                        "\n*Like before, you can <name> a __node__ to work on," +
+                            " call from within a __node__, or use the dropdown.*" +
+                        "\n\n• `/edge new <name>`: Create new __edge__s." +
+                            " You can set a __whitelist__, overwrite, and toggel" +
+                            " whether they're two-way or one-way." +
+                        "\n• `/edge delete <name>`: Delete __edge__ between" +
+                            " __node__s." +
+                        "\n• `/edge review <name>`: View or change" +
+                            " __whitelist__s.",
+                'Player' :
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be an admin." +
+                    "\n\nCommands" +
+                        "\n*For these, you can <mention> a __player__.*" +
+                        "\n\n• `/player new <mention>`: Turn a user" +
+                            " into a __player__. You have to specify a __node__ for them" +
+                            " to start at." +
+                        "\n\n*These ones will give you the context-sensitivity" +
+                            " for calling from within a __player__ channel, like with __node__s." +
+                            " Otherwise, you can use the dropdown.*" +
+                        "\n• `/player delete <mention>`: Delete a __player__" +
+                            " and their channel." +
+                        "\n• `/player review <mention>`: See their @mention," +
+                            " __location__ __player__ channel, who they're eavesdropping on," +
+                            " change their __character__ name or avatar, all sorts of things." +
+                        "\n• `/player tp <mention>`: Teleport one or more" +
+                            " people to a __node__ of your choosing." +
+                        "\n• `/player find <mention>`: See the current" +
+                            " __location__ of all __player__s, or just the ones you choose.",
+                'Server' :
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be an admin." +
+                    "\n\nCommands" +
+                        "\n• `/server view <node>`: View the whole __graph__" +
+                            " or just a part." +
+                        "\n• `/server clear`: Delete *everything*. Tread lightly." +
+                        "\n• `/server debug`: View server data, written out.",
+                'Development' :
+                    "Limitations" +
+                        "\n• Must be within a server." +
+                        "\n• You must be an admin." +
+                    "\n\nCommands" +
+                        "\n• `/test`: Just to esablish commands are online." +
+                        "\n• `/say`: Repeat something as an embed. Useful for devlogs." +
+                        "\n• `/refresh`: Reloads all commands, even this one."}
 
             await leatherbound(interaction, title_prefix, page_content)
 

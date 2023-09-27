@@ -39,7 +39,7 @@ class Component:
         self.allowed_players = players_IDs
         return
 
-    async def clear_format_whitelist(self):
+    async def clear_whitelist(self):
         self.allowed_roles = set()
         self.allowed_players = set()
         return
@@ -110,7 +110,7 @@ class Node(Component):
         self.occupants -= occupant_IDs
         return
 
-    async def clear_format_whitelist(self):
+    async def clear_whitelist(self):
         self.allowed_roles = set()
         self.allowed_players = set()
         return
@@ -1100,10 +1100,10 @@ class DialogueView(View):
 
         if self.clearing:
             return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
-                " to use the old format_whitelist, or if you select any roles or players below, to use that."
+                " to use the old whitelist, or if you select any roles or players below, to use that."
 
         if self.roles() or self.players():
-            return "\n• New whitelist(s)-- will overwrite the old format_whitelist:" + \
+            return "\n• New whitelist(s)-- will overwrite the old whitelist:" + \
                 f" {await format_whitelist(self.roles(), self.players())}"
 
         first_component = next(iter(components))

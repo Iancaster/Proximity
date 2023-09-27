@@ -455,14 +455,12 @@ class EdgeCommands(commands.Cog):
                 if view.clearing:
                     description = '\n• Removed the whitelist(s).'
                     for neighbor_name in view.edges():
-                        await origin.neighbors[neighbor_name].clear_whitelist()
+                        await origin_node.neighbors[neighbor_name].clear_whitelist()
                         await guild_data.nodes[neighbor_name].neighbors[origin_node_name].clear_whitelist()
 
                 else:
-                    description = ''
-
-                    if view.roles():
-                        description += '\n• Edited the whitelist(s).'
+                    revising_edges = [origin_node.neighbors[name] for name in view.edges()][0]
+                    description = await view.format_whitelist(revising_edges)
 
                     for neighbor_name in view.edges():
                         origin_node.neighbors[neighbor_name].allowed_roles = view.roles()

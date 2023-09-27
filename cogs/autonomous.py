@@ -37,11 +37,11 @@ class Autonomous(commands.Cog):
             outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
 
-            print(f'Updated {len(direct_listeners) + len(indirect_listeners)} channels in {guild.name}!')
+            #print(f'Updated {len(direct_listeners) + len(indirect_listeners)} channels in {guild.name}!')
 
         if broken_webhook_channels:
 
-            print(f'Fixing webhooks for {len(broken_webhook_channels)} channels.')
+            #print(f'Fixing webhooks for {len(broken_webhook_channels)} channels.')
 
             with open('assets/avatar.png', 'rb') as file:
                 avatar = file.read()
