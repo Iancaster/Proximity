@@ -8,7 +8,7 @@ from discord.utils import get
 
 from libraries.classes import GuildData, DialogueView, Edge
 from libraries.universal import mbd, loading, identify_node_channel, \
-    no_nodes_selected, no_edges_selected, no_changes
+    no_nodes_selected, no_edges_selected, no_changes, no_redundancies
 from libraries.formatting import format_whitelist, format_colors, \
     format_nodes, embolden
 from libraries.autocomplete import complete_nodes
@@ -180,12 +180,11 @@ class EdgeCommands(commands.Cog):
                 node_channel = get(interaction.guild.text_channels, id = origin_node.channel_ID)
                 await node_channel.send(embed = embed, file = file)
 
-                if interaction.channel.name not in new_neighbors \
-                    and interaction.channel.name != origin_node_name:
-                    await interaction.followup.edit_message(
-                        message_id = interaction.message.id,
-                        embed = embed)
-                return
+                return await no_redundancies(
+                    (interaction.channel.name not in new_neighbors \
+                    and interaction.channel.name != origin_node_name),
+                    embed,
+                    interaction)
 
             view = DialogueView(ctx.guild, refresh_embed)
             nodes = {name for name, node in guild_data.nodes.items() if node != origin_node}
