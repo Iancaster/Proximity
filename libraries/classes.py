@@ -3,8 +3,9 @@
 #Import-ant Libraries
 from discord import Guild, Member, PermissionOverwrite, Interaction, \
     ComponentType, InputTextStyle, ButtonStyle, MISSING, TextChannel
-from discord.utils import get
+from discord.utils import get, get_or_fetch
 from discord.ui import View, Select, Button, Modal, InputText
+from asyncio import sleep
 
 from libraries.universal import mbd
 from libraries.formatting import discordify, format_whitelist
@@ -279,11 +280,7 @@ class GuildData:
                         allowed_players = data.get('allowed_players', set()),
                         neighbors = data.get('neighbors', dict()))
 
-        cursor.execute(f"""SELECT * FROM player_data WHERE guild_ID = {self.guild_ID}""")
-        player_data = cursor.fetchone()
-
-        if player_data:
-            self.players = set(int(player) for player in player_data['players_list'].split())
+            self.players = set(int(player) for player in guild_data['player_list'].split())
 
         guild_con.close()
         return
@@ -302,7 +299,7 @@ class GuildData:
 
         return
 
-    async def delete_node(self, name: str, channels: iter = set()):
+    async def delete_node(self, name: str, channel = None):
 
         node = self.nodes.pop(name, None)
 
@@ -310,12 +307,8 @@ class GuildData:
             raise KeyError('Tried to delete a nonexistent node!')
             return
 
-        channel = get(channels, id = node.channel_ID)
         if channel:
             await channel.delete()
-
-        for other_node in self.nodes.values():
-            other_node.neighbors.pop(name, None)
 
         return
 
@@ -591,15 +584,15 @@ class GuildData:
         guild_con = connect(getcwd() + '/data/guild.db')
         cursor = guild_con.cursor()
 
-        nodes = {node_name : await node.__dict__() for node_name, node in self.nodes.items()}
-        serialized_nodes = dumps(nodes)
+        all_nodes = {node_name : await node.__dict__() for node_name, node in self.nodes.items()}
+        serialized_nodes = dumps(all_nodes)
         encoded_nodes = b64encode(serialized_nodes)
-        cursor.execute("INSERT or REPLACE INTO guilds(guild_ID, nodes) VALUES(?, ?)",
-            (self.guild_ID, encoded_nodes))
 
         player_data = ' '.join([str(player_ID) for player_ID in self.players])
-        cursor.execute("INSERT or REPLACE INTO player_data(guild_ID, players_list) VALUES(?, ?)",
-            (self.guild_ID, player_data))
+
+        cursor.execute("INSERT or REPLACE INTO guilds(guild_ID, nodes, player_list) VALUES(?, ?, ?)",
+            (self.guild_ID, encoded_nodes, player_data))
+
 
         guild_con.commit()
         guild_con.close()
@@ -610,12 +603,7 @@ class GuildData:
         guild_con = connect(getcwd() + '/data/guild.db')
         cursor = guild_con.cursor()
 
-        for node in self.nodes:
-            cursor.execute("""DELETE FROM messages WHERE
-                            location_channel_ID = ?""", (node.channel_ID,))
-
         cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
-        cursor.execute("DELETE FROM player_data WHERE guild_ID = ?", (self.guild_ID,))
         guild_con.commit()
 
         print(f'Guild deleted, ID: {self.guild_ID}.')
@@ -627,23 +615,24 @@ class GuildData:
 
             player = Player(player_ID, self.guild_ID)
 
-            channel = get(guild.channels, id = player.channel_ID)
+            channel = await get_or_fetch(guild, 'channel', player.channel_ID)
             if channel:
                 await channel.delete()
 
-            direct_listeners.pop(player.channel_ID, None)
-            indirect_listeners.pop(player.channel_ID, None)
-
-            await player.delete()
-
         for name, node in list(self.nodes.items()):
-            direct_listeners.pop(node.channel_ID, None)
-            await self.delete_node(name, guild.channels)
+
+            try:
+                node_channel = await get_or_fetch(guild, 'channel', node.channel_ID)
+                await self.delete_node(name, node_channel)
+            except:
+                print(f'Could not delete node {name} when clearing data.')
+                continue
 
         for category_name in ['nodes', 'players']:
-            nodes_category = get(guild.categories, name = category_name)
-            await nodes_category.delete() if nodes_category else None
+            category = get(guild.categories, name = category_name)
+            await category.delete() if category else None
 
+        await sleep(3)
         await self.delete()
         return
 
@@ -979,7 +968,7 @@ class DialogueView(View):
         self.existing = existing
         return
 
-    def name(self):
+    async def name(self):
 
         if self.name_select.value == self.existing:
             return None
@@ -987,7 +976,7 @@ class DialogueView(View):
         if self.bypass_formatting:
             return self.name_select.value
 
-        return discordify(self.name_select.value)
+        return await discordify(self.name_select.value)
 
     async def add_URL(self, callback: callable = None):
 

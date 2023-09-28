@@ -5,10 +5,12 @@ from discord import ApplicationContext, Embed, Interaction, \
     Option, Guild
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
+from discord.utils import get_or_fetch
 
 from libraries.classes import GuildData, Player, DialogueView, \
     ChannelMaker, Edge
-from libraries.formatting import format_whitelist, format_players
+from libraries.formatting import format_whitelist, format_players, \
+    format_words
 from libraries.universal import mbd, loading, identify_node_channel
 from libraries.autocomplete import complete_nodes
 
@@ -49,10 +51,10 @@ class ServerCommands(commands.Cog):
                     f" {await format_whitelist(node.allowed_roles, node.allowed_players)}"
             if node.occupants:
                 occupant_mentions = await format_players(node.occupants)
-                description += f'\n-- Occupants: {occupant_mentions}'
-            for neighbor in node.neighbors.keys():
-                description += f'\n-- Neighbors: **#{neighbor}**'
-
+                description += f'\n-- Occupants: {occupant_mentions}.'
+            if node.neighbors:
+                neighbors = [f'**#{name}**' for name in node.neighbors.keys()]
+                description += f'\n-- Neighbors: {await format_words(neighbors)}.'
 
         embed.add_field(
             name = 'Server Data: guilds.guilds.db',
@@ -89,9 +91,6 @@ class ServerCommands(commands.Cog):
 
         guild_data = GuildData(ctx.guild_id)
 
-        # import helpers.databaseInitialization as db
-        # db.create_guild_db()
-
         if not (guild_data.nodes or guild_data.players):
 
             embed, _ = await mbd(
@@ -105,7 +104,7 @@ class ServerCommands(commands.Cog):
 
             await loading(interaction)
 
-            await guild_data.clear(ctx.guild)
+            await guild_data.clear(interaction.guild)
 
             embed, _ = await mbd(
                 'See you.',
@@ -214,7 +213,8 @@ class ServerCommands(commands.Cog):
         for node_name, node_edges in node_data.items():
 
             if node_name in guild_data.nodes:
-                await guild_data.delete_node(node_name, ctx.guild.text_channels)
+                node_channel = await get_or_fetch(ctx.guild, 'channel', node_data.channel_ID)
+                await guild_data.delete_node(node_name, node_channel)
 
             node_channel = await maker.create_channel(node_name)
             await guild_data.create_node(node_name, node_channel.id)

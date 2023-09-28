@@ -8,7 +8,7 @@ from os import path, remove, getcwd
 def access_DB(DB: str):
 
     connection = None
-    data_directory = getcwd() + '/data/'
+    data_directory = path.join(path.dirname(getcwd()),'data')
 
     try:
         connection = connect(f'{data_directory}/{DB}.db')
@@ -40,19 +40,16 @@ def create_guild_DB():
 
     connection = access_DB('guild')
 
-    tables = {'Guilds' : """CREATE TABLE guilds
-                (guild_ID INTEGER PRIMARY KEY,
-                nodes TEXT);""",
-            'Players' : """CREATE TABLE player_data
-                (guild_ID INTEGER PRIMARY KEY,
-                players_list TEXT);"""}
-
     if isinstance(connection, Connection):
         print(f'New guild database created, version {version}.')
 
-        for name, data in tables.items():
-            print(f"Adding '{name}' table...", end = '')
-            create_table(connection, data)
+        print("Adding Guild table...", end = '')
+        create_table(
+            connection,
+            """CREATE TABLE guilds
+                (guild_ID INTEGER PRIMARY KEY,
+                nodes TEXT,
+                player_list TEXT);""")
 
     else:
         print('New guild database failed to create. No tables made.')
@@ -74,7 +71,7 @@ def create_player_DB():
 
     if isinstance(connection, Connection):
         print(f'New players database created, version {version}.')
-        print("Adding 'Player Data' table...", end = '')
+        print("Adding Player table...", end = '')
         create_table(connection, table)
 
     else:
@@ -87,7 +84,6 @@ def create_player_DB():
 def erase_all_guilds(con):
     cursor = con.cursor()
     cursor.execute("""DELETE FROM guilds""")
-    cursor.execute("""DELETE FROM messages""")
     con.commit()
     print('All guilds and messages removed.')
     return
@@ -110,17 +106,6 @@ def get_all_guilds(con):
     con.row_factory = return_dict
     cursor = con.cursor()
     cursor.execute("SELECT * FROM guilds")
-    return cursor.fetchall()
-
-def get_all_messages(con):
-
-    def return_dict(cursor, guild):
-        fields = [column[0] for column in cursor.description]
-        return {key: value for key, value in zip(fields, guild)}
-
-    con.row_factory = return_dict
-    cursor = con.cursor()
-    cursor.execute("SELECT * FROM messages")
     return cursor.fetchall()
 
 def get_all_players(con):

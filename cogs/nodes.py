@@ -4,7 +4,7 @@
 from discord import ApplicationContext, Option, Interaction, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get
+from discord.utils import get, get_or_fetch
 
 from libraries.classes import GuildData, DialogueView, ChannelMaker, Player
 from libraries.universal import mbd, loading, identify_node_channel, \
@@ -12,8 +12,8 @@ from libraries.universal import mbd, loading, identify_node_channel, \
 from libraries.formatting import discordify, unique_name, format_whitelist, \
     format_nodes, embolden, format_players
 from libraries.autocomplete import complete_nodes
-from data.listeners import to_direct_listeners, queue_refresh, \
-    direct_listeners, broken_webhook_channels
+from data.listeners import to_direct_listeners, direct_listeners, \
+    indirect_listeners, queue_refresh, broken_webhook_channels
 
 
 #Classes
@@ -43,7 +43,7 @@ class NodeCommands(commands.Cog):
         async def refresh_embed():
 
             nonlocal name
-            name = view.name() if view.name() else name
+            name = await view.name() if await view.name() else name
             name = await unique_name(name, guild_data.nodes.keys())
 
             description = f'Whitelist: {await format_whitelist(view.roles(), view.players())}'
@@ -132,41 +132,19 @@ class NodeCommands(commands.Cog):
                         view = None)
                     return
 
-                #Inform neighbor nodes and occupants that the node is deleted now
-                neighbor_node_names = await guild_data.neighbors(deleting_nodes.keys())
-                bold_deleting = await embolden(deleting_nodes.keys())
-                for name in neighbor_node_names:
-                    embed, _ = await mbd(
-                        'Misremembered?',
-                        f"Could you be imagining {bold_deleting}? Strangely, there's no trace.",
-                        "Whatever the case, it's gone now.")
-                    await to_direct_listeners(
-                        embed,
-                        interaction.guild,
-                        guild_data.nodes[name].channel_ID,
-                        occupants_only = True)
-
-                    embed, _ = await mbd(
-                        'Neighbor node(s) deleted.',
-                        f'Deleted {bold_deleting}--this node now has fewer neighbors.',
-                        "I'm sure it's for the best.")
-                    neighbor_node_channel = get(
-                        interaction.guild.text_channels,
-                        id = guild_data.nodes[name].channel_ID)
-                    await neighbor_node_channel.send(embed = embed)
-
-                #Delete nodes and their edges
+                #Delete nodes
                 for name, node in deleting_nodes.items():
 
-                    for neighbor in list(node.neighbors.keys()):
-                        await guild_data.delete_edge(name, neighbor)
+                    try:
+                        node_channel = await get_or_fetch(interaction.guild, 'channel', node.channel_ID)
+                        await guild_data.delete_node(name, node_channel)
+                    except:
+                        continue
 
-                    await guild_data.delete_node(name, ctx.guild.text_channels)
-
-                await guild_data.save()
 
                 if interaction.channel.name not in deleting_nodes:
 
+                    bold_deleting = await embolden(deleting_nodes.keys())
                     description = f'Successfully deleted the following things about {bold_deleting}:' + \
                         "\n• The node data in the database." + \
                         "\n• The node channels." + \
@@ -258,8 +236,8 @@ class NodeCommands(commands.Cog):
             async def refresh_embed():
 
                 description = intro
-                if view.name():
-                    new_name = await unique_name(view.name(), guild_data.nodes.keys())
+                if await view.name():
+                    new_name = await unique_name(await view.name(), guild_data.nodes.keys())
                     description += f', renaming to **#{new_name}**.'
                 description += final_part
 
@@ -277,7 +255,7 @@ class NodeCommands(commands.Cog):
                 await loading(interaction)
 
                 nonlocal reviewing_nodes
-                new_name = await unique_name(view.name(), guild_data.nodes.keys())
+                new_name = await unique_name(await view.name(), guild_data.nodes.keys())
 
                 if not any([new_name, view.roles(), view.players(), view.clearing]):
                     await no_changes(interaction)
@@ -318,32 +296,18 @@ class NodeCommands(commands.Cog):
                         await guild_data.nodes[name].set_roles(view.roles())
                         await guild_data.nodes[name].set_players(view.players())
 
+                await guild_data.save()
+
                 if new_name:
 
                     old_name = list(reviewing_nodes.keys())[0]
-                    node_data = guild_data.nodes.pop(old_name)
-                    guild_data.nodes[new_name] = node_data
+                    node_data = guild_data.nodes[old_name]
+
+                    node_channel = get(interaction.guild.text_channels, id = node_data.channel_ID)
+                    await node_channel.edit(name = new_name)
 
                     description += f"\n• Renamed **#{old_name}** to {node_data.mention}."
 
-
-                    #Correct locationName in player data
-                    for ID in node_data.occupants:
-                        player = Player(ID, interaction.channel.guild.id)
-                        player.location = new_name
-                        await player.save()
-
-                    #Rename edges
-                    for node in guild_data.nodes.values():
-                        for neighbor in list(node.neighbors):
-                            if neighbor == old_name:
-                                node.neighbors[new_name] = node.neighbors.pop(old_name)
-
-                await guild_data.save()
-
-                if new_name: #Gotta save first sorry
-                    node_channel = get(interaction.guild.text_channels, id = node_data.channel_ID)
-                    await node_channel.edit(name = new_name)
 
                 await queue_refresh(interaction.guild)
 
@@ -459,12 +423,12 @@ class NodeCommands(commands.Cog):
                     id = guild_data.nodes[neighbor_node_name].channel_ID,)
                 try:
                     await neighbor_node_channel.send(embed = embed)
-                except AttributeError:
+                except:
                     pass
 
                 await guild_data.delete_edge(name, neighbor_node_name)
 
-            await guild_data.delete_node(name)
+            guild_data.nodes.pop(name, None)
             direct_listeners.pop(node.channel_ID, None)
             await guild_data.save()
             await queue_refresh(channel.guild)
@@ -483,6 +447,8 @@ class NodeCommands(commands.Cog):
             guild_data.players.discard(ID)
             await guild_data.save()
 
+            direct_listeners.pop(channel.id, None)
+            indirect_listeners.pop(channel.id, None)
             await queue_refresh(channel.guild)
 
             player_embed, _ = await mbd(
@@ -504,10 +470,6 @@ class NodeCommands(commands.Cog):
                 await node_channel.send(embed = node_embed)
             return
 
-        await queue_refresh(channel.guild)
-
-        return
-
     @commands.Cog.listener()
     async def on_guild_channel_update(self, old_version, new_version):
 
@@ -516,12 +478,13 @@ class NodeCommands(commands.Cog):
 
         guild_data = GuildData(old_version.guild.id)
 
-        old_name, node_data = next(
-            ((name, node) for name, node in guild_data.nodes.items() \
-                if node.channel_ID == old_version.id),
-            (None, None))
+        for name, node in guild_data.nodes.items():
+            if node.channel_ID == old_version.id:
+                old_name = name
+                node_data = node
+                break
 
-        if not node_data: #Channel is not a node
+        if not node_data:
             return
 
         #Check if the new name conflicts with existing nodes
@@ -544,15 +507,15 @@ class NodeCommands(commands.Cog):
         for node_data in guild_data.nodes.values():
 
             node_data.neighbors = {
-                new_name if neighbor == old_version.name \
-                    else neighbor: edge
+                (new_name if neighbor == old_name else neighbor) \
+                    : edge
                 for neighbor, edge in node_data.neighbors.items()}
 
         await guild_data.save()
 
         embed, _ = await mbd(
             'Edited.',
-            f'Renamed **#{old_version.name}** to {new_version.mention}.',
+            f'Renamed **#{old_name}** to {new_version.mention}.',
             'Another successful revision.')
         await new_version.send(embed=embed)
         return

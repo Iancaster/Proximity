@@ -263,41 +263,59 @@ class OpenCommands(commands.Cog):
 
             await leatherbound(interaction, title_prefix, page_content)
 
-        async def server_setup(interaction: Interaction):
+        async def host_setup(interaction: Interaction):
 
-            title_prefix = 'New Server, Step'
-            page_content = {'Intro': "Hey! If you're interested in starting a" + \
-                                " new roleplay, it's pretty simple. Let's start.",
-                            'Template': "If you don't have a server established," + \
-                                    " you can start with this template here," + \
-                                    " which has the roles, channels, and settings" + \
-                                    " prepared for you already:" + \
-                                    " https://discord.new/4UXDgqfJ894a",
-                            'Invite': "Once your server looks good, you can invite" + \
-                                " me by clicking my profile. The big button under" + \
-                                " my name will add me to whichever server you pick.",
-                            'Edges': "Edges are the connections between nodes." + \
-                                " An edge just means that there is a direct path" + \
-                                " between two nodes that you can walk through. Maybe it's" + \
-                                " a doorway or a bridge. Use `/edge new` to connect nodes.",
-                            'Graph': "You can view a map of every node and the" + \
-                                " edges between them. That's called a 'graph'. Nodes" + \
-                                " are shown as just their name and the edges are" + \
-                                " shown as arrows between them. Look at the graph" + \
-                                " with `/server view`.",
-                            'Quick Start': "If you want an example of a graph," + \
-                                    " you can do `/server quick` to make a little house." + \
-                                    " You can clear out the graph and the player data with" + \
-                                    " `/server clear`.",
-                            'Players': "Once you have somewhere to put the players," + \
-                                " use `/player new` to add them to the game. You can also" + \
-                                " move them with `/player tp` or find them with `/player find`.",
-                            'Fixing': "If you mess with the channels, or if players leave," + \
-                                " if might break the bot causing certain features not to work. Use" + \
-                                " `/server fix` to automatically fix common issues.",
-                            'Fin': "That's about all--you can figure the rest out. If you" + \
-                                " have any issues or improvements to suggest, just let **davidlancaster**" + \
-                                " know. Enjoy! :)"}
+            title_prefix = 'Host Setup, Step'
+            page_content = {
+                'Intro' : "Welcome, this guide will walk you through" + \
+                    " using this bot to run your roleplay. It'll be a little" + \
+                    " more involved than using as a __player__, heads up.",
+                'Server': "You can start with your own server, but" + \
+                    " if you want one that's already set up for you, you" + \
+                    " can use this [template](https://discord.new/4UXDgqfJ894a).",
+                'Invite': "Once you have your server, invite me to it" + \
+                    " using the button in my profile bio.",
+                'Switching': "Now that we've got the new server, it might be" + \
+                    " better if we switch to over there. Call `/help` in that" + \
+                    " server and we can pick up from there, so we don't have" + \
+                    " to hop back and forth.",
+                'Permissions (pt. 1/2)' : "Before we go too much further, let's make" + \
+                    " sure nobody can mess with commands they shouldn't." + \
+                    " Go to Server Settings > Integrations (Second block, just" + \
+                    " under Apps) > Proximity, and then turn off slash command" + \
+                    " access for @everyone. ",
+                'Permissions (pt. 2/2)' : "Now you'll want to turn back on" + \
+                    " the permissions __player__s should be allowed to access." + \
+                    " Click `/eavesdrop`, then 'Add Roles or Members', and" + \
+                    " select @everyone or @Player (your call.) Repeat this for" + \
+                    " `/help`, `/look`, `/map`, and `/move`. ",
+                'Nodes': "Right, now let's start with making some __location__s." + \
+                    " Do `/node new` for each place you want __player__s to go." + \
+                    " Usually, these places are about the size of a large room.",
+                'Edges': "Now, for places that are connected, do `/edge new`" + \
+                    " to connect them. This can be two rooms connected by a door" + \
+                    " or hallway, an island and a port connected by a ferry, or" + \
+                    " it can be the Northern half of a courtyard adjacent to" + \
+                    " the Southern half. Get creative with it.",
+                'Players': "Once you're all ready, you can add __player__s with" + \
+                    " `/player new`. By the way, it won't add the Player role" + \
+                    " to them-- this bot doesn't actually use roles. But it's in the" + \
+                    " template server just in case you want to give them the role" + \
+                    " anyways.",
+                'Watching' : "As the roleplay goes, you can follow along with" + \
+                    " everything that goes on by watching their __player__ channels" + \
+                    " (for following their POV), or the __node__ channels (for following" + \
+                    " the events in a __location__).",
+                'NPCs' : "If someone wants to join the RP as extra, like a shop" + \
+                    " keeper or villian, you can add them (or even yourself) as a" + \
+                    " __player__. Speak in a __node__ channel to talk only to the people" + \
+                    " there, or speak in your __player__ channel for everyone in earshot" + \
+                    " to hear you.",
+                'Fin': "And that's about it! Enjoy the game. If you even need to" + \
+                    " manage your __player__s, you can `/player find` them," + \
+                    " `/player review` for more details, `/player tp` to" + \
+                    " __move__ them around... Frees you up to do the *real* hosting."
+                }
             # page_image = {
                 # 'The Goal' : 'assets/overview.png',
                 # 'Nodes' : 'assets/nodeExample.png',
@@ -317,7 +335,7 @@ class OpenCommands(commands.Cog):
         buttons = {
             'Help for Players' : player_tutorial,
             'Commands' : command_list,
-            'Server Setup' : server_setup}
+            'Host Setup' : host_setup}
 
         view = DialogueView()
         for button_label, button_callback in buttons.items():

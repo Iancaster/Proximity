@@ -71,7 +71,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                         ' dropdown menu to choose where this player will start.'
 
                 description += '\n• Character name: '
-                description += f'*{view.name()}*' if view.name() else 'Not set yet.' + \
+                description += f'*{await view.name()}*' if await view.name() else 'Not set yet.' + \
                     " You can choose how this player's messages appears to others."
 
                 if view.url():
@@ -149,18 +149,21 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                 player_data = Player(person.id, ctx.guild_id)
                 player_data.channel_ID = player_channel.id
                 player_data.location = node_name
-                await player_data.save()
-                guild_data.players.add(person.id)
 
-                character_name = view.name() if view.name() else person.display_name
+                if await view.name():
+                    player_data.name = character_name = await view.name()
+                else:
+                    character_name = person.display_name
 
                 if view.url() and valid_url:
-                    character_avatar = view.url()
+                    player_data.avatar = character_avatar = view.url()
                 else:
                     try:
                         character_avatar = person.display_avatar.url
                     except:
                         character_avatar = None
+
+                await player_data.save()
 
                 webhook = (await player_channel.webhooks())[0]
                 character_message = "By the way, this is how your messages " + \
@@ -196,12 +199,13 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 
                 #Add the players to the guild nodes as occupants
                 await node.add_occupants({person.id})
+                guild_data.players.add(person.id)
                 await guild_data.save()
 
                 #Inform admins node
                 description = f"• Added {person.mention} as a player. " + \
                         f"\n• They're starting at {node.mention}."
-                if view.name() == character_name:
+                if await view.name() == character_name:
                     description +=  "\n• Messages are being sent under" + \
                         f" the name *{character_name}*."
                 if avatar_display:
@@ -412,8 +416,8 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                 nonlocal valid_url
 
                 full_description = intro
-                if view.name():
-                    full_description += f'\n• New Character Name: *{view.name()}*'
+                if await view.name():
+                    full_description += f'\n• New Character Name: *{await view.name()}*'
                 full_description += description
 
                 if view.url():
@@ -448,7 +452,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                         " a permanent one like Imgur, but it can be URL, really."
 
                 footnotes = []
-                if not player_data.name and not view.name():
+                if not player_data.name and not await view.name():
                     footnotes.append('has no character name override')
                 if not player_data.eavesdropping:
                     footnotes.append("isn't eavesdropping on anyone")
@@ -475,14 +479,14 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
 
                 await loading(interaction)
 
-                if not (view.name() or view.url()):
+                if not (await view.name() or view.url()):
                     await no_changes(interaction)
                     return
 
                 description = ''
-                if view.name():
-                    player_data.name = view.name()
-                    description += f'• Changed their character name to *{view.name()}.*'
+                if await view.name():
+                    player_data.name = await view.name()
+                    description += f'• Changed their character name to *{await view.name()}.*'
 
                 if view.url():
 
@@ -504,7 +508,8 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                 character_message = "Good news! A host just updated your character," + \
                     " so now you'll appear like this to the other players."
 
-                character_name = view.name() if view.name() else person.display_name
+                character_name = await view.name() if await view.name() else \
+                    person.display_name
                 if player_avatar:
                     await webhook.send(
                         character_message,
