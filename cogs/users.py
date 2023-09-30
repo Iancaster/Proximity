@@ -334,42 +334,42 @@ class UserCommands(commands.Cog):
                 await guild_data.get_all_occupants(nodes_surrounding_path.values())
 
             for occupant_ID in player_IDs_surrounding_path:
-                evsdrp_player = Player(occupant_ID, ctx.guild_id)
-                if evsdrp_player.location in path:
+                nearby_player = Player(occupant_ID, ctx.guild_id)
+                if nearby_player.location in path:
                     continue
-                if evsdrp_player.eavesdropping in path:
-                    heard_segment = path.index(evsdrp_player.eavesdropping)
-                    evsdrp_player_channel = get(interaction.guild.text_channels, id = evsdrp_player.channel_ID)
 
-                    if heard_segment == 0:
-                        embed, _ = await mbd(
-                            'Someone got moving.',
-                            "You can hear someone in" + \
-                                f" **#{path[heard_segment]}** start" + \
-                                " to go towards" + \
-                                f" **#{path[heard_segment + 1]}**.",
-                            'Who could it be?')
-                        await evsdrp_player_channel.send(embed = embed)
+                heard_segment = path.index(nearby_player.eavesdropping)
+                nearby_player_channel = get(interaction.guild.text_channels, id = nearby_player.channel_ID)
 
-                    elif heard_segment == len(path) - 1:
-                        embed, _ = await mbd(
-                            'Someone stopped by.',
-                            "You can hear someone come from " + \
-                                f" **#{path[heard_segment - 1]}**" + \
-                                f" and stop at **#{path[heard_segment + 1]}**.",
-                            'Wonder why they chose here.')
-                        await evsdrp_player_channel.send(embed = embed)
+                if heard_segment == 0:
+                    embed, _ = await mbd(
+                        'Someone got moving.',
+                        "You can hear someone in" + \
+                            f" **#{path[heard_segment]}** start" + \
+                            " to go towards" + \
+                            f" **#{path[heard_segment + 1]}**.",
+                        'Who could it be?')
+                    await nearby_player_channel.send(embed = embed)
 
-                    else:
+                elif heard_segment == len(path) - 1:
+                    embed, _ = await mbd(
+                        'Someone stopped by.',
+                        "You can hear someone come from " + \
+                            f" **#{path[heard_segment - 1]}**" + \
+                            f" and stop at **#{path[heard_segment + 1]}**.",
+                        'Wonder why they chose here.')
+                    await nearby_player_channel.send(embed = embed)
 
-                        embed, _ = await mbd(
-                            'Someone passed through.',
-                            "You can hear someone go through" + \
-                                f" **#{path[heard_segment]}**," +\
-                                f" from **#{path[heard_segment - 1]}**" + \
-                                f" to **#{path[heard_segment + 1]}**.",
-                            'On the move.')
-                        await evsdrp_player_channel.send(embed = embed)
+                else:
+
+                    embed, _ = await mbd(
+                        'Someone passed through.',
+                        "You can hear someone go through" + \
+                            f" **#{path[heard_segment]}**," +\
+                            f" from **#{path[heard_segment - 1]}**" + \
+                            f" to **#{path[heard_segment + 1]}**.",
+                        'On the move.')
+                    await nearby_player_channel.send(embed = embed)
 
             #Inform origin occupants
             moving_character = await format_characters([ctx.author.id], interaction.guild.id)

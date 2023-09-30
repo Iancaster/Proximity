@@ -551,7 +551,7 @@ class EdgeCommands(commands.Cog):
 
                 async def submit_nodes(interaction: Interaction):
                     await ctx.delete()
-                    await review_permissions(view.nodes())
+                    await review_permissions(list(view.nodes())[0])
                     return
 
                 view = DialogueView()

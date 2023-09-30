@@ -8,7 +8,8 @@ from os import path, remove, getcwd
 def access_DB(DB: str):
 
     connection = None
-    data_directory = path.join(path.dirname(getcwd()),'data')
+    data_directory = path.join(path.dirname(getcwd()),'Proximity','data')
+    print(data_directory)
 
     try:
         connection = connect(f'{data_directory}/{DB}.db')
@@ -49,7 +50,8 @@ def create_guild_DB():
             """CREATE TABLE guilds
                 (guild_ID INTEGER PRIMARY KEY,
                 nodes TEXT,
-                player_list TEXT);""")
+                player_list TEXT,
+                settings TEXT);""")
 
     else:
         print('New guild database failed to create. No tables made.')
@@ -128,6 +130,7 @@ def count_rows(con, table_name):
     rowCount = cursor.fetchone()[0]
 
     return rowCount
+
 
 create_guild_DB()
 create_player_DB()

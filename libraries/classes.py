@@ -267,6 +267,7 @@ class GuildData:
 
         cursor.execute("SELECT * FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
         guild_data = cursor.fetchone()
+        settings_dict = dict()
 
         if guild_data:
             decoded_nodes = b64decode(guild_data['nodes'])
@@ -281,6 +282,17 @@ class GuildData:
                         neighbors = data.get('neighbors', dict()))
 
             self.players = set(int(player) for player in guild_data['player_list'].split())
+
+
+            decoded_settings = b64decode(guild_data['settings'])
+            settings_dict = loads(decoded_settings)
+
+
+        self.view_distance = settings_dict.get('view_distance', 99)
+        self.map_override = settings_dict.get('map_override', None)
+        self.visibility = settings_dict.get('visibility', 'private')
+        self.peephole = settings_dict.get('peephole', True)
+        self.eavesdropping_allowed = settings_dict.get('eavesdropping', True)
 
         guild_con.close()
         return
@@ -590,8 +602,29 @@ class GuildData:
 
         player_data = ' '.join([str(player_ID) for player_ID in self.players])
 
-        cursor.execute("INSERT or REPLACE INTO guilds(guild_ID, nodes, player_list) VALUES(?, ?, ?)",
-            (self.guild_ID, encoded_nodes, player_data))
+        server_settings = dict()
+
+        if self.view_distance != 99:
+            server_settings['view_distance'] = self.view_distance
+
+        if self.map_override:
+            server_settings['map_override'] = self.map_override
+
+        if self.visibility != 'private':
+            server_settings['visibility'] = self.visibility
+
+        if self.peephole:
+            server_settings['peephole'] = True
+
+        if not self.eavesdropping_allowed:
+            server_settings['eavesdropping_allowed'] = False
+
+        serialized_settings = dumps(server_settings)
+        encoded_settings = b64encode(serialized_settings)
+
+        cursor.execute("INSERT or REPLACE INTO guilds" + \
+            "(guild_ID, nodes, player_list) VALUES(?, ?, ?, ?)",
+            (self.guild_ID, encoded_nodes, player_data, encoded_settings))
 
 
         guild_con.commit()
