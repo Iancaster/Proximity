@@ -593,7 +593,7 @@ class GuildData:
 
     async def save(self):
 
-        guild_con = connect(getcwd() + '/data/guild.db')
+        guild_con = connect(path.join(getcwd(),'data','guild.db'))
         cursor = guild_con.cursor()
 
         all_nodes = {node_name : await node.__dict__() for node_name, node in self.nodes.items()}
@@ -623,7 +623,7 @@ class GuildData:
         encoded_settings = b64encode(serialized_settings)
 
         cursor.execute("INSERT or REPLACE INTO guilds" + \
-            "(guild_ID, nodes, player_list) VALUES(?, ?, ?, ?)",
+            "(guild_ID, nodes, player_list, settings) VALUES(?, ?, ?, ?)",
             (self.guild_ID, encoded_nodes, player_data, encoded_settings))
 
 
