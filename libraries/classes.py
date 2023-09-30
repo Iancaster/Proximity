@@ -17,7 +17,7 @@ from sqlite3 import connect
 from base64 import b64encode, b64decode
 from pickle import loads, dumps
 from io import BytesIO
-from os import getcwd
+from os import getcwd, path
 
 #Math Libraries
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
@@ -261,7 +261,9 @@ class GuildData:
             fields = [column[0] for column in cursor.description]
             return {column_name: data for column_name, data in zip(fields, guild)}
 
-        guild_con = connect(getcwd() + '/data/guild.db')
+        guild_db_dir = path.join(getcwd(),'data','guild.db')
+        print(guild_db_dir)
+        guild_con = connect(guild_db_dir)
         guild_con.row_factory = return_dictionary
         cursor = guild_con.cursor()
 
