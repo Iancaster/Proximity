@@ -261,9 +261,7 @@ class GuildData:
             fields = [column[0] for column in cursor.description]
             return {column_name: data for column_name, data in zip(fields, guild)}
 
-        guild_db_dir = path.join(getcwd(),'data','guild.db')
-        print(guild_db_dir)
-        guild_con = connect(guild_db_dir)
+        guild_con = connect(path.join(getcwd(),'data','guild.db'))
         guild_con.row_factory = return_dictionary
         cursor = guild_con.cursor()
 

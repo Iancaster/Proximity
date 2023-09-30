@@ -8,7 +8,7 @@ from os import path, remove, getcwd
 def access_DB(DB: str):
 
     connection = None
-    data_directory = path.join(path.dirname(getcwd()),'Proximity','data')
+    data_directory = path.join(path.dirname(getcwd()),'data')
     print(data_directory)
 
     try:
