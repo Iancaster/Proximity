@@ -162,7 +162,7 @@ class OpenCommands(commands.Cog):
             title_prefix = 'Command List, Page'
             page_content = {
                 'Intro' :
-                    "Hello! The first few pages will be for __player__s, the next" + \
+                    "So, the first few pages will be for __player__s, the next" + \
                     " few go over administrator/host commands, and then" + \
                     " there's some bonus commands at the end. Let's begin.",
                 'Open' :
