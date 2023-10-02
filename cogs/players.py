@@ -17,7 +17,7 @@ from data.listeners import to_direct_listeners, queue_refresh
 from requests import head
 
 #Classes
-class PlayerCommands(commands.Cog): #Create a listener to delete players when they leave the server
+class PlayerCommands(commands.Cog):
     """
     Commands for managing players.
     Not to be confused with commands
@@ -141,7 +141,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                     f"\n• You can `/look` around. You're at **#{node_name}** right now." + \
                     "\n• Do `/map` to see the other places you can go." + \
                     "\n• ...And `/move` to go there." + \
-                    "\n• You can`/eavesdrop` on people nearby room." + \
+                    "\n• You can `/eavesdrop` on people nearby room." + \
                     "\n• Other people can't ever see your `/commands`.",
                     'You can always type /help to get more help.')
                 await player_channel.send(embed = embed)
@@ -166,7 +166,7 @@ class PlayerCommands(commands.Cog): #Create a listener to delete players when th
                 await player_data.save()
 
                 webhook = (await player_channel.webhooks())[0]
-                character_message = "By the way, this is how your messages " + \
+                character_message = "By the way, this is how your messages" + \
                         " will appear to the other players. You can have" + \
                         " admins change your character's name or profile" + \
                         " picture by asking them to do `/player review`."

@@ -235,7 +235,7 @@ class OpenCommands(commands.Cog):
                         "\n• `/player delete <mention>`: Delete a __player__" + \
                             " and their channel." + \
                         "\n• `/player review <mention>`: See their @mention," + \
-                            " __location__ __player__ channel, who they're eavesdropping on," + \
+                            " __location__, __player__ channel, who they're eavesdropping on," + \
                             " change their __character__ name or avatar, all sorts of things." + \
                         "\n• `/player tp <mention>`: Teleport one or more" + \
                             " people to a __node__ of your choosing." + \
