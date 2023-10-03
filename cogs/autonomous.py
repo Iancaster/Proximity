@@ -1,7 +1,7 @@
 
 
 #Import-ant Libraries
-from discord import Bot, Message
+from discord import Bot, Message, Guild
 from discord.ext import commands
 from asyncio import sleep
 
@@ -89,6 +89,26 @@ class Autonomous(commands.Cog):
     async def on_message(self, message: Message):
         if not message.webhook_id:
             await relay(message)
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: Guild):
+
+        embed, _ = await mbd(
+            'Nice server.',
+            "Fair warning, I'll get rebooted a lot while updating to 2.0." + \
+                " Use the server link in `/help` to keep up with the changes" + \
+                " and you'll know when it's safe to start.",
+            "Or just call /help anyways to learn more about me.")
+
+        for channel in await guild.fetch_channels():
+
+            try:
+                channel.send(embed = embed)
+                break
+            except:
+                continue
+
+        return
 
 def setup(prox):
     prox.add_cog(Autonomous(prox), override = True)

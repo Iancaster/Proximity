@@ -276,7 +276,7 @@ class UserCommands(commands.Cog):
         await ctx.respond(embed = embed, file = file)
         return
 
-    @commands.slash_command(name = 'move', description = 'Go someplace new.', guild_only = True, guild_ids = [1114005940392439899])
+    @commands.slash_command(name = 'move', description = 'Go someplace new.', guild_only = True)
     async def move(self, ctx: ApplicationContext, destination: Option( str, "Name where you would like to go?", autocomplete = complete_map, required = False)):
 
         await ctx.defer(ephemeral = True)
