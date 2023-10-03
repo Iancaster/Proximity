@@ -18,32 +18,35 @@ class TestCommands(commands.Cog):
 #         ctx: ApplicationContext):
 #
 #         embed, file = await mbd(
-#             'Opening Source! (9/17/23)',
-#             'Now all of the code is public. You can contribute,' + \
-#                 ' take it for yourself, make your own version,' + \
-#                 ' do whatever you want with it.',
-#             "I also spent two weeks rewriting the code to be" + \
-#                 " easily understood now that other people will" + \
-#                 f" be looking at it. That took like 80% of the" + \
-#                 " work and it barely makes a footnote because" + \
-#                 " nobody knows what the hell a GitHub is.",
-#             ('assets/avatar.png', 'full'))
+#             'Welcome all.',
+#             "Let's get this show on the road, eh?" + \
+#                 " Now there's all sorts of improvements" + \
+#                 " to the server to welcome new people" + \
+#                 " in anticipation of some real growth.",
+#             "It's about time.")
 #
-#         embed.add_field(name = '**New Features**', inline = False, value =
+#         embed.add_field(name = '**General Info**', inline = False, value =
 # """
-# 1. GitHub link is [here](https://github.com/Iancaster/Proximity)!
-#  - Code is being rewritted once more for legibility and consistency.
-#  - A brand-new README.md file for the description.
-#  - Work begun on Proximity 2.0 with tons of new features.
+# 1. <#1157385416320765952> is an annoucement channel you can follow in your own server.
+# 2. <#1158457414589358170> now has tons of graphics and a rewritten explanation.
+# 3. <#1158827576681300109> if you want.
 # """)
-#         embed.add_field(name = '**Fixes**', inline = False, value =
+#         embed.add_field(name = '**Better Dev Info**', inline = False, value =
 # """
-# 1. Reorganizing the server.
-# 2. Redesigned the crappy logo.
+# 1. <#1158809778903072850> to see the past, what's been done.
+# 2. <#1158809399486328866> to see the present, what I'm doing now.
+# 3. <#1158808448499191841> to see future features, will soon be added.'
 # """)
-#         await ctx.respond(embed = embed, file = file)
+#         embed.add_field(name = '**Player Support**', inline = False, value =
+# """
+# 1. <#1157794246514982923> for support with your server running Proximity.
+# 2. <#1158813808639361084> to contribute your ideas.
+# 3. <#1158814020439134269> if you notice anything not quite right.
+# """)
+#
+#         await ctx.respond(embed = embed)
 #         return
-#
+
 #     @commands.slash_command(
 #         description = 'Repeat something as an embed.',
 #         guild_ids = [1114005940392439899])

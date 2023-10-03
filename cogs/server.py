@@ -5,7 +5,7 @@ from discord import ApplicationContext, Embed, Interaction, \
     Option, Guild
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get_or_fetch
+from discord.utils import get_or_fetch, get
 
 from libraries.classes import GuildData, Player, DialogueView, \
     ChannelMaker, Edge
@@ -212,11 +212,9 @@ class ServerCommands(commands.Cog):
         await maker.initialize()
         for node_name, node_edges in node_data.items():
 
-            try:
-                node_channel = await get_or_fetch(ctx.guild, 'channel', guild_data.nodes[node_name].channel_ID)
+            if node_name in guild_data.nodes:
+                node_channel = get(ctx.guild.text_channels, name = node_name)
                 await guild_data.delete_node(node_name, node_channel)
-            except:
-                pass
 
             node_channel = await maker.create_channel(node_name)
             await guild_data.create_node(node_name, node_channel.id)
