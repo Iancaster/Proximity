@@ -65,7 +65,7 @@ class PlayerCommands(commands.Cog):
                 if view.nodes():
                     node_name = view.nodes()[0]
                     node = guild_data.nodes[node_name]
-                    description += f"\n• Location: {node.mention}"
+                    description += f"\n• Location: <#{node.channel_ID}>"
                 else:
                     description += '\n• Location: Nowhere set yet! Use the' + \
                         ' dropdown menu to choose where this player will start.'
@@ -216,7 +216,7 @@ class PlayerCommands(commands.Cog):
                     description,
                     'You can view all players and where they are with /player find.',
                     avatar_display)
-                node_channel = get(interaction.guild.text_channels, id = node.channel_ID)
+                node_channel = await get_or_fetch(interaction.guild, 'channel', node.channel_ID)
                 await node_channel.send(embed = embed)
 
                 await queue_refresh(interaction.guild)
@@ -334,7 +334,7 @@ class PlayerCommands(commands.Cog):
                         'Fewer players.',
                         f'Removed {deleted_mentions} from the game (and this node).',
                         'You can view all remaining players with /player find.')
-                    node_channel = get(interaction.guild.text_channels, id = channel_ID)
+                    node_channel = await get_or_fetch(interaction.guild, 'channel', channel_ID)
                     await node_channel.send(embed = embed)
 
                 deleting_mentions = await format_players(deleting_player_IDs)

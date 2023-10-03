@@ -9,6 +9,7 @@ from libraries.universal import mbd
 #Classes
 class TestCommands(commands.Cog):
 
+
     @commands.slash_command(
         guild_ids = [1114005940392439899])
     async def test(
@@ -27,14 +28,14 @@ class TestCommands(commands.Cog):
                 " nobody knows what the hell a GitHub is.",
             ('assets/avatar.png', 'full'))
 
-        embed.add_field(name = '**New Features**', inline = True, value =
+        embed.add_field(name = '**New Features**', inline = False, value =
 """
 1. GitHub link is [here](https://github.com/Iancaster/Proximity)!
  - Code is being rewritted once more for legibility and consistency.
  - A brand-new README.md file for the description.
  - Work begun on Proximity 2.0 with tons of new features.
 """)
-        embed.add_field(name = '**Fixes**', inline = True, value =
+        embed.add_field(name = '**Fixes**', inline = False, value =
 """
 1. Reorganizing the server.
 2. Redesigned the crappy logo.

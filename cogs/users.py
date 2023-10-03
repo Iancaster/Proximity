@@ -287,17 +287,17 @@ class UserCommands(commands.Cog):
             await no_membership(ctx)
             return
 
-        player = Player(ctx.author.id, ctx.guild_id)
+        player_data= Player(ctx.author.id, ctx.guild_id)
 
         player_role_IDs = [role.id for role in ctx.author.roles]
         player_map = await guild_data.accessible_locations(
             player_role_IDs,
             ctx.author.id,
-            player.location)
+            player_data.location)
 
-        intro = f"Move from **#{player.location}**"
+        intro = f"Move from **#{player_data.location}**"
 
-        destination_name = destination if destination and destination != player.location else None
+        destination_name = destination if destination and destination != player_data.location else None
 
         async def refresh_embed():
 
@@ -325,7 +325,7 @@ class UserCommands(commands.Cog):
             await moving(interaction)
 
             path = shortest_path(player_map,
-                source = player.location,
+                source = player_data.location,
                 target = destination_name)
 
             nodes_along_path = await guild_data.neighbors(set(path), exclusive = True)
@@ -381,7 +381,7 @@ class UserCommands(commands.Cog):
                 embed,
                 interaction.guild,
                 guild_data.nodes[path[0]].channel_ID,
-                player.channel_ID,
+                player_data.channel_ID,
                 occupants_only = True)
 
             node_channel = get(
@@ -401,7 +401,7 @@ class UserCommands(commands.Cog):
             await to_direct_listeners(embed,
                 interaction.guild,
                 guild_data.nodes[path[-1]].channel_ID,
-                player.channel_ID,
+                player_data.channel_ID,
                 occupants_only = True)
 
             node_channel = get(
@@ -437,7 +437,7 @@ class UserCommands(commands.Cog):
                 await node_channel.send(embed = embed)
 
             path_nodes = await guild_data.filter_nodes(path)
-            await path_nodes[path[0]].remove_occupants({player.id})
+            await path_nodes[path[0]].remove_occupants({player_data.id})
 
             #Calculate who they saw on the way
             all_sightings = []
@@ -455,13 +455,13 @@ class UserCommands(commands.Cog):
                 description = "You didn't see anyone along the way."
 
             #Change occupants
-            await path_nodes[path[-1]].add_occupants({player.id})
+            await path_nodes[path[-1]].add_occupants({player_data.id})
             await guild_data.save()
 
             #Update location and eavesdropping
-            player.location = path[-1]
-            player.eavesdropping = None
-            await player.save()
+            player_data.location = path[-1]
+            player_data.eavesdropping = None
+            await player_data.save()
 
             await queue_refresh(interaction.guild)
 
@@ -470,14 +470,14 @@ class UserCommands(commands.Cog):
                 'Arrived.',
                 description,
                 f"The path you traveled was {' -> '.join(path)}.")
-            player_channel = get(interaction.guild.text_channels, id = player.channel_ID)
+            player_channel = get(interaction.guild.text_channels, id = player_data.channel_ID)
             await player_channel.send(embed = embed)
             await interaction.followup.delete_message(message_id = interaction.message.id)
             return
 
         view = DialogueView(refresh = refresh_embed)
         if not destination_name:
-            destinations = [node for node in player_map.nodes if node != player.location]
+            destinations = [node for node in player_map.nodes if node != player_data.location]
             await view.add_user_nodes(destinations)
         await view.add_submit(submit_destination)
         await view.add_cancel()

@@ -478,6 +478,7 @@ class NodeCommands(commands.Cog):
 
         guild_data = GuildData(old_version.guild.id)
 
+        node_data = None
         for name, node in guild_data.nodes.items():
             if node.channel_ID == old_version.id:
                 old_name = name
