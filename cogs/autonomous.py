@@ -103,7 +103,7 @@ class Autonomous(commands.Cog):
         for channel in await guild.fetch_channels():
 
             try:
-                channel.send(embed = embed)
+                await channel.send(embed = embed)
                 break
             except:
                 continue

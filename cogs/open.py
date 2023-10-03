@@ -328,8 +328,8 @@ class OpenCommands(commands.Cog):
         embed, _ = await mbd(
             'Hello!',
             "This command will help you learn what the bot does and how it" + \
-                " can be used. If you want support, updates, or more info, the" + \
-                " support server is [here](https://discord.gg/jJ4pkYJ9mk)." + \
+                " can be used. Head [here](https://discord.gg/jJ4pkYJ9mk)" + \
+                " for support, updates, and more info." + \
                 " Lastly, if you want to learn more about any" + \
                 " __underlined__ words I use, just say `/help (underlined word)`.",
             "I'll be here if/when you need me.")
