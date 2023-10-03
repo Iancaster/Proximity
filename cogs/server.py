@@ -212,9 +212,11 @@ class ServerCommands(commands.Cog):
         await maker.initialize()
         for node_name, node_edges in node_data.items():
 
-            if node_name in guild_data.nodes:
+            try:
                 node_channel = await get_or_fetch(ctx.guild, 'channel', guild_data.nodes[node_name].channel_ID)
                 await guild_data.delete_node(node_name, node_channel)
+            except:
+                pass
 
             node_channel = await maker.create_channel(node_name)
             await guild_data.create_node(node_name, node_channel.id)
