@@ -25,7 +25,7 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
         case _ if image_details[1] == 'thumb':
 
-            bad_link = path.join(getcwd(), 'assets', 'bad_link.png')
+            bad_link = path.join(getcwd(), 'assets', image_details[0])
 
 
             file = File(bad_link, filename = 'image.png')

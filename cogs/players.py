@@ -505,11 +505,16 @@ class PlayerCommands(commands.Cog):
                 else:
                     person = await get_or_fetch(interaction.guild, 'member', player_data.id)
                     player_avatar = person.display_avatar.url
+
                 character_message = "Good news! A host just updated your character," + \
                     " so now you'll appear like this to the other players."
 
-                character_name = await view.name() if await view.name() else \
-                    person.display_name
+                if player_data.name:
+                    character_name = player_data.name
+                else:
+                    person = await get_or_fetch(interaction.guild, 'member', player_data.id)
+                    character_name = person.display_name
+
                 if player_avatar:
                     await webhook.send(
                         character_message,

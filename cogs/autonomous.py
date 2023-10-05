@@ -1,7 +1,7 @@
 
 
 #Import-ant Libraries
-from discord import Bot, Message, Guild
+from discord import Bot, Message, Guild, Member
 from discord.ext import commands
 from asyncio import sleep
 
@@ -37,7 +37,7 @@ class Autonomous(commands.Cog):
             outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
 
-            print(f'Updated {len(direct_listeners) + len(indirect_listeners)} channels in {guild.name}!')
+            print(f'Updated {len(directs) + len(indirects)} channels in {guild.name}!')
 
         if broken_webhook_channels:
 
@@ -109,6 +109,26 @@ class Autonomous(commands.Cog):
                 continue
 
         return
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: Member):
+
+        if member.guild.id != 1114005940392439899:
+                    return
+
+        embed, file = await mbd(
+            f'Welcome to the Proximity server, {member.display_name}.',
+            "Please maker yourself at home. " + \
+                "\n- Bot information, including the dev log and status, is in the **#information** category." + \
+                "\n- You can ask question, chat, find support, and make suggestions in the **#discussion** category." + \
+                "\n- And just ask **David Lancaster** for a tour of the bot's features if you want a test run. ",
+            "And please, call `/help` if you want to learn more.",
+            ('avatar.png', 'thumb'))
+
+        dm_channel = await member.create_dm()
+        await dm_channel.send(embed = embed, file = file)
+        return
+
 
 def setup(prox):
     prox.add_cog(Autonomous(prox), override = True)
