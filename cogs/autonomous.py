@@ -41,7 +41,7 @@ class Autonomous(commands.Cog):
             outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
 
-            print(f'Updated {len(directs) + len(indirects)} channels in {guild.name}!')
+            #print(f'Updated {len(directs) + len(indirects)} channels in {guild.name}!')
 
         if broken_webhook_channels:
 
