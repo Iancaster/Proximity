@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from os import environ
 
 
-#Variabless
+#Variables
 boot_time = time()
 bot = Bot(intents = data.intents, owner_id = data.owner_id)
 
