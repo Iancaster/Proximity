@@ -2,8 +2,7 @@
 
 #Import-ant Libraries
 from discord import Bot, Message, Guild, Member
-from discord.ext import commands
-from asyncio import sleep
+from discord.ext import commands, tasks
 
 from data.listeners import direct_listeners, indirect_listeners, \
     outdated_guilds, updated_guild_IDs, broken_webhook_channels, \
@@ -21,8 +20,13 @@ class Autonomous(commands.Cog):
 
     def __init__(self, bot: Bot):
         self.prox = bot
+        self.update_listeners.start()
         return
 
+    def cog_unload(self):
+        self.update_listeners.cancel()
+
+    @tasks.loop(seconds = 6.0)
     async def update_listeners(self):
 
         for guild in list(outdated_guilds):
@@ -73,11 +77,12 @@ class Autonomous(commands.Cog):
         # print('Direct listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
         #     f' {[channel.name for channel, _ in listeners]}' \
         #     for speaker_ID, listeners in direct_listeners.items()))
-        await sleep(5)
-        return await self.update_listeners()
+        return
 
     @commands.Cog.listener()
     async def on_ready(self):
+
+        print('ready!')
 
         for guild in self.prox.guilds:
             outdated_guilds.add(guild)

@@ -1,7 +1,7 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Option
+from discord import ApplicationContext#, Option
 from discord.ext import commands
 from libraries.universal import mbd
 
@@ -9,43 +9,37 @@ from libraries.universal import mbd
 #Classes
 class TestCommands(commands.Cog):
 
-    pass
+    @commands.slash_command(
+        guild_ids = [1114005940392439899])
+    async def test(self, ctx: ApplicationContext):
 
-#     @commands.slash_command(
-#         guild_ids = [1114005940392439899])
-#     async def test(
-#         self,
-#         ctx: ApplicationContext):
-#
-#         embed, file = await mbd(
-#             'Welcome all.',
-#             "Let's get this show on the road, eh?" + \
-#                 " Now there's all sorts of improvements" + \
-#                 " to the server to welcome new people" + \
-#                 " in anticipation of some real growth.",
-#             "It's about time.")
-#
-#         embed.add_field(name = '**General Info**', inline = False, value =
-# """
-# 1. <#1157385416320765952> is an annoucement channel you can follow in your own server.
-# 2. <#1158457414589358170> now has tons of graphics and a rewritten explanation.
-# 3. <#1158827576681300109> if you want.
-# """)
-#         embed.add_field(name = '**Better Dev Info**', inline = False, value =
-# """
-# 1. <#1158809778903072850> to see the past, what's been done.
-# 2. <#1158809399486328866> to see the present, what I'm doing now.
-# 3. <#1158808448499191841> to see future features, will soon be added.'
-# """)
-#         embed.add_field(name = '**Player Support**', inline = False, value =
-# """
-# 1. <#1157794246514982923> for support with your server running Proximity.
-# 2. <#1158813808639361084> to contribute your ideas.
-# 3. <#1158814020439134269> if you notice anything not quite right.
-# """)
-#
-#         await ctx.respond(embed = embed)
-#         return
+        if ctx.channel.id != 1158809778903072850:
+            await ctx.respond('I do not believe you are the one who is supposed to be using this command.')
+            return
+
+        embed, file = await mbd(
+            'Fixing *all* the bugs.',
+            "Please don't quote me on that. But for real," + \
+                " the bot has never been more reliable or" + \
+                " stable as it is now, and it took a lot to" + \
+                " get here without sacrificing performance.",
+            "I swear this is gonna jinx it. Watch me find ten more bugs tonight.")
+
+        embed.add_field(name = '**"You" Problems**', inline = False, value =
+"""
+1. Caught typos so bad they would have broken different features.
+2. Fixed how renaming a node channel in Discord would just create a new node.
+3. Squashed a bug where deleting a channel would delete it twice. (???)
+""")
+        embed.add_field(name = '**"Me" Problems**', inline = False, value =
+"""
+1. Fixed a memory leak where deleted nodes would still be listening for messages.
+2. As well as deleted players. Ghost players listening to you. Spooky.
+3. Benign error when overwriting old edges. Didn't *seem* bad but I got it anyhow.
+""")
+
+        await ctx.respond(embed = embed)
+        return
 
 #     @commands.slash_command(
 #         description = 'Repeat something as an embed.',
