@@ -38,11 +38,10 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
                         response = head(image_details[0])
                         if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
                             embed.set_thumbnail(url = image_details[0])
-                            file = MISSING
                         else:
-                            pass
+                            file = MISSING
                     except:
-                        pass
+                        file = MISSING
 
                 case _ if path.isfile(path.join(getcwd(), 'assets', image_details[0])):
                     file = File(path.join(getcwd(), 'assets', image_details[0]), filename = 'image.png')
