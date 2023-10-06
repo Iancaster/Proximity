@@ -9,6 +9,7 @@ from data.listeners import direct_listeners, indirect_listeners, \
     relay
 from libraries.classes import ListenerManager
 from libraries.universal import mbd
+from libraries.formatting import format_words
 
 #Classes
 class Autonomous(commands.Cog):
@@ -25,6 +26,7 @@ class Autonomous(commands.Cog):
 
     def cog_unload(self):
         self.update_listeners.cancel()
+        return
 
     @tasks.loop(seconds = 6.0)
     async def update_listeners(self):
@@ -85,13 +87,12 @@ class Autonomous(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
 
-        print('ready!')
-
         for guild in self.prox.guilds:
             outdated_guilds.add(guild)
-            print(f'Added {guild.name} to the queue of servers needing updated listeners.')
 
-        return await self.update_listeners()
+        print(f'Updating {await format_words({guild.name for guild in self.prox.guilds})}.')
+
+        return
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -122,7 +123,10 @@ class Autonomous(commands.Cog):
     async def on_member_join(self, member: Member):
 
         if member.guild.id != 1114005940392439899:
-                    return
+            return
+
+        if member.bot:
+            return
 
         embed, file = await mbd(
             f'Welcome to the Proximity server, {member.display_name}.',

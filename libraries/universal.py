@@ -4,6 +4,7 @@ from discord import Embed, MISSING, File, Interaction, Member, \
     ApplicationContext
 from requests import head
 from os import path, getcwd
+from io import BytesIO
 
 
 #Dialogues
@@ -25,23 +26,30 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
         case _ if image_details[1] == 'thumb':
 
-            bad_link = path.join(getcwd(), 'assets', image_details[0])
+            match image_details[0]:
 
-            if image_details[0] == 'bad_link.png':
+                case _ if isinstance(image_details[0], BytesIO):
+                    file = File(image_details[0], filename = 'image.png')
+                    embed.set_thumbnail(url = 'attachment://image.png')
 
-                file = File(bad_link, filename = 'image.png')
-                embed.set_thumbnail(url = 'attachment://image.png')
+                case _ if 'http' in image_details[0]:
 
-            else:
-                try:
-                    response = head(image_details[0])
-                    if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
-                        embed.set_thumbnail(url = image_details[0])
-                        file = MISSING
-                    else:
+                    try:
+                        response = head(image_details[0])
+                        if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
+                            embed.set_thumbnail(url = image_details[0])
+                            file = MISSING
+                        else:
+                            pass
+                    except:
                         pass
-                except:
-                    pass
+
+                case _ if path.isfile(path.join(getcwd(), 'assets', image_details[0])):
+                    file = File(path.join(getcwd(), 'assets', image_details[0]), filename = 'image.png')
+                    embed.set_thumbnail(url = 'attachment://image.png')
+
+                case _:
+                    file = MISSING
         
         case _ if image_details[1] == 'full':
             file = File(image_details[0], filename = 'image.png')
@@ -50,6 +58,7 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
         case _:
             print('Unrecognized image viewing mode in dialogue!')
             file = MISSING
+
 
     return embed, file
 

@@ -15,6 +15,7 @@ from libraries.universal import mbd, loading, no_nodes_selected, \
 from data.listeners import to_direct_listeners, queue_refresh
 
 from requests import head
+from io import BytesIO
 
 #Classes
 class PlayerCommands(commands.Cog):
@@ -93,10 +94,15 @@ class PlayerCommands(commands.Cog):
                         valid_url = False
 
                 else:
-                    try:
-                        avatar_display = (person.display_avatar.url, 'thumb')
-                    except:
-                        avatar_display = None
+                    persons_pfp = person.display_avatar
+                    if persons_pfp.is_animated():
+                        persons_pfp = persons_pfp.replace(format = 'jpg')
+                        bytesIO = BytesIO()
+                        await persons_pfp.save(bytesIO, seek_begin = True)
+                        avatar_display = (bytesIO, 'thumb')
+
+                    else:
+                        avatar_display = (persons_pfp.url, 'thumb')
 
                     description += "\n\nChoose an avatar for this character's" + \
                         " proxy by uploading a picture URL. It's better for it to be" + \
@@ -842,7 +848,8 @@ class PlayerCommands(commands.Cog):
         if not player_data.location:
             return
 
-        guild_data.players.discard(deleting_player_IDs)
+        guild_data = GuildData(payload.guild_id)
+        guild_data.players.discard(payload.user.id)
 
         await guild_data.save()
 
