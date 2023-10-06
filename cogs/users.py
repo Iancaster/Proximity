@@ -356,7 +356,7 @@ class UserCommands(commands.Cog):
                         'Someone stopped by.',
                         "You can hear someone come from " + \
                             f" **#{path[heard_segment - 1]}**" + \
-                            f" and stop at **#{path[heard_segment + 1]}**.",
+                            f" and stop at **#{path[heard_segment]}**.",
                         'Wonder why they chose here.')
                     await nearby_player_channel.send(embed = embed)
 
@@ -367,7 +367,7 @@ class UserCommands(commands.Cog):
                         "You can hear someone go through" + \
                             f" **#{path[heard_segment]}**," +\
                             f" from **#{path[heard_segment - 1]}**" + \
-                            f" to **#{path[heard_segment + 1]}**.",
+                            f" to **#{path[heard_segment]}**.",
                         'On the move.')
                     await nearby_player_channel.send(embed = embed)
 

@@ -41,7 +41,7 @@ class Autonomous(commands.Cog):
             outdated_guilds.remove(guild)
             updated_guild_IDs.add(guild.id)
 
-            #print(f'Updated {len(directs) + len(indirects)} channels in {guild.name}!')
+            print(f'Updated {len(directs) + len(indirects)} channels in {guild.name}!')
 
         if broken_webhook_channels:
 
@@ -77,6 +77,9 @@ class Autonomous(commands.Cog):
         # print('Direct listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
         #     f' {[channel.name for channel, _ in listeners]}' \
         #     for speaker_ID, listeners in direct_listeners.items()))
+        # print('Indirect listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
+        #     f' {[channel.name for channel, _ in listeners]}' \
+        #     for speaker_ID, listeners in indirect_listeners.items()))
         return
 
     @commands.Cog.listener()
