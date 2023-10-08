@@ -4,7 +4,7 @@
 from discord import ApplicationContext, Option, Interaction, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get
+from discord.utils import get, get_or_fetch
 
 from libraries.classes import GuildData, DialogueView, Edge
 from libraries.universal import mbd, loading, identify_node_channel, \
@@ -131,7 +131,7 @@ class EdgeCommands(commands.Cog):
                         interaction.guild,
                         node.channel_ID,
                         occupants_only = True)
-                    node_channel = get(interaction.guild.text_channels, id = node.channel_ID)
+                    node_channel = await get_or_fetch(interaction.guild, 'channel', node.channel_ID)
                     await node_channel.send(embed = node_embed)
 
                 #Inform edited node occupants
@@ -177,7 +177,7 @@ class EdgeCommands(commands.Cog):
                     description,
                     'You can view all the nodes and edges with /server view.',
                     (graph_view, 'full'))
-                node_channel = get(interaction.guild.text_channels, id = origin_node.channel_ID)
+                node_channel = await get_or_fetch(interaction.guild, 'channel', origin_node.channel_ID)
                 await node_channel.send(embed = embed, file = file)
 
                 return await no_redundancies(

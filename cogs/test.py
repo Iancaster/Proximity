@@ -11,7 +11,7 @@ class TestCommands(commands.Cog):
 
     @commands.slash_command(
         guild_ids = [1114005940392439899])
-    async def test(self, ctx: ApplicationContext):
+    async def announce(self, ctx: ApplicationContext):
 
         if ctx.author.id != 985699127742582846:
             await ctx.respond('I do not believe you are the one who is supposed to be using this command.', ephemeral = True)
@@ -19,26 +19,37 @@ class TestCommands(commands.Cog):
 
 
         embed, file = await mbd(
-            'Version 2.0: Bug Fixes [1/5]',
-            "So many things updated that it won't fit into just one" + \
-                " message! This section is dedicated to discussing all" + \
-                " the bugs that were fixed, with Optimizations, Overhauls," + \
-                " and New Features coming next-- and some reworks that just make sense.",
-            "I swear this is gonna jinx it. Watch me find ten more bugs tonight.")
+            'Version 2.0: Optimizations [2/5]',
+            "People sleep on this part of bot development." + \
+                " At least, until they realize how slow things get." + \
+                " Really glad I prioritized it before that happened.",
+            "Now to add 19 more features that bring it to a crawl.")
 
-        embed.add_field(name = '**"You" Problems**', inline = False, value =
+        embed.add_field(name = 'Command-Specific', inline = False, value =
 """
-1. Caught typos so bad they would have broken a few different features.
-2. Fixed how renaming a node channel in Discord would just create a new node.
-3. Squashed a bug where deleting a channel would delete it twice. (???)
+1. Revamped the `/help` menu page switcher!
+  - Now, it can be used anywhere.
+  - ...And it's much faster.
+2. Optimized `/node delete` and `/node review`.
+  - Plays nicely with the listeners that detect changes to protected channels.
+  - Sends messages once, as it should.
 """)
-        embed.add_field(name = '**"Me" Problems**', inline = False, value =
+        embed.add_field(name = 'Throughout', inline = False, value =
 """
-1. Fixed a memory leak where deleted nodes would still be listening for messages.
-2. As well as deleted players. Ghost players listening to you. Spooky.
-3. Benign error when overwriting old edges. Didn't *seem* bad but I got it anyhow.
+1. Granular imports! Only uses what it needs.
+  - Improved startup time between reboots.
+  - Decreased memory usage.
+2. Detected unneccessary string-formatting.
+  - Imperceptably faster commands all throughout.
+  - Thanks, KATE.
 """)
-
+        #
+        # from discord.ui import View, Select
+        # from discord import ComponentType
+        # view = View()
+        # select_thing = Select(
+        #     select_type = ComponentType.channel_select)
+        # view.add_item(select_thing)
         await ctx.respond(embed = embed)
         return
 
