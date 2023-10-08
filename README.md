@@ -5,33 +5,25 @@ For a complete RP overhaul.
 1. Built-in Tupper Proxying, set by admins. No prefix needed.
 2. Fully dynamic map making of the RP world through Slash Commands.
 3. Prevent metagaming. Players only hear what their character hears.
-4. Players have a presence. You /look and you see nearby people.
+4. Players have a presence. You `/look` and you see nearby people.
 5. Players only see one channel, their personal one. Neat and tidy.
-6. Someone leaves? You see what way they went.
+6. Someone leaves? You see which way they went.
 7. That person also sees (and is seen by) everyone they pass by.
 8. Eavesdrop on people talking in nearby locations, discretely.
-9. Built in /help. Tutorials and guides for players and hosts.
+9. Helpful `/help`. Tutorials and guides for players and hosts.
+10. Tons of QoL commands for managing the game.
 
 ## Kinda Long; Read Some
-1. Players have a dedicated RP channel where their messages are
-automatically proxied as their character (which is set by admins.)
-2. Create, edit, inventory, and delete the locations in your RP
-world through slash commands, complete with whitelists and paths.
-3. Players "hear" messages sent by characters who are near the same
-location as them. If their character wouldn't have heard it, neither
-does the player. No honor system, no conflict of interest.
-4. Players are only ever "inside" one location at a time. They can
-be noticed by anyone else in the same location, online or offline.
-5. While there are channels for each location, like normal, these
-are just for the admins to review. Players can enjoy a minimal server.
-6. Instead of teleporting from place to place by just switching
-what channel you're talking in, your character actually moves.
-7. You can't go straight from LA to NYC. Locations have "paths"
-to adjacent locations, and you go from one to the next til you're there.
-8. Players hear that people are talking in other locations nearby
-and can secretly overhear what's being said, word for word.
-9. The /help command contains options for players and for hosts, to
-flip through page-by-page. Includes a glossary for term lookups.
+1. Players have a dedicated RP channel where their messages are automatically proxied as their character. All RP is done through there.
+2. Effortlessly make, review, and delete locations in your RP world through slash commands, and set whitelists and define paths.
+3. Players "hear" messages sent by characters who are near the same location as them. Character wouldn't have heard? Neither does the player. No honor system and no conflict of interest.
+4. Players are only ever "inside" one location at a time. They can be noticed by anyone else in the same location, online or offline.
+5. Admins can follow from the POV of any given player or from the POV of any location, while players can enjoy minimal channel clutter.
+6. Instead of teleporting from place to place by just switching what channel you're talking in, your character actually moves. They see people along the way and get seen, themselves.
+7. The "paths" between locations are just as important as the places themselves. You can control how people get there, not just where they can go.
+8. Players can hear conversations in locations nearby and can overhear what's being said, word for word.
+9. The `/help` command contains a command list, player guide, server setup guide, and a glossary, all itemized in a menu you can flip through.
+10. `/tp` players, `/find` them, and `/review` them without hassle. The bot does as much as possible for you.
 
 ## Not Long, Read All
 1. When you register a player, the bot automatically creates a player
