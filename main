@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+
+#Import-ant Libraries
+from discord import Bot, Game
+from time import time
+import data.data as data
+from dotenv import load_dotenv
+from os import environ
+
+
+#Variables
+boot_time = time()
+bot = Bot(intents = data.intents, owner_id = data.owner_id)
+
+
+#Functions
+@bot.listen()
+async def on_connect():
+
+	await bot.change_presence(activity = Game(data.activity))
+	print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
+
+	return
+
+
+#Run
+bot.load_extensions('cogs')
+load_dotenv()
+bot.run(environ.get("TOKEN"))

@@ -1,0 +1,141 @@
+#!/usr/bin/python3
+
+#Import-ant Libraries
+from sqlite3 import Error, connect, Connection, version
+from os import path, remove, getcwd
+
+#Internal
+def access_DB(DB: str):
+
+	connection = None
+	data_directory = path.join(path.dirname(getcwd()),'data')
+	print(data_directory)
+
+	try:
+		connection = connect(f'{data_directory}/{DB}.db')
+		return connection
+
+	except Error as problem:
+		print(f'Error when connecting to {DB} database: {problem}.')
+		return None
+
+#Initialize
+def create_table(connection, table):
+
+	try:
+		cursor = connection.cursor()
+		cursor.execute(table)
+		print('done.')
+		return True
+
+	except Error as problem:
+		print(f'Error when adding table: {problem}.')
+		return False
+
+def create_guild_DB():
+
+	data_directory = getcwd() + '/data/'
+
+	if path.isfile(data_directory + 'guild.db'):
+		remove(data_directory + 'guild.db')
+
+	connection = access_DB('guild')
+
+	if isinstance(connection, Connection):
+		print(f'New guild database created, version {version}.')
+
+		print("Adding Guild table...", end = '')
+		create_table(
+			connection,
+			"""CREATE TABLE guilds
+				(guild_ID INTEGER PRIMARY KEY,
+				places TEXT,
+				roles TEXT,
+				characters TEXT,
+				settings TEXT);""")
+
+	else:
+		print('New guild database failed to create. No tables made.')
+
+	return connection
+
+def create_character_DB():
+
+	data_directory = getcwd() + '/data/'
+
+	if path.isfile(data_directory + 'character.db'):
+		remove(data_directory + 'character.db')
+
+	connection = access_DB('character')
+
+	table = """CREATE TABLE characters
+				(character_ID integer PRIMARY KEY,
+				name TEXT,
+				avatar TEXT,
+				location TEXT,
+				eavesdropping TEXT,
+				roles TEXT);"""
+
+	if isinstance(connection, Connection):
+		print(f'New character database created, version {version}.')
+		print("Adding Character table...", end = '')
+		create_table(connection, table)
+
+	else:
+		print('New players database failed to create. No tables made.')
+
+	return connection
+
+
+#Erase actions
+def erase_all_guilds(con):
+	cursor = con.cursor()
+	cursor.execute("""DELETE FROM guilds""")
+	con.commit()
+	print('All guilds and messages removed.')
+	return
+
+def erase_all_players(con):
+	cursor = con.cursor()
+	cursor.execute("""DELETE FROM players""")
+	con.commit()
+	print('All players removed.')
+	return
+
+
+#Mass Get
+def get_all_guilds(con):
+
+	def return_dict(cursor, guild):
+		fields = [column[0] for column in cursor.description]
+		return {key: value for key, value in zip(fields, guild)}
+
+	con.row_factory = return_dict
+	cursor = con.cursor()
+	cursor.execute("SELECT * FROM guilds")
+	return cursor.fetchall()
+
+def get_all_players(con):
+
+	def return_dict(cursor, guild):
+		fields = [column[0] for column in cursor.description]
+		return {key: value for key, value in zip(fields, guild)}
+
+	con.row_factory = return_dict
+	cursor = con.cursor()
+	cursor.execute("SELECT * FROM players")
+	return cursor.fetchall()
+
+
+#Internal
+def count_rows(con, table_name):
+
+	cursor = con.cursor()
+	cursor.execute(f"""SELECT COUNT(*) FROM {table_name}""")
+	rowCount = cursor.fetchone()[0]
+
+	return rowCount
+
+
+create_guild_DB()
+create_character_DB()

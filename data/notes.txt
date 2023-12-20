@@ -1,0 +1,32 @@
+Okay, so the data structure for the following is like this:
+
+GuildData:
+	places: dict( place_name: str : location_data: Location)
+	characters: dict( int: character_channel_id : Character: character_data)
+	roles: set() # Roles that have been added to a Component's allowed_roles set
+
+	view_distance: int = 99
+	map_override: str = None # Would otherwise be a URL
+	visibility: str = 0 # 0 for private, 1 for 'public' 2 'semi'
+	peephole: bool = True # Whether you can eavesdrop through nodes you can't access
+	eavesdropping_allowed: bool = True # Whether eavesdropping is at all allowed
+
+Character:
+	channel_ID: int # The character channel's ID, obvs
+	name: str # Character's display name for select menus and proxying
+	avatar: str # Optional, URL to upload for character proxying + /player review menu
+	location: str # The place they're currently at (MUST match GuildData.places[location].occupants)
+	eavesdropping: str # Optional, the location they're eavesdropping on if they are eavesdropping
+
+Component:
+	allowed_characters: set(character_channel_ID) # All the characters that have been explicitly granted access
+	allowed_roles: set(role_ID) # Roles that have been given explicit access to this component
+
+Path (Component):
+	directionality: int # < 2 means it's going FROM the destination, > 0 means it's going TO the destination
+	# So in other words: 0 is <-, 1 is <->, 2 is ->
+
+Place:
+	channel_ID: int # The place's channel ID
+	occupants: dict(character_ID: int, MUST match each character's character.location : character_name: str, MUST match each character's character.name)
+	neighbors: dict(location_name: str : Path)
