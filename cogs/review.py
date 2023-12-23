@@ -29,6 +29,9 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
+		from data.listeners import print_listeners
+		await print_listeners(ctx.guild)
+
 		guild_data = GuildData(
 			ctx.guild_id,
 			load_places = True,

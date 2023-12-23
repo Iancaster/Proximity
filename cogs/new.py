@@ -85,7 +85,7 @@ class NewCommands(commands.Cog):
 			whitelist = await format_whitelist(view.roles(), view.characters())
 			embed, _ = await mbd(
 				'Cool, new place.',
-				f"{whitelist} If you want to change that, you can use `/place review`.",
+				f"{whitelist} If you want to change that, you can use `/review place`.",
 				"Don't forget to connect this place to other places with /new path.")
 			await new_channel.send(embed = embed)
 			return

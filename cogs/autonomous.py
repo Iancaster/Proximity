@@ -3,12 +3,17 @@
 #Import-ant Libraries
 from discord import Bot, Message, Guild, Member
 from discord.ext import commands, tasks
+from discord.utils import get_or_fetch
 
-from libraries.classes import ListenerManager, Character
+from libraries.classes import ListenerManager, Character, GuildData, \
+	ChannelMaker
+from libraries.formatting import get_names, format_words, \
+	format_characters
 from libraries.universal import mbd
 from data.listeners import direct_listeners, \
 	indirect_listeners, broken_webhook_channels, \
-	outdated_guilds, updated_guild_IDs, relay
+	outdated_guilds, updated_guild_IDs, relay, \
+	to_direct_listeners, queue_refresh, replace_speaker
 
 from itertools import cycle
 
@@ -87,14 +92,7 @@ class Autonomous(commands.Cog):
 				broken_webhook_channels.discard(channel)
 				return
 
-		# print('Direct listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
-		#	 f' {[channel.name for channel, _ in listeners]}' \
-		#	 for speaker_ID, listeners in direct_listeners.items()))
-		# print('Indirect listeners:' + ''.join(f'\nSpeaker: ...{str(speaker_ID)[-3:]}, Listener(s): ' + \
-		#	 f' {[channel.name for channel, _ in listeners]}' \
-		#	 for speaker_ID, listeners in indirect_listeners.items()))
-
-		print('Done.')
+		print('Listeners updated.')
 		return
 
 	@commands.Cog.listener()
@@ -151,6 +149,73 @@ class Autonomous(commands.Cog):
 		dm_channel = await member.create_dm()
 		await dm_channel.send(embed = embed, file = file)
 		return
+
+	@commands.Cog.listener()
+	async def on_guild_channel_delete(self, channel):
+
+		guild_data = GuildData(
+			channel.guild.id,
+			load_places = True,
+			load_characters = True)
+
+		found_place = [(name, place) for name, place in guild_data.places.items() if place.channel_ID == channel.id]
+
+		if found_place:
+
+			place_name, place = found_place[0]
+
+			if place.occupants:
+				maker = ChannelMaker(channel.guild, 'places')
+				await maker.initialize()
+				remade_channel = await maker.create_channel(place_name)
+				place.channel_ID = remade_channel.id
+				guild_data.places[place_name] = place
+				await guild_data.save()
+
+				await replace_speaker(place.channel_ID, remade_channel)
+
+				names = await get_names(place.occupants, guild_data.characters)
+
+				embed, _ = await mbd(
+					'Not so fast.',
+					"There's still people inside this place:" + \
+						f" {await format_characters(names)}" + \
+						" to be specific. Either delete them as players" + \
+						" with `/delete character` or move them out with " + \
+						" `/review character`.",
+					'Either way, you can only delete empty places.')
+				await remade_channel.send(embed = embed)
+				return
+
+			#Inform neighbor places and occupants that the place is deleted now
+			for neighbor_place_name, neighbor_place in list(place.neighbors.items()):
+				embed, _ = await mbd(
+					'Misremembered?',
+					f"Could you be imagining **#{name}**? Strangely, there's no trace.",
+					"Whatever the case, it's gone now.")
+				await to_direct_listeners(
+					embed,
+					channel.guild,
+					neighbor_place.channel_ID,
+					occupants_only = True)
+
+				embed, _ = await mbd(
+					'Neighbor place(s) deleted.',
+					f'Deleted **#{name}**--this place now has fewer neighbors.',
+					"I'm sure it's for the best.")
+				neighbor_place_channel = await get_or_fetch(
+					channel.guild,
+					'channel',
+					neighbor_place.channel_ID,
+					None)
+				if neighbor_place_channel:
+					await neighbor_place_channel.send(embed = embed)
+
+				await guild_data.delete_edge(name, neighbor_place_name)
+
+			await guild_data.delete_place(place_name)
+			await guild_data.save()
+			return
 
 def setup(prox):
 	prox.add_cog(Autonomous(prox), override = True)

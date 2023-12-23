@@ -6,7 +6,8 @@ from time import time
 import data.data as data
 from dotenv import load_dotenv
 from os import environ
-
+from helpers.tests import tests
+from asyncio import sleep
 
 #Variables
 boot_time = time()
@@ -19,6 +20,20 @@ async def on_connect():
 
 	await bot.change_presence(activity = Game(data.activity))
 	print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
+
+	tests_checklist = {
+		'Location Tests' : [
+			#'New Location',
+			#'Delete Test Channel'
+			]
+		}
+
+	#test_guild = await bot.fetch_guild(1114005940392439899)
+
+	#await tests(tests_checklist, test_guild)
+
+	#print('Exiting.')
+	#exit()
 
 	return
 

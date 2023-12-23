@@ -54,6 +54,7 @@ class DeleteCommands(commands.Cog):
 						message_id = interaction.message.id,
 						embed = embed,
 						view = None)
+					await interaction.message.delete(delay = 15)
 					return
 
 				#Delete places
@@ -126,7 +127,7 @@ class DeleteCommands(commands.Cog):
 					return
 
 				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), callback = submit_locations)
+				await view.add_places(guild_data.places.keys(), singular = False, callback = submit_locations)
 				await view.add_cancel()
 				await send_message(ctx.respond, embed, view)
 
@@ -356,18 +357,18 @@ class DeleteCommands(commands.Cog):
 				await delete_characters([result])
 			case None:
 
-				description = "You can delete a character four ways:" + \
-					"\n• Call this command inside of a character channel." + \
-					"\n• Do `/delete character character-name`." + \
-					"\n• Delete the **#character-channel** itself." + \
-					"\n• Select one or more characters from the dropdown below.",
+				description = 'You can delete a character four ways:' + \
+					'\n• Call this command inside of a character channel.' + \
+					'\n• Do `/delete character character-name`.' + \
+					'\n• Delete the **#character-channel** itself.' + \
+					'\n• Select one or more characters from the dropdown below.'
 
 
 				async def refresh():
 
 					nonlocal description
 
-					if view.character_select.values() and not view.characters():
+					if view.character_select.values and not view.characters():
 						description = 'Because you have more characters than can' + \
 							' fit in a Text dropdown, this uses a Channel dropdown.' + \
 							" It's almost the same, just choose the character channels" + \

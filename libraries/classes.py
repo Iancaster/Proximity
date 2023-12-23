@@ -3,7 +3,7 @@
 #Import-ant Libraries
 from discord import Guild, PermissionOverwrite, Interaction, \
 	ComponentType, InputTextStyle, ButtonStyle, TextChannel, \
-	ChannelType
+	ChannelType, CategoryChannel
 from discord.errors import NotFound
 from discord.utils import get, get_or_fetch
 from discord.ui import View, Select, Button, Modal, InputText
@@ -224,7 +224,7 @@ class DialogueView(View):
 		else:
 			plurality = 's'
 
-		if len(characters) < 25 and False:
+		if len(characters) < 25:
 			self.character_select_textual = True
 
 			self.character_select = Select(
@@ -250,7 +250,7 @@ class DialogueView(View):
 		return
 	def characters(self):
 		if self.character_select_textual:
-			return {int(ID) : self._characters_dict[ID] for index, ID in enumerate(self.character_select.values)}
+			return {int(ID) : self._characters_dict[int(ID)] for index, ID in enumerate(self.character_select.values)}
 
 		return {channel.id : self._characters_dict[channel.id] for channel in self.character_select.values if channel.id in self._characters_dict}
 
@@ -357,7 +357,7 @@ class DialogueView(View):
 			label = 'name',
 			style = InputTextStyle.short,
 			min_length = 1,
-			max_length = 20,
+			max_length = 25,
 			placeholder = "What should it be?",
 			value = existing)
 		modal.add_item(name_select)
@@ -517,35 +517,38 @@ class ChannelMaker:
 
 	async def initialize(self):
 
+		self_member = await get_or_fetch(self.guild, 'member', 1161017761888219228)
+
+		self.permissions = {
+			self.guild.default_role:
+				PermissionOverwrite(read_messages = False),
+			self_member : PermissionOverwrite(
+				send_messages = True,
+				read_messages = True,
+				manage_channels = True)}
+
 		existing_category = get(self.guild.categories, name = self.category_name)
 		if existing_category:
 			self.category = existing_category
 			return
 
-		permissions = {
-			self.guild.default_role: PermissionOverwrite(read_messages = False),
-			self.guild.me : PermissionOverwrite(
-			send_messages = True,
-			read_messages = True,
-			manage_channels = True)}
-		self.category = await self.guild.create_category(self.category_name, overwrites = permissions)
+		found_category = [channel for channel in await self.guild.fetch_channels() if \
+			channel.name == self.category_name and isinstance(channel, CategoryChannel)]
+		if found_category:
+			self.category = found_category[0]
+			return
+
+		self.category = await self.guild.create_category(self.category_name, overwrites = self.permissions)
 		return
 
 	async def create_channel(self, name: str, people: iter = []):
 
-		permissions = {
-			self.guild.default_role: PermissionOverwrite(read_messages = False),
-			self.guild.me : PermissionOverwrite(
-				send_messages = True,
-				read_messages = True,
-				manage_channels = True)}
-
 		for person in people:
-			permissions[person] = PermissionOverwrite(
+			self.permissions[person] = PermissionOverwrite(
 				send_messages = True,
 				read_messages = True)
 
-		new_channel = await self.guild.create_text_channel(name, category = self.category, overwrites = permissions)
+		new_channel = await self.guild.create_text_channel(name, category = self.category, overwrites = self.permissions)
 		await new_channel.create_webhook(name = 'Proximity', avatar = self.avatar)
 		return new_channel
 
@@ -646,10 +649,7 @@ class GuildData:
 			if not any(role in place.allowed_roles for place in self.places.values()):
 				self.roles.discard(role)
 
-		for occ_ID in condemned_place.occupants:
-			direct_listeners.get(occ_ID, set()).discard(condemned_place.channel_ID)
-
-		direct_listeners.pop(condemned_place.channel_ID, None)
+		await remove_speaker(condemned_place.channel_ID)
 
 		return
 
@@ -1030,6 +1030,10 @@ class ListenerManager:
 
 		return
 
+	async def replace_speaker(self, old_ID: int, new_ID: int):
+
+		return
+
 	async def build_listeners(self):
 
 		self.channels = await self.guild.fetch_channels()
@@ -1050,7 +1054,7 @@ class ListenerManager:
 					if other_occ_ID == occ_ID: #Skip yourself.
 						continue
 
-					await self._add_direct(other_occ_ID, occ_channel) #Add them as a listener to you.
+					await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False) #Add them as a listener to you.
 
 				for neighbor_place_name in place.neighbors.keys():
 
@@ -1058,7 +1062,7 @@ class ListenerManager:
 
 					for neighbor_occ_ID in neighbor_place.occupants: #For every person in the neighbor place...
 
-						neighbor_occ = await self._load_player(neighbor_occ_ID)
+						neighbor_occ = await self._load_character(neighbor_occ_ID)
 						neighbor_occ_channel = await self._load_channel(neighbor_occ_ID)
 
 						if neighbor_occ.eavesdropping == place_name and self.guild_data.eavesdropping_allowed: #If they're eavesdropping on us...

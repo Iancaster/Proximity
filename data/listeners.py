@@ -1,8 +1,11 @@
 
 
 #Import-ant Libraries
-from discord import Guild, Message, Embed, Interaction
+from discord import Guild, Message, Embed, Interaction, TextChannel
+from discord.utils import get, get_or_fetch
 from asyncio import sleep
+
+from libraries.formatting import format_words
 from libraries.universal import mbd, NO_AVATAR_URL
 
 #Variables
@@ -38,7 +41,7 @@ async def relay(msg: Message, character_class):
 	speaker_name = speaker.name
 	speaker_avatar = speaker.avatar or NO_AVATAR_URL
 
-	directs = direct_listeners.get(msg.channel.id, [])
+	directs = direct_listeners.get(msg.channel.id, set())
 	for channel, eavesdropping in directs:
 
 		webhook = (await channel.webhooks())[0]
@@ -76,7 +79,7 @@ async def relay(msg: Message, character_class):
 					username = speaker_name,
 					avatar_url = speaker_avatar)
 
-	indirects = indirect_listeners.get(msg.channel.id, [])
+	indirects = indirect_listeners.get(msg.channel.id, set())
 	for channel, speaker_location in indirects:
 		embed, _ = await mbd(
 			'Hm?',
@@ -86,12 +89,66 @@ async def relay(msg: Message, character_class):
 
 	return
 
+async def print_listeners(guild: Guild):
+
+	for speaker_ID, listeners in direct_listeners.items():
+
+		speaker_channel = await get_or_fetch(guild, 'channel', speaker_ID)
+		print(f'    {speaker_channel.name} -> ' + \
+			await format_words({listener.name for listener, _ in listeners}))
+
+async def remove_speaker(speaker_channel: TextChannel):
+
+	speaker_channel = None
+
+	for listener_dict in [direct_listeners, indirect_listeners]:
+
+		for listener_channel, secondary in listener_dict.get(speaker_ID, set()):
+
+			if secondary =
+
+			their_listeners = listener_dict[listener_channel.id]
+
+			if not speaker_channel:
+
+				candidate_channel = get(their_listeners, id = speaker_ID)
+
+			listener_dict[listener_channel.id].discard((speaker_channel, secondary))
+
+		listener_dict.pop(speaker_ID, None)
+
+	return
+
+async def replace_speaker(old_ID: int, new_channel: TextChannel):
+
+	speaker_channel = None
+
+	for listener_dict in [direct_listeners, indirect_listeners]:
+
+		for listener_channel, _ in listener_dict.get(old_ID, set()):
+
+			their_listeners = listener_dict.get(listener_channel.id, set())
+
+			if not their_listeners:
+				continue
+
+			if not speaker_channel:
+				speaker_channel = get(their_listeners, id = speaker_ID)
+
+			listener_dict.discard(speaker_channel)
+			listener_dict
+			listener_dict[listener_channel.id] = their_listeners
+
+		listener_dict[new_channel.id] = listener_dict.pop(old_ID, None)
+
+	return
+
 async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int, exclude: int = 0, occupants_only: bool = False):
 
 	if guild.id not in updated_guild_IDs:
 		await wait_for_listeners(guild)
 
-	directs = direct_listeners.get(channel_ID, [])
+	directs = direct_listeners.get(channel_ID, set())
 	for channel, eavesdropping in directs:
 
 		if channel.id == exclude:

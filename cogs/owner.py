@@ -39,21 +39,7 @@ class OwnerCommands(commands.Cog):
 	@commands.slash_command(
 		 description = 'Repeat something as an embed.',
 		 guild_ids = [1114005940392439899])
-	async def repeat(
-		self,
-		ctx: ApplicationContext,
-		header: Option(
-			 str,
-			 description = 'What should the title be?',
-			 default = None),
-		body: Option(
-			 str,
-			 description = 'What should the body be?',
-			 default = None),
-		footer: Option(
-			 str,
-			 description = 'What should the footer be?',
-			 default = None)):
+	async def repeat(self, ctx: ApplicationContext, header: Option( str, description = 'What should the title be?', default = None), body: Option( str, description = 'What should the body be?', default = None), footer: Option( str, description = 'What should the footer be?', default = None)):
 
 		embed, _ = await mbd(header, body, footer)
 		await ctx.respond(embed = embed)
@@ -70,21 +56,28 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'3.0 Upgrades: No more wrong answers!',
-			"In the early days, if you tried to press 'Submit' without putting" + \
-				" in the right info, it would bug. Then, I made it so it would" + \
-				" recognize when you gave it conflicting information (or not enough)," + \
-				" and tell you what to fix. Now it's even better than that!",
-			"The ultimate form of input sanitation...")
+			'3.0 Upgrades: Multiple OCs!',
+			"Way back when, in ye olde days of 2.0 and before, you could only have" + \
+				" one character per person. It was a 'player channel', not a 'character" + \
+				" channel', after all. This was the main reason that inspired me to do" + \
+				" a version 3.0 at all, actually, was to correct that limitation.",
+			"You would not *believe* just how much needed to be redone to make this happen.")
 
-		embed.add_field(name = 'Sensitive Submit Buttons', inline = False, value =
+		embed.add_field(name = 'No More Player Channels', inline = False, value =
 """
-1. Submit buttons only turn on when they're ready.
-  - It starts off grey and disabled.
-  - Once you put in enough info, it'll turn green and clickable.
-  - No more invalid submissions, and then having to redo it.
-  - Some buttons are green right away, like `/delete server`.
-  - ...But stuff like `/new path` has you define a destination first, for example.
+1. People are no longer "players" or not, they just have access to characters or not.
+  - You can roleplay as a character if you can send messages in their channel.
+  - You can have access to as many characters channels as the host(s) like.
+  - Multiple people can have access to the same character, if desired.
+  - You can still see *who* is the one controlling the character.
+  - ...Just look at who sent the message in the character channel.
+2. Character cap removed!
+  - If there's less than 25 characters, the dropdowns are text-selects.
+  - If there's more than that, it's a channel-select.
+  - Just select the character channel corresponding to the character.
+  - This type of select-menu has a search bar built in. :)
+  - It's a Discord thing, they won't let you do more than 25 with text.
+  - It's just with the menus in the commands, everything else runs the same.
 """)
 		#file = File('ghost.png', filename = 'image.png')
 		#embed.set_image(url = 'attachment://image.png')

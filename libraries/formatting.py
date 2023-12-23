@@ -27,6 +27,9 @@ async def format_words(words: iter):
 async def format_roles(role_IDs: iter):
 	return await format_words([f'<@&{ID}>' for ID in role_IDs])
 
+async def get_names(character_IDs: iter, characters: dict):
+	return {name for ID, name in characters.items() if ID in character_IDs}
+
 async def format_characters(characters: iter):
 	return await format_words([f'**{name}**' for name in characters])
 
@@ -98,7 +101,7 @@ async def discordify(text: str):
 						text if (character.isalnum() or character.isspace() or character == '-'))
 	spaceless = '-'.join(sanitized.split())
 
-	return spaceless[:19]
+	return spaceless[:24]
 
 async def format_colors(graph: DiGraph, origin_name: str, colored_neighbors: list, color: str):
 
