@@ -649,8 +649,6 @@ class GuildData:
 			if not any(role in place.allowed_roles for place in self.places.values()):
 				self.roles.discard(role)
 
-		await remove_speaker(condemned_place.channel_ID)
-
 		return
 
 	async def filter_places(self, place_names: iter):
@@ -813,8 +811,8 @@ class GuildData:
 
 	async def to_map(self, graph: DiGraph = None, path_color: str = []):
 
-		if not graph:
-			graph = await self.to_graph()
+		graph = graph or await self.to_graph()
+
 		if not path_color:
 			path_color = ['black'] * len(graph.edges)
 
@@ -931,6 +929,12 @@ class GuildData:
 
 	async def delete(self, guild: Guild):
 
+		guild_con = connect(join(getcwd(),'data','guild.db'))
+		cursor = guild_con.cursor()
+
+		cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
+		guild_con.commit()
+
 		for char_ID in self.characters.keys():
 
 			direct_listeners.pop(char_ID, None)
@@ -956,14 +960,6 @@ class GuildData:
 			category = get(guild.categories, name = category_name)
 			if category:
 				await category.delete()
-
-		await sleep(3)
-
-		guild_con = connect(join(getcwd(),'data','guild.db'))
-		cursor = guild_con.cursor()
-
-		cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
-		guild_con.commit()
 
 		print(f'Guild deleted, ID: {self.guild_ID}.')
 		return

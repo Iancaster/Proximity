@@ -29,9 +29,6 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		from data.listeners import print_listeners
-		await print_listeners(ctx.guild)
-
 		guild_data = GuildData(
 			ctx.guild_id,
 			load_places = True,
@@ -126,10 +123,10 @@ class ReviewCommands(commands.Cog):
 				ego = ego_graph(graph, place, radius = 1)
 				subgraph = compose(subgraph, ego)
 
-			if len(subgraph.nodes) >= len(place_names):
+			if subgraph.edges:
 				graph_view = (await guild_data.to_map(subgraph), 'full')
 			else:
-				description += "\n• Neighbors: There are no paths that connect this to other places."
+				description += "\n• Neighbors: There are no paths connected to any of the places you gave."
 				graph_view = None
 
 			async def refresh():
@@ -148,7 +145,7 @@ class ReviewCommands(commands.Cog):
 					full_description,
 					'You can rename a place if you have only one selected.',
 					graph_view)
-				return embed, MISSING
+				return embed, None
 
 			def checks():
 				return not (view.roles() or view.characters() or view.name() or view.clearing)
@@ -262,7 +259,7 @@ class ReviewCommands(commands.Cog):
 				view = DialogueView()
 				await view.add_places(guild_data.places.keys(), callback = submit_locations)
 				await view.add_cancel()
-				await send_message(ctx.respond, embed, view)
+				await send_message(ctx.respond, embed, view = view)
 
 		return
 

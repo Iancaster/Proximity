@@ -13,7 +13,8 @@ from libraries.universal import mbd
 from data.listeners import direct_listeners, \
 	indirect_listeners, broken_webhook_channels, \
 	outdated_guilds, updated_guild_IDs, relay, \
-	to_direct_listeners, queue_refresh, replace_speaker
+	to_direct_listeners, queue_refresh, \
+	remove_speaker, replace_speaker
 
 from itertools import cycle
 
@@ -172,7 +173,7 @@ class Autonomous(commands.Cog):
 				guild_data.places[place_name] = place
 				await guild_data.save()
 
-				await replace_speaker(place.channel_ID, remade_channel)
+				await replace_speaker(channel, remade_channel)
 
 				names = await get_names(place.occupants, guild_data.characters)
 
@@ -188,31 +189,32 @@ class Autonomous(commands.Cog):
 				return
 
 			#Inform neighbor places and occupants that the place is deleted now
-			for neighbor_place_name, neighbor_place in list(place.neighbors.items()):
+			for neighbor_place_name in list(place.neighbors.keys()):
 				embed, _ = await mbd(
 					'Misremembered?',
-					f"Could you be imagining **#{name}**? Strangely, there's no trace.",
+					f"Could you be imagining **#{place_name}**? Strangely, there's no trace.",
 					"Whatever the case, it's gone now.")
 				await to_direct_listeners(
 					embed,
 					channel.guild,
-					neighbor_place.channel_ID,
+					guild_data.places[neighbor_place_name].channel_ID,
 					occupants_only = True)
 
 				embed, _ = await mbd(
 					'Neighbor place(s) deleted.',
-					f'Deleted **#{name}**--this place now has fewer neighbors.',
+					f'Deleted **#{place_name}**--this place now has fewer neighbors.',
 					"I'm sure it's for the best.")
 				neighbor_place_channel = await get_or_fetch(
 					channel.guild,
 					'channel',
-					neighbor_place.channel_ID,
-					None)
+					guild_data.places[neighbor_place_name].channel_ID,
+					default = None)
 				if neighbor_place_channel:
 					await neighbor_place_channel.send(embed = embed)
 
-				await guild_data.delete_edge(name, neighbor_place_name)
+				await guild_data.delete_path(place_name, neighbor_place_name)
 
+			await remove_speaker(channel)
 			await guild_data.delete_place(place_name)
 			await guild_data.save()
 			return

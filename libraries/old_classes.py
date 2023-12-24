@@ -2,7 +2,7 @@
 
 #Import-ant Libraries
 from discord import Guild, Member, PermissionOverwrite, Interaction, \
-	ComponentType, InputTextStyle, ButtonStyle, MISSING, TextChannel
+	ComponentType, InputTextStyle, ButtonStyle, TextChannel
 from discord.utils import get, get_or_fetch
 from discord.ui import View, Select, Button, Modal, InputText
 from asyncio import sleep
@@ -1253,14 +1253,14 @@ class Paginator():
 			await self.interaction.followup.edit_message(
 				message_id = self.interaction.message.id,
 				embed = embed,
-				file = file if file else MISSING,
+				file = file if file else None,
 				view = await self._construct_buttons(left_arrow_enabled, right_arrow_enabled))
 		else:
 
 			await self.interaction.followup.edit_message(
 				message_id = self.interaction.message.id,
 				embed = embed,
-				file = file if file else MISSING) #Might be attachments = MISSING
+				file = file if file else None) #Might be attachments = MISSING
 
 		return
 

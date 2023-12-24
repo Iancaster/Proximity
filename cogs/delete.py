@@ -1,8 +1,7 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Option, Interaction, \
-	MISSING, Embed
+from discord import ApplicationContext, Option, Interaction, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get, get_or_fetch
@@ -379,7 +378,7 @@ class DeleteCommands(commands.Cog):
 						'Delete character(s)?',
 						description,
 						"This will only select them, you'll be asked if you want to delete them for sure after this.")
-					return embed, MISSING
+					return embed, None
 
 				def checks():
 					return not view.characters()

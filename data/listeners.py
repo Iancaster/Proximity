@@ -99,47 +99,33 @@ async def print_listeners(guild: Guild):
 
 async def remove_speaker(speaker_channel: TextChannel):
 
-	speaker_channel = None
-
 	for listener_dict in [direct_listeners, indirect_listeners]:
 
-		for listener_channel, secondary in listener_dict.get(speaker_ID, set()):
+		own_listeners = listener_dict.pop(speaker_channel.id, set())
 
-			if secondary =
+		for listener_channel, secondary in own_listeners:
 
 			their_listeners = listener_dict[listener_channel.id]
 
-			if not speaker_channel:
-
-				candidate_channel = get(their_listeners, id = speaker_ID)
-
 			listener_dict[listener_channel.id].discard((speaker_channel, secondary))
-
-		listener_dict.pop(speaker_ID, None)
 
 	return
 
-async def replace_speaker(old_ID: int, new_channel: TextChannel):
-
-	speaker_channel = None
+async def replace_speaker(old_channel: TextChannel, new_channel: TextChannel):
 
 	for listener_dict in [direct_listeners, indirect_listeners]:
 
-		for listener_channel, _ in listener_dict.get(old_ID, set()):
+		own_listeners = listener_dict.pop(old_channel.id, set())
 
-			their_listeners = listener_dict.get(listener_channel.id, set())
+		for listener_channel, secondary in own_listeners:
 
-			if not their_listeners:
-				continue
+			their_listeners = listener_dict[listener_channel.id]
 
-			if not speaker_channel:
-				speaker_channel = get(their_listeners, id = speaker_ID)
+			listener_dict[listener_channel.id].discard((old_channel, secondary))
+			listener_dict[listener_channel.id].add((new_channel, secondary))
 
-			listener_dict.discard(speaker_channel)
-			listener_dict
-			listener_dict[listener_channel.id] = their_listeners
-
-		listener_dict[new_channel.id] = listener_dict.pop(old_ID, None)
+		if own_listeners:
+			listener_dict[new_channel.id] = own_listeners
 
 	return
 

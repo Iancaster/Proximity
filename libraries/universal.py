@@ -1,6 +1,6 @@
 
 #Import-ant Libraries
-from discord import Embed, MISSING, File, Interaction, Member
+from discord import Embed, File, Interaction, Member, MISSING
 from discord.ui import View
 from requests import head
 from os import path, getcwd
@@ -19,7 +19,7 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 		color = 670869)
 	embed.set_footer(text = footer)
 
-	file = MISSING
+	file = None
 
 	match image_details:
 
@@ -77,9 +77,13 @@ async def moving(interaction: Interaction):
 		attachments = [])
 	return
 
-async def send_message(send_method: callable, embed: Embed, view: View = MISSING, file = MISSING, **options):
-	message = await send_method(embed = embed, view = view, file = file, **options)
-	view.message = message
+async def send_message(send_method: callable, embed: Embed, view = None, file = None, **options):
+
+	if view:
+		message = await send_method(embed = embed, view = view, file = file, **options)
+		view.message = message
+	else:
+		await send_method(embed = embed, file = file, **options)
 	return
 
 
@@ -176,7 +180,7 @@ async def no_changes(interaction: Interaction):
 		attachments = [])
 	return
 
-async def no_redundancies(test, embed: Embed, interaction: Interaction, file = MISSING):
+async def no_redundancies(test, embed: Embed, interaction: Interaction, file = None):
 
 	if test:
 		await interaction.delete_original_response()

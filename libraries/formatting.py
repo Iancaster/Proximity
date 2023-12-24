@@ -81,7 +81,7 @@ async def format_whitelist(allowed_roles: iter = set(), allowed_characters: iter
 		return 'Everyone will be allowed to travel to/through this place.'
 
 	role_mentions = await format_roles(allowed_roles)
-	character_mentions = await format_characters(allowed_characters)
+	character_mentions = await format_channels(allowed_characters)
 
 	if allowed_roles and not allowed_characters:
 		return f'Only people with these roles are allowed through this place: ({role_mentions}).'
