@@ -13,6 +13,8 @@ from libraries.formatting import format_places, embolden, format_colors
 from libraries.autocomplete import complete_places, complete_characters
 from data.listeners import to_direct_listeners, queue_refresh
 
+from asyncio import sleep
+
 
 #Classes
 class DeleteCommands(commands.Cog):
@@ -63,13 +65,12 @@ class DeleteCommands(commands.Cog):
 					place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID, default = None)
 					if place_channel:
 						await place_channel.delete()
+						#await sleep(0.5)
 
 					if not guild_data.places:
 						category = get(interaction.guild.categories, name = 'places')
 						if category:
 							await category.delete()
-
-					await guild_data.save()
 
 				if interaction.channel.name not in condemned_places.keys():
 
@@ -100,7 +101,7 @@ class DeleteCommands(commands.Cog):
 			embed, _ = await mbd(
 				'Confirm deletion?',
 				f"Delete {await format_places(condemned_places.values())}?",
-				'This will, of course, delete its paths and its channel as well.')
+				'This will, of course, delete the channel(s) and any connected paths as well.')
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 

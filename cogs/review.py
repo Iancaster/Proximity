@@ -190,7 +190,7 @@ class ReviewCommands(commands.Cog):
 							occupants_only = True)
 
 						await guild_data.places[name].set_roles(view.roles())
-						await guild_data.places[name].set_players(view.players())
+						await guild_data.places[name].set_characters(view.characters())
 
 				await guild_data.save()
 

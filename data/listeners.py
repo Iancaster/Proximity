@@ -30,9 +30,6 @@ async def wait_for_listeners(guild: Guild):
 
 async def relay(msg: Message, character_class):
 
-	if msg.author.id == 1161017761888219228:#1114004384926421126: #Self.
-		return
-
 	if msg.guild.id not in updated_guild_IDs:
 		await wait_for_listeners(msg.guild)
 
@@ -88,14 +85,6 @@ async def relay(msg: Message, character_class):
 		await channel.send(embed = embed)
 
 	return
-
-async def print_listeners(guild: Guild):
-
-	for speaker_ID, listeners in direct_listeners.items():
-
-		speaker_channel = await get_or_fetch(guild, 'channel', speaker_ID)
-		print(f'    {speaker_channel.name} -> ' + \
-			await format_words({listener.name for listener, _ in listeners}))
 
 async def remove_speaker(speaker_channel: TextChannel):
 

@@ -23,8 +23,14 @@ async def on_connect():
 
 	tests_checklist = {
 		'Location Tests' : [
-			#'New Location',
-			#'Delete Test Channel'
+			#('Create Location', 'the-courtyard'),
+			#('Create Location', 'the-gardens'),
+			#('Create Location', 'the-village-outskirts'),
+			#('Delete Location', 'the-courtyard'),
+			#('Delete Location', 'the-village-outskirts'),
+			#('Delete Location', 'the-gardens'),
+			#('Create Path', ('the-courtyard', 'the-gardens')),
+			#('Create Path', ('the-courtyard', 'the-village-outskirts'))
 			]
 		}
 

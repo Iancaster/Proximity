@@ -41,15 +41,17 @@ class NewCommands(commands.Cog):
 
 		submitted_name = await discordify(name)
 		name = submitted_name if submitted_name else 'new-place'
+		name = await discordify(name)
 		name = await unique_name(name, guild_data.places.keys())
 
 		async def refresh(interaction: Interaction = None):
 
 			nonlocal name
 			name = view.name() if view.name() else name
+			name = await discordify(name)
 			name = await unique_name(name, guild_data.places.keys())
 
-			description = f'Whitelist: {await format_whitelist(view.roles(), view.characters().values())}'
+			description = f'Whitelist: {await format_whitelist(view.roles(), view.characters().keys())}'
 
 			embed, file = await mbd(
 				f'New location: {name}',
@@ -253,8 +255,8 @@ class NewCommands(commands.Cog):
 				await place_channel.send(embed = embed, file = file)
 
 				return await no_redundancies(
-					(interaction.channel.name not in destinations \
-					and interaction.channel.name != origin_place_name),
+					(interaction.channel.name in destinations \
+					or interaction.channel.name == origin_place_name),
 					embed,
 					interaction)
 

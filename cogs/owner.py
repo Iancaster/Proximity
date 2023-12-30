@@ -37,15 +37,6 @@ class OwnerCommands(commands.Cog):
 		return
 
 	@commands.slash_command(
-		 description = 'Repeat something as an embed.',
-		 guild_ids = [1114005940392439899])
-	async def repeat(self, ctx: ApplicationContext, header: Option( str, description = 'What should the title be?', default = None), body: Option( str, description = 'What should the body be?', default = None), footer: Option( str, description = 'What should the footer be?', default = None)):
-
-		embed, _ = await mbd(header, body, footer)
-		await ctx.respond(embed = embed)
-		return
-
-	@commands.slash_command(
 		 description = 'Custom embed.',
 		 guild_ids = [1114005940392439899])
 	async def say(self, ctx: ApplicationContext):
@@ -56,28 +47,23 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'3.0 Upgrades: Multiple OCs!',
-			"Way back when, in ye olde days of 2.0 and before, you could only have" + \
-				" one character per person. It was a 'player channel', not a 'character" + \
-				" channel', after all. This was the main reason that inspired me to do" + \
-				" a version 3.0 at all, actually, was to correct that limitation.",
-			"You would not *believe* just how much needed to be redone to make this happen.")
+			'Version 3 Forum!',
+			"There's never been a bigger update to this bot, and you've got lots of questions." + \
+				" This temporary channel should shed some light.",
+			"Read up on it while you can!")
 
-		embed.add_field(name = 'No More Player Channels', inline = False, value =
+		embed.add_field(name = 'New Info!', inline = False, value =
 """
-1. People are no longer "players" or not, they just have access to characters or not.
-  - You can roleplay as a character if you can send messages in their channel.
-  - You can have access to as many characters channels as the host(s) like.
-  - Multiple people can have access to the same character, if desired.
-  - You can still see *who* is the one controlling the character.
-  - ...Just look at who sent the message in the character channel.
-2. Character cap removed!
-  - If there's less than 25 characters, the dropdowns are text-selects.
-  - If there's more than that, it's a channel-select.
-  - Just select the character channel corresponding to the character.
-  - This type of select-menu has a search bar built in. :)
-  - It's a Discord thing, they won't let you do more than 25 with text.
-  - It's just with the menus in the commands, everything else runs the same.
+1. View how far along 3.0 is with <#1190733014557265930>.
+  - See what commands are ready, and which ones are up next.
+  - This will stay current as more commands get finished.
+2. See the <#1190732367942389882>.
+  - This has been moved from <#1158808448499191841>.
+  - That channel is more of a checklist of things to get around to.
+  - Meanwhile, this channel is a detailed look at what's confirmed.
+3. Read up on the <#1190742719803424920>!
+  - Talks about compatibility, features, and the timeline.
+  - I'll add new questions on there and their answers, as they come.
 """)
 		#file = File('ghost.png', filename = 'image.png')
 		#embed.set_image(url = 'attachment://image.png')

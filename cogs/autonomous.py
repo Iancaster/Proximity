@@ -106,8 +106,15 @@ class Autonomous(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message: Message):
-		if not message.webhook_id:
-			await relay(message, Character)
+
+		if message.webhook_id:
+			return
+
+		if message.author.id == 1161017761888219228: #1114004384926421126: #Self.
+			return
+
+		await relay(message, Character)
+		return
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, guild: Guild):
@@ -188,12 +195,15 @@ class Autonomous(commands.Cog):
 				await remade_channel.send(embed = embed)
 				return
 
+			await guild_data.delete_place(place_name)
+			await guild_data.save()
+
 			#Inform neighbor places and occupants that the place is deleted now
-			for neighbor_place_name in list(place.neighbors.keys()):
+			for neighbor_place_name in place.neighbors.keys():
 				embed, _ = await mbd(
 					'Misremembered?',
-					f"Could you be imagining **#{place_name}**? Strangely, there's no trace.",
-					"Whatever the case, it's gone now.")
+					f"Could you have been imagining **#{place_name}**? Strangely, there's no trace.",
+					"Whatever the case, it's not here.")
 				await to_direct_listeners(
 					embed,
 					channel.guild,
@@ -201,7 +211,7 @@ class Autonomous(commands.Cog):
 					occupants_only = True)
 
 				embed, _ = await mbd(
-					'Neighbor place(s) deleted.',
+					'Neighbor location deleted.',
 					f'Deleted **#{place_name}**--this place now has fewer neighbors.',
 					"I'm sure it's for the best.")
 				neighbor_place_channel = await get_or_fetch(
@@ -212,11 +222,7 @@ class Autonomous(commands.Cog):
 				if neighbor_place_channel:
 					await neighbor_place_channel.send(embed = embed)
 
-				await guild_data.delete_path(place_name, neighbor_place_name)
-
 			await remove_speaker(channel)
-			await guild_data.delete_place(place_name)
-			await guild_data.save()
 			return
 
 def setup(prox):

@@ -5,8 +5,7 @@ from discord import ApplicationContext, Bot, Option, File, \
 	OptionChoice, SlashCommandGroup
 from discord.ext import commands
 
-from data.listeners import direct_listeners, indirect_listeners, \
-	print_listeners
+from data.listeners import direct_listeners, indirect_listeners
 from libraries.classes import GuildData
 from libraries.formatting import format_words, format_channels, \
 	embolden
@@ -68,6 +67,7 @@ class DebugCommands(commands.Cog):
 		graph = DiGraph()
 		silent_channels = set()
 		listener_dict = direct_listeners if listener_type == 'direct' else indirect_listeners
+
 		for channel_ID, name in channels_to_check.items():
 
 			listeners = listener_dict.get(channel_ID, None)
@@ -76,7 +76,8 @@ class DebugCommands(commands.Cog):
 				continue
 
 			for listener_channel, _ in listeners:
-				graph.add_edge(name, listener_channel.name)
+				graph.add_edge(name, channels_to_check.get(listener_channel.id, 'Missing channel!'))
+
 
 		if graph:
 			listener_view = (await guild_data.to_map(graph), 'full')

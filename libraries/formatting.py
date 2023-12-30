@@ -67,7 +67,7 @@ async def format_new_neighbors(overwriting: bool, origin_place, places: set, gui
 			new_neighbors.append(existing_neighbors)
 		else:
 			destination_comments.append(
-				f'{len(existing_neighbors)} existing paths that are getting skipped' +
+				f'{len(existing_neighbors)} existing paths that are getting skipped.' +
 					' Enable overwriting below if you want these to be overwritten')
 
 	return f'{description}{await format_words(destination_comments)}.', new_neighbors
@@ -100,8 +100,9 @@ async def discordify(text: str):
 	sanitized = ''.join(character.lower() for character in \
 						text if (character.isalnum() or character.isspace() or character == '-'))
 	spaceless = '-'.join(sanitized.split())
+	trimmed = spaceless.strip()
 
-	return spaceless[:24]
+	return trimmed[:24]
 
 async def format_colors(graph: DiGraph, origin_name: str, colored_neighbors: list, color: str):
 

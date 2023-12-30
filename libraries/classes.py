@@ -649,6 +649,9 @@ class GuildData:
 			if not any(role in place.allowed_roles for place in self.places.values()):
 				self.roles.discard(role)
 
+		for neighbor_place_name in condemned_place.neighbors.keys():
+			await self.delete_path(name, neighbor_place_name)
+
 		return
 
 	async def filter_places(self, place_names: iter):
@@ -723,9 +726,15 @@ class GuildData:
 
 		return prior_path
 
-	async def delete_path(self, origin: str, destination: str):
-		self.places[origin].neighbors.pop(destination, None)
-		self.places[destination].neighbors.pop(origin, None)
+	async def delete_path(self, origin_name: str, destination: str):
+		origin = self.places.get(origin_name, None)
+		if origin:
+			origin.neighbors.pop(destination, None)
+
+		destination = self.places.get(destination, None)
+		if destination:
+			test = destination.neighbors.pop(origin_name, None)
+
 		return
 
 	async def neighbors(self, place_names: iter, exclusive: bool = True):
@@ -943,6 +952,7 @@ class GuildData:
 			channel = await get_or_fetch(guild, 'channel', char_ID, default = None)
 			if channel:
 				await channel.delete()
+				await sleep(0.5)
 
 		for name, place in list(self.places.items()):
 
@@ -952,6 +962,7 @@ class GuildData:
 			if place_channel:
 				await self.delete_place(name)
 				await place_channel.delete()
+				await sleep(0.5)
 
 			else:
 				print(f'Failed to locate place to delete, named {name} with channel ID {place.channel_ID}.')
@@ -992,7 +1003,7 @@ class ListenerManager:
 
 	async def _add_indirect(self, speaker: int, listener: TextChannel, speaker_location: str):
 
-		self.guild_indirects.setdefault(speaker,set())
+		self.guild_indirects.setdefault(speaker, set())
 		self.guild_indirects[speaker].add((listener, speaker_location))
 
 		return
@@ -1026,10 +1037,6 @@ class ListenerManager:
 
 		return
 
-	async def replace_speaker(self, old_ID: int, new_ID: int):
-
-		return
-
 	async def build_listeners(self):
 
 		self.channels = await self.guild.fetch_channels()
@@ -1041,6 +1048,7 @@ class ListenerManager:
 			for occ_ID in place.occupants: #For each occupant...
 
 				occ_channel = await self._load_channel(occ_ID)
+				occ_player = await self._load_character(occ_ID)
 
 				await self._add_direct(occ_ID, place_channel, eavesdropping = False) #Location listens to player
 				await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False) #Player listens to location
@@ -1056,17 +1064,17 @@ class ListenerManager:
 
 					neighbor_place = self.guild_data.places[neighbor_place_name]
 
+					if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
+						await self._add_direct(neighbor_place.channel_ID, occ_channel, eavesdropping = True)
+					else:
+						await self._add_indirect(neighbor_place.channel_ID, occ_channel, neighbor_place_name)
+
 					for neighbor_occ_ID in neighbor_place.occupants: #For every person in the neighbor place...
 
-						neighbor_occ = await self._load_character(neighbor_occ_ID)
-						neighbor_occ_channel = await self._load_channel(neighbor_occ_ID)
-
-						if neighbor_occ.eavesdropping == place_name and self.guild_data.eavesdropping_allowed: #If they're eavesdropping on us...
-							await self._add_direct(occ_ID, neighbor_occ_channel, eavesdropping = True) #They hear us.
-							await self._add_direct(place.channel_ID, neighbor_occ_channel, eavesdropping = True) #And the location itself.
-						else: #Otherwise...
-							await self._add_indirect(occ_ID, place_name, neighbor_occ_channel) #They only hear it indirectly.
-							await self._add_indirect(place.channel_ID, place_name, neighbor_occ_channel) #They only hear it indirectly.
+						if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
+							await self._add_direct(neighbor_occ_ID, occ_channel, eavesdropping = True)
+						else:
+							await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name) #Neighbor only hears occ indirectly.
 
 
 		return self.guild_directs, self.guild_indirects
