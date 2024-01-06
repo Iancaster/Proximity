@@ -606,6 +606,7 @@ class GuildData:
 		if self.load_characters:
 			decoded_chars = b64decode(guild_data['characters'])
 			self.characters = loads(decoded_chars)
+			print(f'Loaded characters, it is {self.characters}')
 
 		if self.load_roles:
 			self.roles = {int(role_ID) for role_ID in guild_data['roles'].split()}
@@ -709,7 +710,7 @@ class GuildData:
 
 		return ego_graph(graph, origin, radius = 99)
 
-	#Edges
+	#Paths
 	async def set_path(self, origin: str, destination: str, path: Path, overwrite: bool = False):
 
 		prior_path = destination in self.places[origin].neighbors
@@ -894,6 +895,8 @@ class GuildData:
 		return bytesIO
 
 	async def save(self):
+
+		print(f'saving gulid data and me characters are {self.characters}')
 
 		guild_con = connect(join(getcwd(),'data','guild.db'))
 		cursor = guild_con.cursor()

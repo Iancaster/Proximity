@@ -100,7 +100,7 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True)
+		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
 
 		async def review_places(place_names: list):
 
@@ -257,7 +257,7 @@ class ReviewCommands(commands.Cog):
 					return
 
 				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), callback = submit_locations)
+				await view.add_places(guild_data.places.keys(), singular = False, callback = submit_locations)
 				await view.add_cancel()
 				await send_message(ctx.respond, embed, view = view)
 
