@@ -4,6 +4,7 @@
 from networkx import DiGraph
 from re import search, sub
 
+from requests import head
 
 #Functions
 async def format_words(words: iter):
@@ -31,13 +32,13 @@ async def get_names(character_IDs: iter, characters: dict):
 	return {name for ID, name in characters.items() if ID in character_IDs}
 
 async def format_characters(characters: iter):
-	return await format_words([f'**{name}**' for name in characters])
+	return await format_words([f'*{name}*' for name in characters])
 
 async def format_channels(channel_IDs: iter):
 	return await format_words([f'<#{ID}>' for ID in channel_IDs])
 
 async def format_places(places: iter):
-	return await format_words([f'<#{place.channel_ID}>' for place in places])
+	return await format_words([f'**#{place}**' for place in places])
 
 async def format_new_neighbors(overwriting: bool, origin_place, places: set, guild_data):
 
@@ -56,7 +57,7 @@ async def format_new_neighbors(overwriting: bool, origin_place, places: set, gui
 
 	if new_neighbors:
 		destinations = await guild_data.filter_places(new_neighbors)
-		destination_mentions = await format_places(destinations.values())
+		destination_mentions = await format_places({place.channel_ID for place in destinations.values()})
 		destination_comments.append(destination_mentions)
 
 	if existing_neighbors:
@@ -78,22 +79,22 @@ async def embolden(place_names: iter):
 async def format_whitelist(allowed_roles: iter = set(), allowed_characters: iter = set()):
 
 	if not allowed_roles and not allowed_characters:
-		return 'Everyone will be allowed to travel to/through this place.'
+		return 'Everyone will be allowed to travel to/through here.'
 
 	role_mentions = await format_roles(allowed_roles)
 	character_mentions = await format_channels(allowed_characters)
 
 	if allowed_roles and not allowed_characters:
-		return f'Only people with these roles are allowed through this place: ({role_mentions}).'
+		return f'Only people with these roles are allowed: ({role_mentions}).'
 
 	elif allowed_characters and not allowed_roles:
-		return f'Only these characters are allowed through this place: ({character_mentions}).'
+		return f'Only these characters are allowed: ({character_mentions}).'
 
 	roles_description = f'any of these roles: ({role_mentions})' if allowed_roles else 'any role'
 
 	character_description = f'any of these people: ({character_mentions})' if allowed_characters else 'everyone else'
 
-	return f'People with {roles_description} will be allowed to come here as well as {character_description}.'
+	return f'People with {roles_description} will be allowed, as well as {character_description}.'
 
 async def discordify(text: str):
 
@@ -133,4 +134,26 @@ async def unique_name(candidate_name: str, places: iter):
 			candidate_name = f"{candidate_name}-2"
 
 	return candidate_name
+
+async def format_avatar(presented_url: str):
+
+	if not presented_url:
+		return 'no_profile_pic.webp', \
+			False, \
+			"You can set the character's profile pic" + \
+			" by uploading a picture URL. It's better for it to be" + \
+			" a permanent one like Imgur, but it can be URL, really."
+
+	try:
+		response = head(presented_url)
+		if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
+			return presented_url, True, 'Set!'
+		else:
+			return 'bad_link.png', \
+				False, \
+				'**Error,** avatars have to be a still image.' + \
+					' PNG, JPEG, or JPG, please.'
+
+	except:
+		return 'bad_link.png', False, '**Error,** that URL is broken somehow. Try another one?'
 

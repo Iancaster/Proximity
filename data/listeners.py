@@ -94,9 +94,9 @@ async def remove_speaker(speaker_channel: TextChannel):
 
 		for listener_channel, secondary in own_listeners:
 
-			their_listeners = listener_dict[listener_channel.id]
+			their_listeners = listener_dict.get(listener_channel.id, dict())
 
-			listener_dict[listener_channel.id].discard((speaker_channel, secondary))
+			their_listeners.discard((speaker_channel, secondary))
 
 	return
 
@@ -110,8 +110,8 @@ async def replace_speaker(old_channel: TextChannel, new_channel: TextChannel):
 
 			their_listeners = listener_dict[listener_channel.id]
 
-			listener_dict[listener_channel.id].discard((old_channel, secondary))
-			listener_dict[listener_channel.id].add((new_channel, secondary))
+			their_listeners.discard((old_channel, secondary))
+			their_listeners.add((new_channel, secondary))
 
 		if own_listeners:
 			listener_dict[new_channel.id] = own_listeners
@@ -124,7 +124,7 @@ async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int,
 		await wait_for_listeners(guild)
 
 	directs = direct_listeners.get(channel_ID, set())
-	for channel, eavesdropping in directs:
+	for channel, eavesdropping in list(directs):
 
 		if channel.id == exclude:
 			continue

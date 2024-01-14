@@ -4,10 +4,12 @@
 from discord import Guild
 from discord.utils import get_or_fetch, get
 
-from libraries.classes import GuildData, ChannelMaker, Path
+from libraries.classes import GuildData, ChannelMaker, Path, Character
 from libraries.formatting import unique_name, format_words, \
 	format_whitelist
 from libraries.universal import mbd
+
+from asyncio import sleep
 
 # Functions
 async def create_location(guild: Guild, location_name: str = 'test-location'):
@@ -86,6 +88,8 @@ async def delete_location_channel(guild: Guild, location_name: str):
 		if category:
 			await category.delete()
 
+	sleep(.5)
+
 	return flaws
 
 async def create_path(guild: Guild, path_data: tuple[str, str]):
@@ -103,6 +107,31 @@ async def create_path(guild: Guild, path_data: tuple[str, str]):
 		path,
 		False)
 
+	await guild_data.save()
+
+	return
+
+async def create_character(guild: Guild, char_data: tuple[str, str]):
+
+	guild_data = GuildData(
+		guild.id,
+		load_places = True,
+		load_characters = True)
+
+	maker = ChannelMaker(guild, 'characters')
+	await maker.initialize()
+	character_channel = await maker.create_channel(char_data[0])
+
+	character_data = Character(character_channel.id)
+	character_data.channel_ID = character_channel.id
+	character_data.location = char_data[1]
+	character_data.name = char_data[0]
+	await character_data.save()
+
+	place = guild_data.places[char_data[1]]
+	#Add the players to the guild nodes as occupants
+	await place.add_occupants({character_data.id})
+	guild_data.characters[character_data.id] = character_data.name
 	await guild_data.save()
 
 	return
@@ -151,6 +180,13 @@ async def tests(tests_checklist: dict, test_guild: Guild, only_severe: bool = Fa
 
 					flaws = await create_path(test_guild, test_additional)
 					description = f'Creates a new path between {test_additional[0]} and {test_additional[1]}'
+					if flaws:
+						results = f'The {await format_words(flaws)}.'
+
+				case 'Create Character':
+
+					flaws = await create_character(test_guild, test_additional)
+					description = f'Creates a new character named {test_additional[0]} in {test_additional[1]}'
 					if flaws:
 						results = f'The {await format_words(flaws)}.'
 

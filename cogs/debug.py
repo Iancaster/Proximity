@@ -2,14 +2,13 @@
 
 #Import-ant Libraries
 from discord import ApplicationContext, Bot, Option, File, \
-	OptionChoice, SlashCommandGroup
+	OptionChoice, SlashCommandGroup, Embed
 from discord.ext import commands
 
-from data.listeners import direct_listeners, indirect_listeners
-from libraries.classes import GuildData
-from libraries.formatting import format_words, format_channels, \
-	embolden
-from libraries.universal import mbd, send_message
+from libraries.classes import *
+from libraries.universal import *
+from libraries.formatting import *
+from data.listeners import *
 
 from networkx import DiGraph
 
@@ -28,15 +27,7 @@ class DebugCommands(commands.Cog):
 		guild_ids = [1114005940392439899])
 
 	@debug_group.command(name = 'listeners', description = 'See what channels proxy their messages to which others.')
-	async def listeners(
-		self,
-		ctx: ApplicationContext,
-		listener_type: Option(
-			str,
-			description = 'Direct or indirect listeners?',
-			name = 'type',
-			choices = ['direct','indirect'],
-			default = 'direct')):
+	async def listeners(self, ctx: ApplicationContext, listener_type: Option( str, description = 'Direct or indirect listeners?', name = 'type', choices = ['direct','indirect'], default = 'direct')):
 
 		guild_data = GuildData(ctx.guild.id, load_places = True, load_characters = True)
 
@@ -100,6 +91,76 @@ class DebugCommands(commands.Cog):
 		await send_message(ctx.respond, embed = embed, file = file, ephemeral = True)
 		return
 
+	@debug_group.command(name = 'server', description = 'Look into the data the server has.')
+	async def server(self, ctx: ApplicationContext):
+
+		await ctx.defer(ephemeral = True)
+
+		guild_data = GuildData(
+			ctx.guild_id,
+			load_places = True,
+			load_characters = True,
+			load_roles = True)
+
+		embed = Embed(
+			title = 'Debug details.',
+			description = 'A complete look into what the' + \
+				' databases hold for this server.',
+			color = 670869)
+
+		embed.set_footer(text = 'Peer behind the veil.')
+
+		if guild_data.places:
+
+			description = ''
+			for index, place in enumerate(guild_data.places.values()):
+				description += f"\n{index}. <#{place.channel_ID}>"
+				if place.allowed_roles or place.allowed_characters:
+					description += "\n-- Whitelist:" + \
+						f" {await format_whitelist(place.allowed_roles, place.allowed_characters)}"
+				if place.occupants:
+					occupant_mentions = await format_channels(place.occupants)
+					description += f'\n-- Occupants: {occupant_mentions}.'
+				if place.neighbors:
+					neighbors = [f'**#{name}**' for name in place.neighbors.keys()]
+					description += f'\n-- Neighbors: {await format_words(neighbors)}.'
+
+			embed.add_field(
+				name = 'Places:',
+				value = description[:1500],
+				inline = False)
+		else:
+			embed.add_field(
+				name = 'No places.',
+				value = 'You can make some places with `/new place`.',
+				inline = False)
+
+		if guild_data.characters:
+			embed.add_field(
+				name = 'Characters:',
+				value = f'\n• {await format_channels(guild_data.characters.keys())}',
+				inline = False)
+		else:
+			embed.add_field(
+				name = 'No characters.',
+				value = 'You can add some new characters with `/new character`.',
+				inline = False)
+
+		if guild_data.roles:
+			embed.add_field(
+				name = 'Protected Roles:',
+				value = f"\n• {await format_words([f'<@&{ID}>' for ID in guild_data.roles])}" + \
+					'\n\*Note: "Protected Roles" are roles that have been added to a whitelist' + \
+					" and so there's a failsafe to prevent accidentally deleting that role.",
+				inline = False)
+		else:
+			embed.add_field(
+				name = 'No protected roles.',
+				value = 'Roles become protected by being added to a whitelist.',
+				inline = False)
+
+		await send_message(ctx.respond, embed)
+		return
 
 def setup(prox):
 	prox.add_cog(DebugCommands(prox), override = True)

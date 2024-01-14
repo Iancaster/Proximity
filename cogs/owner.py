@@ -3,8 +3,7 @@
 #Import-ant Libraries
 from discord import ApplicationContext, Bot, Option, File
 from discord.ext import commands
-from libraries.universal import mbd, send_message
-
+from libraries.universal import *
 
 #Classes
 class OwnerCommands(commands.Cog):
@@ -47,23 +46,25 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'Version 3 Forum!',
-			"There's never been a bigger update to this bot, and you've got lots of questions." + \
-				" This temporary channel should shed some light.",
-			"Read up on it while you can!")
+			'Getting Off the Hook.',
+			"The webhook, specifically. It's the technology that Tupper and Proximity" + \
+				" both use in order to make characters talk. That's done, plus `/delete character`. :)",
+			"Break it, I dare ya.")
 
-		embed.add_field(name = 'New Info!', inline = False, value =
+		embed.add_field(name = 'Webhook, Line, and Sinker.', inline = False, value =
 """
-1. View how far along 3.0 is with <#1190733014557265930>.
-  - See what commands are ready, and which ones are up next.
-  - This will stay current as more commands get finished.
-2. See the <#1190732367942389882>.
-  - This has been moved from <#1158808448499191841>.
-  - That channel is more of a checklist of things to get around to.
-  - Meanwhile, this channel is a detailed look at what's confirmed.
-3. Read up on the <#1190742719803424920>!
-  - Talks about compatibility, features, and the timeline.
-  - I'll add new questions on there and their answers, as they come.
+1. Webhooks have been fixed and optimized.
+  - Deleting a webhook does not break the bot!
+  - It recreates it for both character channels as well as places.
+  - This technically *was* a feature back before, but it was bugged.
+  - It's now much faster as well, only deletes excess webhooks.
+  - And only reproduces the webhook if needed.
+2. `/delete character` is \*finished!-
+  - \*Just needs to be tested...
+  - Delete a character by deleting their channel.
+  - Or by using the command, like with `/delete place`.
+  - Guide to follow, once we burn through some of the others.
+  - Now onto `/review character`...
 """)
 		#file = File('ghost.png', filename = 'image.png')
 		#embed.set_image(url = 'attachment://image.png')

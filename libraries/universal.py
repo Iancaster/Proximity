@@ -1,11 +1,14 @@
 
 #Import-ant Libraries
-from discord import Embed, File, Interaction, Member, MISSING
+from discord import Embed, File, Interaction, Member, \
+	MISSING, TextChannel
 from discord.ui import View
+
 from requests import head
 from os import path, getcwd
 from io import BytesIO
 
+from libraries.formatting import *
 
 #"Constants"
 NO_AVATAR_URL = 'https://i.imgur.com/A6qTjRc.jpeg'
@@ -23,7 +26,10 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
 	match image_details:
 
-		case None:
+		case _ if image_details == None:
+			pass
+
+		case _ if image_details[0] == None:
 			pass
 
 		case _ if image_details[1] == 'thumb':
@@ -84,6 +90,26 @@ async def send_message(send_method: callable, embed: Embed, view = None, file = 
 		view.message = message
 	else:
 		await send_method(embed = embed, file = file, **options)
+	return
+
+async def character_change(channel: TextChannel, character_data):
+
+	webhook = (await channel.webhooks())[0]
+	character_message = "Good news! Your character details" + \
+		" just got updated. This is how you'll appear" + \
+		" to other characters. Also, your roles are " + \
+		await format_roles(character_data.roles)
+	if character_data.avatar:
+		await webhook.send(
+			character_message,
+			username = character_data.name,
+			avatar_url = character_data.avatar)
+	else:
+		await webhook.send(
+			character_message,
+			username = character_data.name,
+			avatar_url = NO_AVATAR_URL)
+
 	return
 
 
@@ -167,19 +193,6 @@ async def identify_character_channel(characters: dict, origin_channel_id: int = 
 
 
 #Checks
-async def no_changes(interaction: Interaction):
-
-	embed, _ = await mbd(
-		'Success?',
-		"You didn't make any changes.",
-		"Unsure what the point of that was.")
-	await interaction.followup.edit_message(
-		message_id = interaction.message.id,
-		embed = embed,
-		view = None,
-		attachments = [])
-	return
-
 async def no_redundancies(test, embed: Embed, interaction: Interaction, file = None):
 
 	if test:
@@ -194,49 +207,3 @@ async def no_redundancies(test, embed: Embed, interaction: Interaction, file = N
 
 	return
 
-async def no_places_selected(interaction: Interaction, singular: bool = False):
-
-	embed, _ = await mbd(
-		'No places selected!',
-		'Please select a valid place first.' if singular else \
-			"You've got to select some.",
-		'Try calling the command again.')
-	await interaction.followup.edit_message(
-		message_id = interaction.message.id,
-		embed = embed,
-		view = None,
-		attachments = [])
-	return
-
-async def no_paths_selected(interaction: Interaction):
-	embed, _ = await mbd(
-		'No paths!',
-		"You've got to select at least one.",
-		'Try calling the command again.')
-	await interaction.followup.edit_message(
-		message_id = interaction.message.id,
-		embed = embed,
-		view = None,
-		attachments = [])
-	return
-
-async def no_people_selected(interaction: Interaction):
-
-	embed, _ = await mbd(
-		'Who?',
-		"You didn't select any valid people.",
-		'You can call the command again and specify someone new.')
-	await interaction.followup.edit_message(
-		message_id = interaction.message.id,
-		embed = embed,
-		view = None)
-	return
-
-# async def no_membership(ctx: ApplicationContext):
-#
-# 	embed, _ = await mbd(
-# 		'Easy there.',
-# 		"You're not a player in this server, so you're not able to do this.",
-# 		'You can ask the server owner to make you a player?')
-# 	await send_message(ctx.respond, embed)
-# 	return

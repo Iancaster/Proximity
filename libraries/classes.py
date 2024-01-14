@@ -11,7 +11,8 @@ from asyncio import sleep
 
 from libraries.universal import mbd
 from libraries.formatting import format_whitelist
-from data.listeners import direct_listeners, indirect_listeners
+from data.listeners import direct_listeners, indirect_listeners, \
+	remove_speaker
 
 #Data Libraries
 from attr import s, ib, Factory
@@ -356,7 +357,7 @@ class DialogueView(View):
 		name_select = InputText(
 			label = 'name',
 			style = InputTextStyle.short,
-			min_length = 1,
+			min_length = 0,
 			max_length = 25,
 			placeholder = "What should it be?",
 			value = existing)
@@ -471,6 +472,26 @@ class DialogueView(View):
 		self.created_components.add('overwrite')
 		return
 
+	async def add_directionality(self):
+		directionality = Button(
+			label = 'Toggle Directionality',
+			style = ButtonStyle.secondary)
+
+		async def change_directionality(interaction: Interaction):
+
+			if self.directionality == 2:
+				self.directionality = 0
+			else:
+				self.directionality += 1
+
+			await self._call_refresh(interaction)
+			return
+
+		directionality.callback = change_directionality
+		self.add_item(directionality)
+		self.created_components.add('directionality')
+		return
+
 	async def add_cancel(self):
 
 		cancel = Button(
@@ -573,7 +594,7 @@ class GuildData:
 		guild_con.row_factory = return_dictionary
 		cursor = guild_con.cursor()
 
-		cursor.execute("SELECT * FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
+		cursor.execute("SELECT * FROM guilds WHERE guild_ID = ? LIMIT 1", (self.guild_ID,))
 		guild_data = cursor.fetchone()
 		guild_con.close()
 
@@ -587,7 +608,9 @@ class GuildData:
 		self.peephole = True
 		self.eavesdropping_allowed = True
 
-		if not guild_data:
+		self.first_boot = not guild_data
+
+		if self.first_boot:
 			return
 
 		if self.load_places:
@@ -606,7 +629,6 @@ class GuildData:
 		if self.load_characters:
 			decoded_chars = b64decode(guild_data['characters'])
 			self.characters = loads(decoded_chars)
-			print(f'Loaded characters, it is {self.characters}')
 
 		if self.load_roles:
 			self.roles = {int(role_ID) for role_ID in guild_data['roles'].split()}
@@ -643,7 +665,7 @@ class GuildData:
 			raise KeyError('Tried to delete a nonexistent place!')
 			return
 
-		condemned_place = self.places.pop(name, None)
+		condemned_place = self.places.pop(name)
 
 		for role in condemned_place.allowed_roles:
 
@@ -709,6 +731,7 @@ class GuildData:
 			completed_paths.add(name)
 
 		return ego_graph(graph, origin, radius = 99)
+
 
 	#Paths
 	async def set_path(self, origin: str, destination: str, path: Path, overwrite: bool = False):
@@ -785,7 +808,24 @@ class GuildData:
 		return description
 
 
-	#Guild Data
+	#Characters
+	async def delete_character(self, char_ID: int):
+
+		if char_ID not in self.characters:
+			raise KeyError('Tried to delete a nonexistent character!')
+			return
+
+		self.characters.pop(char_ID)
+		condemned_char = Character(char_ID)
+		await condemned_char.delete()
+
+		last_seen_place = self.places.get(condemned_char.location, None)
+		last_seen_place.occupants.discard(char_ID)
+
+		return condemned_char, last_seen_place
+
+
+	#Server Data
 	async def to_graph(self, places: dict = None):
 
 		graph = DiGraph()
@@ -896,44 +936,60 @@ class GuildData:
 
 	async def save(self):
 
-		print(f'saving gulid data and me characters are {self.characters}')
-
 		guild_con = connect(join(getcwd(),'data','guild.db'))
 		cursor = guild_con.cursor()
 
-		all_places = {place_name : await place.__dict__() for place_name, place in self.places.items()}
-		serialized_places = dumps(all_places)
-		encoded_places = b64encode(serialized_places)
+		if self.first_boot:
+			serialized_null = dumps(dict())
+			encoded_null = b64encode(serialized_null)
 
-		serialized_chars = dumps(self.characters)
-		encoded_chars = b64encode(serialized_chars)
+			cursor.execute("INSERT or REPLACE INTO guilds" + \
+				"(guild_ID, places, characters, roles, settings) VALUES(?, ?, ?, ?, ?)",
+				(self.guild_ID, encoded_null, encoded_null, '', encoded_null))
 
-		role_data = ' '.join([str(role_ID) for role_ID in self.roles])
+		if self.load_places:
+			all_places = {place_name : await place.__dict__() for place_name, place in self.places.items()}
+			serialized_places = dumps(all_places)
+			encoded_places = b64encode(serialized_places)
 
-		server_settings = dict()
-		if self.view_distance != 99:
-			server_settings['view_distance'] = self.view_distance
+			cursor.execute("UPDATE guilds SET places = ? WHERE guild_id = ?;", \
+				(encoded_places, self.guild_ID))
 
-		if self.map_override:
-			server_settings['map_override'] = self.map_override
+		if self.load_characters:
+			serialized_chars = dumps(self.characters)
+			encoded_chars = b64encode(serialized_chars)
 
-		if self.visibility != 'private':
-			server_settings['visibility'] = self.visibility
+			cursor.execute("UPDATE guilds SET characters = ? WHERE guild_id = ?;", \
+				(encoded_chars, self.guild_ID))
 
-		if not self.eavesdropping_allowed:
-			server_settings['eavesdropping_allowed'] = False
+		if self.load_roles:
+			role_data = ' '.join([str(role_ID) for role_ID in self.roles])
 
-		if self.peephole:
-			server_settings['peephole'] = True
+			cursor.execute("UPDATE guilds SET roles = ? WHERE guild_id = ?;", \
+				(role_data, self.guild_ID))
 
+		if self.load_settings:
+			server_settings = dict()
+			if self.view_distance != 99:
+				server_settings['view_distance'] = self.view_distance
 
-		serialized_settings = dumps(server_settings)
-		encoded_settings = b64encode(serialized_settings)
+			if self.map_override:
+				server_settings['map_override'] = self.map_override
 
-		cursor.execute("INSERT or REPLACE INTO guilds" + \
-			"(guild_ID, places, characters, roles, settings) VALUES(?, ?, ?, ?, ?)",
-			(self.guild_ID, encoded_places, encoded_chars, role_data, encoded_settings))
+			if self.visibility != 'private':
+				server_settings['visibility'] = self.visibility
 
+			if not self.eavesdropping_allowed:
+				server_settings['eavesdropping_allowed'] = False
+
+			if self.peephole:
+				server_settings['peephole'] = True
+
+			serialized_settings = dumps(server_settings)
+			encoded_settings = b64encode(serialized_settings)
+
+			cursor.execute("UPDATE guilds SET settings = ? WHERE guild_id = ?;", \
+				(encoded_settings, self.guild_ID))
 
 		guild_con.commit()
 		guild_con.close()
@@ -955,7 +1011,7 @@ class GuildData:
 			channel = await get_or_fetch(guild, 'channel', char_ID, default = None)
 			if channel:
 				await channel.delete()
-				await sleep(0.5)
+				# await sleep(0.5)
 
 		for name, place in list(self.places.items()):
 
@@ -965,7 +1021,6 @@ class GuildData:
 			if place_channel:
 				await self.delete_place(name)
 				await place_channel.delete()
-				await sleep(0.5)
 
 			else:
 				print(f'Failed to locate place to delete, named {name} with channel ID {place.channel_ID}.')
@@ -1097,7 +1152,7 @@ class Character:
 		character_con = connect(join(getcwd(),'data','character.db'))
 		character_con.row_factory = return_dict
 		cursor = character_con.cursor()
-		cursor.execute(f"""SELECT * FROM characters WHERE character_ID = {self.id}""")
+		cursor.execute(f"""SELECT * FROM characters WHERE character_ID = {self.id} LIMIT 1""")
 		character_data = cursor.fetchone()
 
 		character_data = character_data or dict()
@@ -1119,6 +1174,8 @@ class Character:
 
 		self.roles = ' '.join([str(role_ID) for role_ID in self.roles])
 
+		print(f'Saved roles as {self.roles}')
+
 		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " + \
 			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
 			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
@@ -1128,9 +1185,6 @@ class Character:
 		return
 
 	async def delete(self):
-
-		direct_listeners.pop(self.channel_ID, None)
-		indirect_listeners.pop(self.channel_ID, None)
 
 		character_con = connect(getcwd() + '/data/character.db')
 		cursor = character_con.cursor()

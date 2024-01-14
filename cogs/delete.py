@@ -6,15 +6,13 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get, get_or_fetch
 
-from libraries.classes import GuildData, DialogueView
-from libraries.universal import mbd, loading, identify_place_channel, \
-	no_redundancies, send_message, identify_character_channel
-from libraries.formatting import format_places, embolden, format_colors
-from libraries.autocomplete import complete_places, complete_characters
-from data.listeners import to_direct_listeners, queue_refresh
+from libraries.classes import *
+from libraries.universal import *
+from libraries.formatting import *
+from libraries.autocomplete import *
+from data.listeners import *
 
 from asyncio import sleep
-
 
 #Classes
 class DeleteCommands(commands.Cog):
@@ -61,16 +59,18 @@ class DeleteCommands(commands.Cog):
 				#Delete places
 				for name, place in condemned_places.items():
 
-					await guild_data.delete_place(name)
 					place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID, default = None)
 					if place_channel:
 						await place_channel.delete()
-						#await sleep(0.5)
+					else:
+						await guild_data.delete_place(name)
+						await guild_data.save()
+						sleep(.5)
 
-					if not guild_data.places:
-						category = get(interaction.guild.categories, name = 'places')
-						if category:
-							await category.delete()
+				if not guild_data.places:
+					category = get(interaction.guild.categories, name = 'places')
+					if category:
+						await category.delete()
 
 				if interaction.channel.name not in condemned_places.keys():
 
@@ -100,7 +100,7 @@ class DeleteCommands(commands.Cog):
 
 			embed, _ = await mbd(
 				'Confirm deletion?',
-				f"Delete {await format_places(condemned_places.values())}?",
+				f"Delete {await format_channels(condemned_places.keys())}?",
 				'This will, of course, delete the channel(s) and any connected paths as well.')
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
@@ -231,7 +231,7 @@ class DeleteCommands(commands.Cog):
 					occupants_only = True)
 
 				#Inform own node
-				deleted_mentions = await format_places(deleted_neighbors.values())
+				deleted_mentions = await format_channels(deleted_neighbors.keys())
 				embed, file = await mbd(
 					'Paths deleted.',
 					f'Removed the path(s) to {deleted_mentions}.',
@@ -343,18 +343,72 @@ class DeleteCommands(commands.Cog):
 
 		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
 
-		async def delete_characters(deleting_characters: dict):
+		async def delete_characters(condemned_characters: dict):
 
-			print(deleting_characters)
+			async def confirm_delete(interaction: Interaction):
 
+				await loading(interaction)
+
+				nonlocal condemned_characters
+
+				for character_ID in condemned_characters.keys():
+
+					character_channel = await get_or_fetch(interaction.guild, 'channel', character_ID, default = None)
+					if character_channel:
+						await character_channel.delete()
+						await remove_speaker(character_channel)
+					else:
+						await guild_data.delete_character(character_ID)
+						await guild_data.save()
+						direct_listeners.pop(character_ID)
+						indirect_listeners.pop(character_ID)
+						sleep(.5)
+
+				if not guild_data.characters:
+					category = get(interaction.guild.categories, name = 'characters')
+					if category:
+						await category.delete()
+
+				description = f'Deleted {await format_characters(condemned_characters.values())}.' + \
+					"\n• Deleted their channel(s)." + \
+					"\n• Removed them as occupants." + \
+					"\n• Notified nearby characters.*"
+
+				embed, _ = await mbd(
+					'Cleared out.',
+					description,
+					'*Unless you already deleted their channel before this.')
+				if interaction.channel.id not in condemned_characters:
+					await interaction.followup.edit_message(
+					message_id = interaction.message.id,
+					embed = embed,
+					view = None)
+				return
+
+			view = DialogueView()
+			await view.add_confirm(confirm_delete)
+			await view.add_cancel()
+
+			description = "This command will do the following to" + \
+				f" {await format_channels(condemned_characters.keys())}:" + \
+				"\n• Delete their character channel(s).\n• Remove them as" + \
+				" an occupant in the place they're in." + \
+				"\n\nIt will **not**:\n• Delete their messages." + \
+				"\n• Prevent you from recreating them later."
+
+			embed, _ = await mbd(
+				'Confirm deletion?',
+				description,
+				'Nearby characters will notice their disappearance.')
+			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
-		result = await identify_character_channel(guild_data.characters, ctx.channel.name, given_character)
+		result = await identify_character_channel(guild_data.characters, ctx.channel.id, given_character)
 		match result:
 			case _ if isinstance(result, Embed):
 				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await delete_characters([result])
+			case _ if isinstance(result, dict):
+				await delete_characters(result)
 			case None:
 
 				description = 'You can delete a character four ways:' + \
@@ -362,7 +416,6 @@ class DeleteCommands(commands.Cog):
 					'\n• Do `/delete character character-name`.' + \
 					'\n• Delete the **#character-channel** itself.' + \
 					'\n• Select one or more characters from the dropdown below.'
-
 
 				async def refresh():
 

@@ -3,18 +3,12 @@
 #Import-ant Libraries
 from discord import Bot, Message, Guild, Member
 from discord.ext import commands, tasks
-from discord.utils import get_or_fetch
+from discord.utils import get_or_fetch, get
 
-from libraries.classes import ListenerManager, Character, GuildData, \
-	ChannelMaker
-from libraries.formatting import get_names, format_words, \
-	format_characters
-from libraries.universal import mbd
-from data.listeners import direct_listeners, \
-	indirect_listeners, broken_webhook_channels, \
-	outdated_guilds, updated_guild_IDs, relay, \
-	to_direct_listeners, queue_refresh, \
-	remove_speaker, replace_speaker
+from libraries.classes import *
+from libraries.universal import *
+from libraries.formatting import *
+from data.listeners import *
 
 from itertools import cycle
 
@@ -29,25 +23,20 @@ class Autonomous(commands.Cog):
 	def __init__(self, bot: Bot):
 		self.prox = bot
 		self.loading = cycle(['|', '/', '-', '\\' ])
-		self.update_listeners.start()
+		self.update.start()
+		self.listeners_ready = True
+		self.webhooks_ready = True
 		return
 
 	def cog_unload(self):
 		self.update_listeners.cancel()
 		return
 
-	@tasks.loop(seconds = 6.0)
-	async def update_listeners(self):
+	async def _update_listeners(self):
 
-		if not outdated_guilds and not broken_webhook_channels:
-			print(next(self.loading), end = '\r')
-			return
-
-		print(f'Updating {len(outdated_guilds)} guild(s).')
+		self.listeners_ready = False
 
 		for guild in list(outdated_guilds):
-
-			print(f'- {guild.name}...', end = '')
 
 			listener_manager = ListenerManager(guild)
 			await listener_manager.clean_listeners()
@@ -59,41 +48,59 @@ class Autonomous(commands.Cog):
 			outdated_guilds.remove(guild)
 			updated_guild_IDs.add(guild.id)
 
-			print(f'{len(directs) + len(indirects)} channels updated.')
+		self.listeners_ready = True
+		return
 
-		if broken_webhook_channels:
+	async def _update_webhooks(self):
 
-			for channel in broken_webhook_channels:
+		self.webhooks_ready = False
 
-				webhooks = await channel.webhooks()
-				if len(webhooks) == 1:
-					first_hook = webhooks[0]
-					if first_hook.user.id == 1114004384926421126:
-						broken_webhook_channels.discard(channel)
-						return
+		for channel in list(broken_webhook_channels):
 
-				for hook in webhooks:
-					await hook.delete()
+			valid_webhook_found = False
+			for webhook in list(await channel.webhooks()):
 
-			if not broken_webhook_channels:
-				return
+				if valid_webhook_found or webhook.user.id != 1161017761888219228:
+					await webhook.delete()
+					continue
 
-			with open('avatar.png', 'rb') as file:
-				avatar = file.read()
+				valid_webhook_found = True
 
-			embed, _ = await mbd(
-				'Hey. Stop that.',
-				"Don't mess with the webhooks on here.",
-				"They're mine, got it?")
-
-			for channel in broken_webhook_channels:
-
-				await channel.create_webhook(name = 'Proximity', avatar = avatar)
-				await channel.send(embed = embed)
+			if valid_webhook_found:
 				broken_webhook_channels.discard(channel)
-				return
 
-		print('Listeners updated.')
+
+		if not broken_webhook_channels:
+			self.webhooks_ready = True
+			return
+
+		with open('assets/avatar.png', 'rb') as file:
+			avatar = file.read()
+
+		embed, _ = await mbd(
+			'Hey. Stop that.',
+			"Don't mess with the webhooks on here.",
+			"They're mine, got it?")
+
+		for channel in list(broken_webhook_channels):
+
+			await channel.create_webhook(name = 'Proximity', avatar = avatar)
+			await channel.send(embed = embed)
+			broken_webhook_channels.discard(channel)
+
+		self.webhooks_ready = True
+
+		return
+
+	@tasks.loop(seconds = 6.0)
+	async def update(self):
+
+		if self.listeners_ready:
+			await self._update_listeners()
+
+		if self.webhooks_ready:
+			await self._update_webhooks()
+
 		return
 
 	@commands.Cog.listener()
@@ -111,6 +118,9 @@ class Autonomous(commands.Cog):
 			return
 
 		if message.author.id == 1161017761888219228: #1114004384926421126: #Self.
+			return
+
+		if message.content[0] == '\\':
 			return
 
 		await relay(message, Character)
@@ -199,31 +209,90 @@ class Autonomous(commands.Cog):
 			await guild_data.save()
 
 			#Inform neighbor places and occupants that the place is deleted now
+			player_embed, _ = await mbd(
+				'Misremembered?',
+				f"Could you have been imagining **#{place_name}**? Strangely, there's no trace.",
+				"Whatever the case, it's not here.")
+			host_embed, _ = await mbd(
+				'Neighbor location deleted.',
+				f'Deleted **#{place_name}**--this place now has fewer neighbors.',
+				"I'm sure it's for the best.")
 			for neighbor_place_name in place.neighbors.keys():
-				embed, _ = await mbd(
-					'Misremembered?',
-					f"Could you have been imagining **#{place_name}**? Strangely, there's no trace.",
-					"Whatever the case, it's not here.")
+
 				await to_direct_listeners(
-					embed,
+					player_embed,
 					channel.guild,
 					guild_data.places[neighbor_place_name].channel_ID,
 					occupants_only = True)
 
-				embed, _ = await mbd(
-					'Neighbor location deleted.',
-					f'Deleted **#{place_name}**--this place now has fewer neighbors.',
-					"I'm sure it's for the best.")
 				neighbor_place_channel = await get_or_fetch(
 					channel.guild,
 					'channel',
 					guild_data.places[neighbor_place_name].channel_ID,
 					default = None)
 				if neighbor_place_channel:
-					await neighbor_place_channel.send(embed = embed)
+					await neighbor_place_channel.send(embed = host_embed)
 
 			await remove_speaker(channel)
 			return
+
+		char_name = guild_data.characters.get(channel.id, None)
+		if char_name:
+
+			char_data, last_seen = await guild_data.delete_character(channel.id)
+			await guild_data.save()
+
+			await remove_speaker(channel)
+
+			#Inform other occupants that character is deleted now
+			player_embed, _ = await mbd(
+				'Into thin air.',
+				f"Where has *{char_name}* gone?",
+				"You get the impression you won't be seeing them again.")
+			await to_direct_listeners(
+				player_embed,
+				channel.guild,
+				last_seen.channel_ID,
+				occupants_only = False)
+
+			avatar = (char_data.avatar, 'thumb') if char_data.avatar else None
+
+			#As well as the location they were last seen in.
+			host_embed, file = await mbd(
+				'Character deleted.',
+				f'Deleted *{char_name}*. This location now has fewer people.',
+				"I'm sure it's for the best.",
+				avatar)
+			last_seen_channel = await get_or_fetch(
+				channel.guild,
+				'channel',
+				last_seen.channel_ID,
+				default = None)
+			if last_seen_channel:
+				await last_seen_channel.send(embed = host_embed, file = file)
+
+			return
+
+		return
+
+	@commands.Cog.listener()
+	async def on_webhooks_update(self, channel):
+
+		if channel in broken_webhook_channels:
+			return
+
+		guild_data = GuildData(channel.guild.id,
+			load_places = True,
+			load_characters = True)
+
+		if channel.id in guild_data.characters:
+			broken_webhook_channels.add(channel)
+
+		found_place = get(guild_data.places.values(), channel_ID = channel.id)
+		if found_place:
+			broken_webhook_channels.add(channel)
+
+		return
 
 def setup(prox):
 	prox.add_cog(Autonomous(prox), override = True)
