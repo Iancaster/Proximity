@@ -1,8 +1,6 @@
 
 #Import-ant Libraries
-from discord import Embed, File, Interaction, Member, \
-	MISSING, TextChannel
-from discord.ui import View
+from discord import Embed, File, Interaction, TextChannel
 
 from requests import head
 from os import path, getcwd
@@ -26,10 +24,10 @@ async def mbd(title: str = 'No Title', description: str = 'No description.', foo
 
 	match image_details:
 
-		case _ if image_details == None:
+		case _ if image_details is None:
 			pass
 
-		case _ if image_details[0] == None:
+		case _ if image_details[0] is None:
 			pass
 
 		case _ if image_details[1] == 'thumb':
@@ -92,22 +90,22 @@ async def send_message(send_method: callable, embed: Embed, view = None, file = 
 		await send_method(embed = embed, file = file, **options)
 	return
 
-async def character_change(channel: TextChannel, character_data):
+async def character_change(channel: TextChannel, char_data):
 
 	webhook = (await channel.webhooks())[0]
 	character_message = "Good news! Your character details" + \
 		" just got updated. This is how you'll appear" + \
-		" to other characters. Also, your roles are " + \
-		await format_roles(character_data.roles)
-	if character_data.avatar:
+		" to other characters. Also, you have the role(s)" + \
+		f' of {await format_roles(char_data.roles)}.'
+	if char_data.avatar:
 		await webhook.send(
 			character_message,
-			username = character_data.name,
-			avatar_url = character_data.avatar)
+			username = char_data.name,
+			avatar_url = char_data.avatar)
 	else:
 		await webhook.send(
 			character_message,
-			username = character_data.name,
+			username = char_data.name,
 			avatar_url = NO_AVATAR_URL)
 
 	return
@@ -148,7 +146,7 @@ async def identify_place_channel(place_names: dict, origin_channel_name: str = '
 
 async def identify_character_channel(characters: dict, origin_channel_id: int = 0, presented_character_name: str = '', presented_character_id: int = 0):
 
-	if not characters: #No characters
+	if not characters:  # No characters
 
 		embed, _ = await mbd(
 			'Easy, bronco.',
@@ -157,7 +155,7 @@ async def identify_character_channel(characters: dict, origin_channel_id: int = 
 
 		return embed
 
-	elif presented_character_id: #Character given (channel)
+	elif presented_character_id:  # Character given (channel)
 
 		if presented_character_id in characters:
 			return {presented_character_id : characters[presented_character_id]}
@@ -170,7 +168,7 @@ async def identify_character_channel(characters: dict, origin_channel_id: int = 
 
 		return embed
 
-	elif presented_character_name: #Character given (text)
+	elif presented_character_name:  # Character given (text)
 
 		if presented_character_name in characters:
 
@@ -185,12 +183,10 @@ async def identify_character_channel(characters: dict, origin_channel_id: int = 
 
 		return embed
 
-	elif origin_channel_id in characters: #Character channel
+	elif origin_channel_id in characters:  # Character channel
 		return {origin_channel_id : characters[origin_channel_id]}
 
 	return None
-
-
 
 #Checks
 async def no_redundancies(test, embed: Embed, interaction: Interaction, file = None):

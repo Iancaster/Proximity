@@ -1,7 +1,7 @@
 
 
 #Import-ant Libraries
-from discord import Guild, Message, Embed, Interaction, TextChannel
+from discord import Guild, Message, Embed, TextChannel
 from discord.utils import get, get_or_fetch
 from asyncio import sleep
 
@@ -118,7 +118,7 @@ async def replace_speaker(old_channel: TextChannel, new_channel: TextChannel):
 
 	return
 
-async def to_direct_listeners(embed: Embed, guild: Interaction, channel_ID: int, exclude: int = 0, occupants_only: bool = False):
+async def to_direct_listeners(embed: Embed, guild: Guild, channel_ID: int, exclude: int = 0, occupants_only: bool = False):
 
 	if guild.id not in updated_guild_IDs:
 		await wait_for_listeners(guild)

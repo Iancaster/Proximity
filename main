@@ -6,8 +6,7 @@ from time import time
 import data.data as data
 from dotenv import load_dotenv
 from os import environ
-from helpers.tests import tests
-from asyncio import sleep
+#from helpers.tests import tests
 
 #Variables
 boot_time = time()
@@ -21,25 +20,26 @@ async def on_connect():
 	await bot.change_presence(activity = Game(data.activity))
 	print(f'{bot.user.name} woke up in {time() - boot_time} seconds.')
 
-	tests_checklist = {
-		'Location Tests' : [
-			#('Delete Location', 'the-gardens'),
-			#('Create Location', 'the-courtyard'),
-			#('Create Character', ('lancaster', 'the-courtyard')),
-			('Create Location', 'the-gardens'),
-			#('Create Location', 'the-village-outskirts'),
-			#('Delete Location', 'the-courtyard'),
-			#('Delete Location', 'the-village-outskirts'),
-			('Create Path', ('the-courtyard', 'the-gardens')),
-			#('Create Path', ('the-courtyard', 'the-village-outskirts'))
-			]
-		}
+	# tests_checklist = {
+	# 	'Location Tests' : [
+	# 		#('Delete Location', 'the-gardens'),
+	# 		#('Create Location', 'the-courtyard'),
+	# 		#('Create Character', ('lancaster', 'the-courtyard')),
+	# 		#('Create Location', 'the-gardens'),
+	# 		#('Create Location', 'the-village-outskirts'),
+	# 		#('Delete Location', 'the-courtyard'),
+	# 		#('Delete Location', 'the-village-outskirts'),
+	# 		#('Create Path', ('the-courtyard', 'the-gardens')),
+	# 		#('Create Path', ('the-courtyard', 'the-village-outskirts'))
+	# 		]
+	# 	}
 
-	test_guild = await bot.fetch_guild(1114005940392439899)
+	# test_guild = await bot.fetch_guild(1114005940392439899)
 
-	#from libraries.classes import Character
-	#my_guy = Character(1196173831610564708)
-	#print(my_guy.roles)
+	# from libraries.classes import Character
+	# my_guy = Character(1196173831610564708)
+	# print(my_guy.roles)
+	# print()
 
 	#await tests(tests_checklist, test_guild)
 

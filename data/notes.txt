@@ -2,7 +2,7 @@ Okay, so the data structure for the following is like this:
 
 GuildData:
 	places: dict( place_name: str : location_data: Location)
-	characters: dict( int: character_channel_id : Character: character_data)
+	characters: dict( int: character_channel_id : Character: char_data)
 	roles: set() # Roles that have been added to a Component's allowed_roles set
 
 	view_distance: int = 99

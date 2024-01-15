@@ -1,8 +1,8 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Bot, Option, File, \
-	OptionChoice, SlashCommandGroup, Embed
+from discord import ApplicationContext, Option, \
+	SlashCommandGroup, Embed
 from discord.ext import commands
 
 from libraries.classes import *
@@ -27,7 +27,7 @@ class DebugCommands(commands.Cog):
 		guild_ids = [1114005940392439899])
 
 	@debug_group.command(name = 'listeners', description = 'See what channels proxy their messages to which others.')
-	async def listeners(self, ctx: ApplicationContext, listener_type: Option( str, description = 'Direct or indirect listeners?', name = 'type', choices = ['direct','indirect'], default = 'direct')):
+	async def listeners(self, ctx: ApplicationContext, listener_type: Option(str, description = 'Direct or indirect listeners?', name = 'type', choices = ['direct','indirect'], default = 'direct')):
 
 		guild_data = GuildData(ctx.guild.id, load_places = True, load_characters = True)
 

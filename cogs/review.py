@@ -1,20 +1,24 @@
 
 
 #Import-ant Libraries
-from discord import ApplicationContext, Option, Interaction, Embed, MISSING
+from discord import ApplicationContext, Option, Interaction, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get
+from discord.utils import get, get_or_fetch
 
-from libraries.classes import *
-from libraries.universal import *
-from libraries.formatting import *
-from libraries.autocomplete import *
-from data.listeners import *
+from libraries.classes import GuildData, DialogueView, Character
+from libraries.universal import mbd, loading, no_redundancies, \
+	send_message, identify_place_channel, character_change, \
+	identify_character_channel
+from libraries.formatting import format_channels, discordify, \
+	unique_name, format_whitelist, format_colors, format_roles, \
+	format_avatar, format_places, format_characters
+from libraries.autocomplete import complete_places, complete_characters
+from data.listeners import to_direct_listeners, queue_refresh
 
 from networkx import DiGraph, ego_graph, compose
 
-#Classes
+# Classes
 class ReviewCommands(commands.Cog):
 
 	review_group = SlashCommandGroup(
@@ -177,10 +181,10 @@ class ReviewCommands(commands.Cog):
 			case None:
 				embed, _ = await mbd(
 					'Review place(s)?',
-					"You can review a place four ways:" + \
-						"\n• Call this command inside of a place channel." + \
-						"\n• Do `/review place review #place-channel`." + \
-						"\n• Select one or more places with the list below." + \
+					"You can review a place four ways:" +
+						"\n• Call this command inside of a place channel." +
+						"\n• Do `/review place review #place-channel`." +
+						"\n• Select one or more places with the list below." +
 						"\n• To rename a place, you can just rename the channel.",
 					'This will allow you to view place details, like paths and whitelists.')
 
@@ -368,17 +372,19 @@ class ReviewCommands(commands.Cog):
 
 		async def review_character(reviewing_characters: dict):
 
+			characters_dict = {char_ID : Character(char_ID) for char_ID in reviewing_characters.keys()}
 			if len(reviewing_characters) == 1:
 				char_ID, char_name = list(reviewing_characters.items())[0]
 				char_data = Character(char_ID)
-				avatar = char_data.avatar
 				valid_url = False
 			else:
-				characters_dict = {char_ID : Character(char_ID) for char_ID in reviewing_characters.keys()}
 				existing_locations = {character.location for character in characters_dict.values()}
 				existing_roles = {role for character in characters_dict.values() for role in character.roles}
 
+
 			async def singular_refresh():
+
+				nonlocal valid_url
 
 				if view.name():
 					description = f'• Name: ~~{char_name}~~, renaming to *{view.name()}*'
@@ -443,7 +449,7 @@ class ReviewCommands(commands.Cog):
 
 				await loading(interaction)
 
-				character_channels()
+				character_channels = {char_ID : await get_or_fetch('channel', interaction.guild, char_ID) for char_ID in reviewing_characters}
 
 				description = ''
 				if len(reviewing_characters) == 1:
@@ -451,13 +457,99 @@ class ReviewCommands(commands.Cog):
 					if view.name():
 						description += f"• Changed *{char_name}*'s name to *{view.name()}*."
 						char_data.name = view.name()
+						await character_channels[char_ID].edit(name = view.name())
 
 					if view.url() and valid_url:
 						description += f"• Changed *{char_data.name}*'s avatar to *{view.url()}*."
 						char_data.avatar = view.url()
 
 					if view.name() or view.url():
-						pass
+						await character_change(character_channels[char_ID], char_data)
+
+					title = f'Reviewed {char_data.name}'
+
+				else:
+					title = f'Reviewed {len(reviewing_characters)} Characters.'
+					description += f"• Did the following to {await format_channels(reviewing_characters.keys())}."
+
+				if view.clearing:
+					description += "• Removed their role(s)."
+					for character in characters_dict.values():
+						character.roles = set()
+
+				elif view.roles():
+
+					description += f"• Changed their role(s) to {await format_roles(view.roles())}."
+					for character in characters_dict.values():
+						character.roles = view.roles()
+
+				if view.places():
+
+					destination_name = view.places()[0]
+					destination_place = guild_data.places[destination_name]
+					description += f"• Relocated them to <#{destination_place.channel_ID}>."
+
+					vacating_places = {char_data.location : \
+						{}.setdefault(char_data.location, set()).union({char_ID}) \
+						for char_ID, char_data in characters_dict.items()}
+
+					for location, moving_people in vacating_places.items():
+
+						moving_names = {guild_data.characters[char_ID] for char_ID in moving_people}
+						place = guild_data.places[location]
+						place.remove_occupants(moving_people)
+
+						embed, _ = await mbd(
+							'Poof.',
+							f'{await format_characters(moving_names)} just got whisked away.',
+							"But to where?")
+						await to_direct_listeners(
+							embed,
+							interaction.guild,
+							place.channel_ID)
+
+						embed, _ = await mbd(
+							'Teleported.',
+							f'Relocated {await format_channels(moving_people)} to' +
+								f' <#{place.channel_ID}>.',
+							'You can further relocate them with /review player.')
+						origin_channel = await get_or_fetch('channel', interaction.guild, place.channel_ID)
+						await origin_channel.send(embed = embed)
+
+					for character_data in characters_dict.items():
+						character_data.location = destination_name
+
+					destination_place.add_occupants(characters_dict.keys())
+					await guild_data.save()
+
+					await queue_refresh(interaction.guild)
+
+					embed, _ = await mbd(
+						'Whoosh.',
+						f'{await format_characters(moving_names)} just appeared here at **#{destination_name}**.',
+						"How strange.")
+					await to_direct_listeners(
+						embed,
+						interaction.guild,
+						destination_place.channel_ID)
+
+					embed, _ = await mbd(
+						'New arrival(s).',
+						f'{await format_characters(reviewing_characters.values())} got teleported here.',
+						"You can move them again using /review player.")
+					destination_channel = await get_or_fetch('channel', interaction.guild, destination_place.channel_ID)
+
+				embed, _ = await mbd(
+					title,
+					description,
+					'You can always undo your changes by calling /review player again.')
+				return await no_redundancies(
+					(interaction.channel.id in reviewing_characters),
+					embed,
+					interaction)
+
+
+
 
 
 			if len(reviewing_characters) == 1:

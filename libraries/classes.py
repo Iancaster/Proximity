@@ -7,7 +7,6 @@ from discord import Guild, PermissionOverwrite, Interaction, \
 from discord.errors import NotFound
 from discord.utils import get, get_or_fetch
 from discord.ui import View, Select, Button, Modal, InputText
-from asyncio import sleep
 
 from libraries.universal import mbd
 from libraries.formatting import format_whitelist
@@ -89,7 +88,7 @@ class Location(Component):
 		self.neighbors = {name : Path(
 			directionality = data['directionality'],
 			allowed_roles = data.get('allowed_roles', set()),
-			allowed_characters = data.get('allowed_characters', set())) \
+			allowed_characters = data.get('allowed_characters', set()))
 				for name, data in self.neighbors.items()}
 
 		return
@@ -159,7 +158,7 @@ class DialogueView(View):
 
 		embed, _ = await mbd(
 			'Timed out.',
-			"This window closed since it hasn't been in use." + \
+			"This window closed since it hasn't been in use." +
 				" It'll delete itself in about 15 seconds.",
 			'Feel free to call the command again.')
 
@@ -203,6 +202,7 @@ class DialogueView(View):
 
 		self.add_item(self.people_select)
 		return
+
 	def people(self):
 		return self.people_select.values
 
@@ -249,6 +249,7 @@ class DialogueView(View):
 		self.add_item(self.character_select)
 		self.created_components.add('character_select')
 		return
+
 	def characters(self):
 		if self.character_select_textual:
 			return {int(ID) : self._characters_dict[int(ID)] for index, ID in enumerate(self.character_select.values)}
@@ -267,6 +268,7 @@ class DialogueView(View):
 		self.add_item(self.role_select)
 		self.created_components.add('role_select')
 		return
+
 	def roles(self):
 		return {role.id for role in self.role_select.values}
 
@@ -313,6 +315,7 @@ class DialogueView(View):
 		self.add_item(self.place_select)
 		self.created_components.add('place_select')
 		return
+
 	def places(self):
 		if self.place_select_textual:
 			return self.place_select.values
@@ -346,6 +349,7 @@ class DialogueView(View):
 		self.add_item(self.path_select)
 		self.created_components.add('path_select')
 		return
+
 	def paths(self):
 		return self.path_select.values
 
@@ -378,6 +382,7 @@ class DialogueView(View):
 		self.existing = existing
 		self.created_components.add('namer')
 		return
+
 	def name(self):
 
 		if 'namer' not in self.created_components:
@@ -413,6 +418,7 @@ class DialogueView(View):
 		self.add_item(modal_button)
 		self.url_select = url_select
 		return
+
 	def url(self):
 		return self.url_select.value
 
@@ -518,22 +524,22 @@ class DialogueView(View):
 			return "\n• Whitelist:" + \
 				f" {await format_whitelist(first_component.allowed_roles, first_component.allowed_characters)}"
 
-		if any(com.allowed_roles != first_component.allowed_roles or \
-			   com.allowed_characters != first_component.allowed_characters for com in components):
+		if any(com.allowed_roles != first_component.allowed_roles or
+			com.allowed_characters != first_component.allowed_characters for com in components):
 			return '\n• Whitelists: Multiple different whitelists.'
 
 		return "\n• Whitelists: Every part has the same whitelist. " + \
-				await format_whitelist(first_component.allowed_roles, \
-					first_component.allowed_characters)
+			await format_whitelist(first_component.allowed_roles,
+				first_component.allowed_characters)
 
 @s(auto_attribs = True)
 class ChannelMaker:
 	guild: Guild
-	category_name: str  = ib(default = '')
+	category_name: str = ib(default = '')
 
 	def __attrs_post_init__(self):
 
-		with open(join(getcwd(),'assets','avatar.png'), 'rb') as file:
+		with open(join(getcwd(), 'assets', 'avatar.png'), 'rb') as file:
 			self.avatar = file.read()
 
 	async def initialize(self):
@@ -553,7 +559,7 @@ class ChannelMaker:
 			self.category = existing_category
 			return
 
-		found_category = [channel for channel in await self.guild.fetch_channels() if \
+		found_category = [channel for channel in await self.guild.fetch_channels() if
 			channel.name == self.category_name and isinstance(channel, CategoryChannel)]
 		if found_category:
 			self.category = found_category[0]
@@ -590,7 +596,7 @@ class GuildData:
 			fields = [column[0] for column in cursor.description]
 			return {column : data for column, data in zip(fields, data)}
 
-		guild_con = connect(join(getcwd(),'data','guild.db'))
+		guild_con = connect(join(getcwd(), 'data', 'guild.db'))
 		guild_con.row_factory = return_dictionary
 		cursor = guild_con.cursor()
 
@@ -732,7 +738,6 @@ class GuildData:
 
 		return ego_graph(graph, origin, radius = 99)
 
-
 	#Paths
 	async def set_path(self, origin: str, destination: str, path: Path, overwrite: bool = False):
 
@@ -757,7 +762,7 @@ class GuildData:
 
 		destination = self.places.get(destination, None)
 		if destination:
-			test = destination.neighbors.pop(origin_name, None)
+			destination.neighbors.pop(origin_name, None)
 
 		return
 
@@ -781,7 +786,7 @@ class GuildData:
 		visited_places = set()
 
 		for name, place in included_places.items():
-			total += sum(1 for neighbor, path in place.neighbors.items() \
+			total += sum(1 for neighbor, path in place.neighbors.items()
 				if neighbor not in visited_places)
 			visited_places.add(name)
 
@@ -807,7 +812,6 @@ class GuildData:
 
 		return description
 
-
 	#Characters
 	async def delete_character(self, char_ID: int):
 
@@ -824,6 +828,16 @@ class GuildData:
 
 		return condemned_char, last_seen_place
 
+	async def _evict_character(self):
+
+		await remove_speaker()
+		# Remove listeners
+		# Remove from location (both Place as well as Character data)
+		# Do NOT save, will immediately be followed up with placing them
+
+		# Inform Place that they left?
+		# Inform nearby people?
+		# Inform character?
 
 	#Server Data
 	async def to_graph(self, places: dict = None):
@@ -885,7 +899,7 @@ class GuildData:
 			dx, dy = positions[destination]
 			distance = sqrt((dx - ox) ** 2 + (dy - oy) ** 2)
 
-			if distance > letter_spacing * 2: #Move the paths away from the labels
+			if distance > letter_spacing * 2:
 
 				if dx - ox != 0:
 					slope = abs((dy - oy) / (dx - ox))
@@ -936,14 +950,14 @@ class GuildData:
 
 	async def save(self):
 
-		guild_con = connect(join(getcwd(),'data','guild.db'))
+		guild_con = connect(join(getcwd(), 'data', 'guild.db'))
 		cursor = guild_con.cursor()
 
 		if self.first_boot:
 			serialized_null = dumps(dict())
 			encoded_null = b64encode(serialized_null)
 
-			cursor.execute("INSERT or REPLACE INTO guilds" + \
+			cursor.execute("INSERT or REPLACE INTO guilds" +
 				"(guild_ID, places, characters, roles, settings) VALUES(?, ?, ?, ?, ?)",
 				(self.guild_ID, encoded_null, encoded_null, '', encoded_null))
 
@@ -952,20 +966,20 @@ class GuildData:
 			serialized_places = dumps(all_places)
 			encoded_places = b64encode(serialized_places)
 
-			cursor.execute("UPDATE guilds SET places = ? WHERE guild_id = ?;", \
+			cursor.execute("UPDATE guilds SET places = ? WHERE guild_id = ?;",
 				(encoded_places, self.guild_ID))
 
 		if self.load_characters:
 			serialized_chars = dumps(self.characters)
 			encoded_chars = b64encode(serialized_chars)
 
-			cursor.execute("UPDATE guilds SET characters = ? WHERE guild_id = ?;", \
+			cursor.execute("UPDATE guilds SET characters = ? WHERE guild_id = ?;",
 				(encoded_chars, self.guild_ID))
 
 		if self.load_roles:
 			role_data = ' '.join([str(role_ID) for role_ID in self.roles])
 
-			cursor.execute("UPDATE guilds SET roles = ? WHERE guild_id = ?;", \
+			cursor.execute("UPDATE guilds SET roles = ? WHERE guild_id = ?;",
 				(role_data, self.guild_ID))
 
 		if self.load_settings:
@@ -988,7 +1002,7 @@ class GuildData:
 			serialized_settings = dumps(server_settings)
 			encoded_settings = b64encode(serialized_settings)
 
-			cursor.execute("UPDATE guilds SET settings = ? WHERE guild_id = ?;", \
+			cursor.execute("UPDATE guilds SET settings = ? WHERE guild_id = ?;",
 				(encoded_settings, self.guild_ID))
 
 		guild_con.commit()
@@ -997,7 +1011,7 @@ class GuildData:
 
 	async def delete(self, guild: Guild):
 
-		guild_con = connect(join(getcwd(),'data','guild.db'))
+		guild_con = connect(join(getcwd(), 'data', 'guild.db'))
 		cursor = guild_con.cursor()
 
 		cursor.execute("DELETE FROM guilds WHERE guild_ID = ?", (self.guild_ID,))
@@ -1023,7 +1037,8 @@ class GuildData:
 				await place_channel.delete()
 
 			else:
-				print(f'Failed to locate place to delete, named {name} with channel ID {place.channel_ID}.')
+				print(f'Failed to locate place to delete, named \
+					{name} with channel ID {place.channel_ID}.')
 
 		for category_name in ['places', 'characters']:
 			category = get(guild.categories, name = category_name)
@@ -1091,7 +1106,9 @@ class ListenerManager:
 			self.direct_listeners.pop(character_ID, None)
 			self.indirect_listeners.pop(character_ID, None)
 
-		self.direct_listeners = {channel_ID : eavesdropping for channel_ID, eavesdropping in self.direct_listeners.items() if channel_ID not in self.guild_data.places}
+		self.direct_listeners = {channel_ID : eavesdropping for
+			channel_ID, eavesdropping in self.direct_listeners.items()
+			if channel_ID not in self.guild_data.places}
 
 		return
 
@@ -1099,24 +1116,24 @@ class ListenerManager:
 
 		self.channels = await self.guild.fetch_channels()
 
-		for place_name, place in self.guild_data.places.items(): #For every place in the graph
+		for place_name, place in self.guild_data.places.items():  # For every place in the graph
 
 			place_channel = await self._load_channel(place.channel_ID)
 
-			for occ_ID in place.occupants: #For each occupant...
+			for occ_ID in place.occupants:  # For each occupant...
 
 				occ_channel = await self._load_channel(occ_ID)
 				occ_player = await self._load_character(occ_ID)
 
-				await self._add_direct(occ_ID, place_channel, eavesdropping = False) #Location listens to player
-				await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False) #Player listens to location
+				await self._add_direct(occ_ID, place_channel, eavesdropping = False)  # Location listens to player
+				await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False)  # Player listens to location
 
-				for other_occ_ID in place.occupants: #Add all other occupants as listeners...
+				for other_occ_ID in place.occupants:  # Add all other occupants as listeners...
 
-					if other_occ_ID == occ_ID: #Skip yourself.
+					if other_occ_ID == occ_ID:  # Skip yourself.
 						continue
 
-					await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False) #Add them as a listener to you.
+					await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False)  # Add them as a listener to you.
 
 				for neighbor_place_name in place.neighbors.keys():
 
@@ -1127,13 +1144,12 @@ class ListenerManager:
 					else:
 						await self._add_indirect(neighbor_place.channel_ID, occ_channel, neighbor_place_name)
 
-					for neighbor_occ_ID in neighbor_place.occupants: #For every person in the neighbor place...
+					for neighbor_occ_ID in neighbor_place.occupants:  # For every person in the neighbor place...
 
 						if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
 							await self._add_direct(neighbor_occ_ID, occ_channel, eavesdropping = True)
 						else:
-							await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name) #Neighbor only hears occ indirectly.
-
+							await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name)  # Neighbor only hears occ indirectly.
 
 		return self.guild_directs, self.guild_indirects
 
@@ -1148,22 +1164,21 @@ class Character:
 			fields = [column[0] for column in cursor.description]
 			return {field_name: data for field_name, data in zip(fields, characters)}
 
-
-		character_con = connect(join(getcwd(),'data','character.db'))
+		character_con = connect(join(getcwd(), 'data', 'character.db'))
 		character_con.row_factory = return_dict
 		cursor = character_con.cursor()
 		cursor.execute(f"""SELECT * FROM characters WHERE character_ID = {self.id} LIMIT 1""")
-		character_data = cursor.fetchone()
+		char_data = cursor.fetchone()
 
-		character_data = character_data or dict()
+		char_data = char_data or dict()
 
 		self.channel_ID = self.id
 
-		self.name = character_data.get('name', None)
-		self.avatar = character_data.get('avatar', None)
-		self.location = character_data.get('location', None)
-		self.eavesdropping = character_data.get('eavesdropping', None)
-		self.roles = {int(role_ID) for role_ID in character_data.get('roles', '').split()}
+		self.name = char_data.get('name', None)
+		self.avatar = char_data.get('avatar', None)
+		self.location = char_data.get('location', None)
+		self.eavesdropping = char_data.get('eavesdropping', None)
+		self.roles = {int(role_ID) for role_ID in char_data.get('roles', '').split()}
 
 		return
 
@@ -1176,7 +1191,7 @@ class Character:
 
 		print(f'Saved roles as {self.roles}')
 
-		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " + \
+		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " +
 			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
 			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
 

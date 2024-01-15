@@ -4,7 +4,7 @@
 from discord import ApplicationContext, Option, Interaction, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get, get_or_fetch
+from discord.utils import get_or_fetch
 
 from libraries.classes import *
 from libraries.universal import *
@@ -392,24 +392,24 @@ class NewCommands(commands.Cog):
 				'You can always type /help to get more help.')
 			await character_channel.send(embed = embed)
 
-			character_data = Character(character_channel.id)
-			character_data.channel_ID = character_channel.id
-			character_data.location = place_name
-			character_data.roles = view.roles()
-			character_data.name = name
+			char_data = Character(character_channel.id)
+			char_data.channel_ID = character_channel.id
+			char_data.location = place_name
+			char_data.roles = view.roles()
+			char_data.name = name
 
 			if view.url() and valid_url:
-				character_data.avatar = view.url()
+				char_data.avatar = view.url()
 
-			await character_data.save()
+			await char_data.save()
 
 			#Inform the node occupants
 			place = guild_data.places[place_name]
 			player_embed, _ = await mbd(
 				'Someone new.',
-				f"*{character_data.name}* is here.",
+				f"*{char_data.name}* is here.",
 				'Perhaps you should greet them.',
-				(character_data.avatar, 'thumb'))
+				(char_data.avatar, 'thumb'))
 			await to_direct_listeners(
 				player_embed,
 				interaction.guild,
@@ -417,22 +417,22 @@ class NewCommands(commands.Cog):
 				occupants_only = True)
 
 			#Add the players to the guild nodes as occupants
-			await place.add_occupants({character_data.id})
-			guild_data.characters[character_data.id] = character_data.name
+			await place.add_occupants({char_data.id})
+			guild_data.characters[char_data.id] = char_data.name
 			await guild_data.save()
 
-			await character_change(character_channel, character_data)
+			await character_change(character_channel, char_data)
 
 			#Inform admins node
-			description = f"• Added <#{character_data.id}> as a character. " + \
+			description = f"• Added <#{char_data.id}> as a character. " + \
 				f"\n• They're starting at <#{place.channel_ID}>."
-			if character_data.roles:
-				description += f"\n• They have the role(s) of {await format_roles(character_data.roles)}"
+			if char_data.roles:
+				description += f"\n• They have the role(s) of {await format_roles(char_data.roles)}"
 			embed, _ = await mbd(
-				f'Hello, **{character_data.name}**.',
+				f'Hello, **{char_data.name}**.',
 				description,
 				'You can view all characters and where they are with /review server.',
-				(character_data.avatar, 'thumb'))
+				(char_data.avatar, 'thumb'))
 			place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
 			await place_channel.send(embed = embed)
 

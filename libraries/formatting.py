@@ -1,12 +1,12 @@
 
 
-#Import-ant Libraries
+# Import-ant Libraries
 from networkx import DiGraph
 from re import search, sub
 
 from requests import head
 
-#Functions
+# Functions
 async def format_words(words: iter):
 
 	if not words:
@@ -90,16 +90,19 @@ async def format_whitelist(allowed_roles: iter = set(), allowed_characters: iter
 	elif allowed_characters and not allowed_roles:
 		return f'Only these characters are allowed: ({character_mentions}).'
 
-	roles_description = f'any of these roles: ({role_mentions})' if allowed_roles else 'any role'
+	roles_description = f'any of these roles: ({role_mentions})' \
+		if allowed_roles else 'any role'
 
-	character_description = f'any of these people: ({character_mentions})' if allowed_characters else 'everyone else'
+	character_description = f'any of these people: ({character_mentions})' \
+		if allowed_characters else 'everyone else'
 
-	return f'People with {roles_description} will be allowed, as well as {character_description}.'
+	return f'People with {roles_description} will be allowed,' + \
+		f' as well as {character_description}.'
 
 async def discordify(text: str):
 
-	sanitized = ''.join(character.lower() for character in \
-						text if (character.isalnum() or character.isspace() or character == '-'))
+	sanitized = ''.join(character.lower() for character in text if
+		(character.isalnum() or character.isspace() or character == '-'))
 	spaceless = '-'.join(sanitized.split())
 	trimmed = spaceless.strip()
 
@@ -156,4 +159,3 @@ async def format_avatar(presented_url: str):
 
 	except:
 		return 'bad_link.png', False, '**Error,** that URL is broken somehow. Try another one?'
-

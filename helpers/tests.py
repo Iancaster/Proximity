@@ -122,16 +122,16 @@ async def create_character(guild: Guild, char_data: tuple[str, str]):
 	await maker.initialize()
 	character_channel = await maker.create_channel(char_data[0])
 
-	character_data = Character(character_channel.id)
-	character_data.channel_ID = character_channel.id
-	character_data.location = char_data[1]
-	character_data.name = char_data[0]
-	await character_data.save()
+	char_data = Character(character_channel.id)
+	char_data.channel_ID = character_channel.id
+	char_data.location = char_data[1]
+	char_data.name = char_data[0]
+	await char_data.save()
 
 	place = guild_data.places[char_data[1]]
 	#Add the players to the guild nodes as occupants
-	await place.add_occupants({character_data.id})
-	guild_data.characters[character_data.id] = character_data.name
+	await place.add_occupants({char_data.id})
+	guild_data.characters[char_data.id] = char_data.name
 	await guild_data.save()
 
 	return
