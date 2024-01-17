@@ -6,11 +6,16 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get_or_fetch
 
-from libraries.classes import *
-from libraries.universal import *
-from libraries.formatting import *
-from libraries.autocomplete import *
-from data.listeners import *
+from libraries.classes import GuildData, ChannelMaker, Path, Location, \
+	DialogueView, Character
+from libraries.universal import mbd, loading, no_redundancies, \
+	send_message, identify_place_channel, character_change
+from libraries.formatting import format_words, discordify, unique_name, \
+	format_whitelist, format_new_neighbors, embolden, \
+	format_channels, format_roles, format_avatar
+from libraries.autocomplete import complete_places
+from data.listeners import direct_listeners, queue_refresh, \
+	to_direct_listeners
 
 
 #Classes

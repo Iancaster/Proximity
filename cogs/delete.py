@@ -233,7 +233,7 @@ class DeleteCommands(commands.Cog):
 				#Inform own node
 				deleted_mentions = await format_channels(deleted_neighbors.keys())
 				embed, file = await mbd(
-					'Paths deleted.',
+					'Path(s) deleted.',
 					f'Removed the path(s) to {deleted_mentions}.',
 					'You can always make some new ones with /new path.',
 					(graph_image, 'full'))

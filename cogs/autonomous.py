@@ -39,6 +39,7 @@ class Autonomous(commands.Cog):
 		for guild in list(outdated_guilds):
 
 			listener_manager = ListenerManager(guild)
+			await listener_manager.load_channels()
 			await listener_manager.clean_listeners()
 			directs, indirects = await listener_manager.build_listeners()
 

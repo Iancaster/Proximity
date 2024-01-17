@@ -579,6 +579,62 @@ class ChannelMaker:
 		await new_channel.create_webhook(name = 'Proximity', avatar = self.avatar)
 		return new_channel
 
+#Character
+@s(auto_attribs = True)
+class Character:
+	id: int = ib(default = 0)
+
+	def __attrs_post_init__(self):
+
+		def return_dict(cursor, characters):
+			fields = [column[0] for column in cursor.description]
+			return {field_name: data for field_name, data in zip(fields, characters)}
+
+		character_con = connect(join(getcwd(), 'data', 'character.db'))
+		character_con.row_factory = return_dict
+		cursor = character_con.cursor()
+		cursor.execute(f"""SELECT * FROM characters WHERE character_ID = {self.id} LIMIT 1""")
+		char_data = cursor.fetchone()
+
+		char_data = char_data or dict()
+
+		self.channel_ID = self.id
+
+		self.name = char_data.get('name', None)
+		self.avatar = char_data.get('avatar', None)
+		self.location = char_data.get('location', None)
+		self.eavesdropping = char_data.get('eavesdropping', None)
+		self.roles = {int(role_ID) for role_ID in char_data.get('roles', '').split()}
+
+		return
+
+	async def save(self):
+
+		character_con = connect(getcwd() + '/data/character.db')
+		cursor = character_con.cursor()
+
+		self.roles = ' '.join([str(role_ID) for role_ID in self.roles])
+
+		print(f'Saved roles as {self.roles}')
+
+		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " +
+			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
+			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
+
+		character_con.commit()
+		character_con.close()
+		return
+
+	async def delete(self):
+
+		character_con = connect(getcwd() + '/data/character.db')
+		cursor = character_con.cursor()
+
+		cursor.execute("DELETE FROM characters WHERE character_ID = ?", (self.id,))
+		character_con.commit()
+		print(f'Character deleted, ID: {self.id}.')
+		return
+
 #Data
 @s(auto_attribs = True)
 class GuildData:
@@ -828,16 +884,31 @@ class GuildData:
 
 		return condemned_char, last_seen_place
 
-	async def _evict_character(self):
+	async def _evict_character(self,
+		char_channel: TextChannel = None,
+		char_data: Character = None):
 
-		await remove_speaker()
-		# Remove listeners
-		# Remove from location (both Place as well as Character data)
-		# Do NOT save, will immediately be followed up with placing them
+		if char_data:
+			self.places[char_data.location].remove_occupants({char_data.channel_ID})
+			char_data.location = None
 
-		# Inform Place that they left?
-		# Inform nearby people?
-		# Inform character?
+		if char_channel:
+			await remove_speaker(char_channel)
+
+		return
+
+	async def _insert_character(self,
+		char_data: Character,
+		new_place_name: str,
+		new_place: Location,
+		listener_manager = None):
+
+		char_data.location = new_place_name
+		self.places[char_data.location].add_occupants({char_data.channel_ID})
+
+		if listener_manager:
+			await listener_manager.insert_character(char_data, new_place)
+
 
 	#Server Data
 	async def to_graph(self, places: dict = None):
@@ -1067,6 +1138,10 @@ class ListenerManager:
 
 		return
 
+	async def load_channels(self):
+		self.channels = await self.guild.fetch_channels()
+		return
+
 	async def _add_direct(self, speaker: int, listener: TextChannel, eavesdropping: bool):
 
 		self.guild_directs.setdefault(speaker, set())
@@ -1106,105 +1181,92 @@ class ListenerManager:
 			self.direct_listeners.pop(character_ID, None)
 			self.indirect_listeners.pop(character_ID, None)
 
-		self.direct_listeners = {channel_ID : eavesdropping for
-			channel_ID, eavesdropping in self.direct_listeners.items()
-			if channel_ID not in self.guild_data.places}
+		for place in self.guild_data.places.values():
+			self.direct_listeners.pop(place.channel_ID, None)
 
 		return
+
+	async def insert_character(self, char_data: Character, place: Location = None, skip_eaves: bool = False):
+
+		char_channel = await self._load_channel(char_data.channel_ID)
+
+		place = place or self.guild_data.places[char_data.location]
+		place_channel = await self._load_channel(place.channel_ID)
+
+		await self._add_direct(char_data.channel_ID, place_channel, eavesdropping = False)
+		await self._add_direct(place.channel_ID, char_channel, eavesdropping = False)
+
+		for occ_ID in place.occupants:
+
+			if occ_ID == char_data.channel_ID:  # Skip yourself.
+				continue
+
+			their_channel = await self._load_channel(occ_ID)
+			await self._add_direct(occ_ID, char_channel, eavesdropping = False)
+			await self._add_direct(char_data.channel_ID, their_channel, eavesdropping = False)
+
+		for neighbor_name in place.neighbors.keys():
+
+			neighbor_place = self.guild_data.places[neighbor_name]
+
+			if skip_eaves:
+				await self._add_indirect(neighbor_place.channel_ID, char_channel, neighbor_name)
+
+			else:
+				if self.guild_data.eavesdropping_allowed and neighbor_name == char_data.eavesdropping:
+					await self._add_direct(neighbor_occ_ID, char_channel, eavesdropping = True)
+
+				else:
+					await self._add_indirect(neighbor_place.channel_ID, char_channel, neighbor_name)
+
+			for neighbor_occ_ID in neighbor_place.occupants:
+
+				if self.guild_data.eavesdropping_allowed:
+
+					occ_char = Character(neighbor_occ_ID)
+
+					if neighbor_name == occ_char.eavesdropping:
+						await self._add_direct(neighbor_occ_ID, char_channel, eavesdropping = True)
+						continue
+
+				await self._add_indirect(neighbor_occ_ID, char_channel, neighbor_name)  # Neighbor only hears occ indirectly.
+
 
 	async def build_listeners(self):
 
-		self.channels = await self.guild.fetch_channels()
-
 		for place_name, place in self.guild_data.places.items():  # For every place in the graph
-
-			place_channel = await self._load_channel(place.channel_ID)
 
 			for occ_ID in place.occupants:  # For each occupant...
 
-				occ_channel = await self._load_channel(occ_ID)
-				occ_player = await self._load_character(occ_ID)
+				await self.insert_character(Character(occ_ID), place)
 
-				await self._add_direct(occ_ID, place_channel, eavesdropping = False)  # Location listens to player
-				await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False)  # Player listens to location
-
-				for other_occ_ID in place.occupants:  # Add all other occupants as listeners...
-
-					if other_occ_ID == occ_ID:  # Skip yourself.
-						continue
-
-					await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False)  # Add them as a listener to you.
-
-				for neighbor_place_name in place.neighbors.keys():
-
-					neighbor_place = self.guild_data.places[neighbor_place_name]
-
-					if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
-						await self._add_direct(neighbor_place.channel_ID, occ_channel, eavesdropping = True)
-					else:
-						await self._add_indirect(neighbor_place.channel_ID, occ_channel, neighbor_place_name)
-
-					for neighbor_occ_ID in neighbor_place.occupants:  # For every person in the neighbor place...
-
-						if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
-							await self._add_direct(neighbor_occ_ID, occ_channel, eavesdropping = True)
-						else:
-							await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name)  # Neighbor only hears occ indirectly.
+				# occ_channel = await self._load_channel(occ_ID)
+				# occ_player = await self._load_character(occ_ID)
+    #
+				# await self._add_direct(occ_ID, place_channel, eavesdropping = False)  # Location listens to player
+				# await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False)  # Player listens to location
+    #
+				# for other_occ_ID in place.occupants:  # Add all other occupants as listeners...
+    #
+				# 	if other_occ_ID == occ_ID:  # Skip yourself.
+				# 		continue
+    #
+				# 	await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False)  # Add them as a listener to you.
+    #
+				# for neighbor_place_name in place.neighbors.keys():
+    #
+				# 	neighbor_place = self.guild_data.places[neighbor_place_name]
+    #
+				# 	if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
+				# 		await self._add_direct(neighbor_place.channel_ID, occ_channel, eavesdropping = True)
+				# 	else:
+				# 		await self._add_indirect(neighbor_place.channel_ID, occ_channel, neighbor_place_name)
+    #
+				# 	for neighbor_occ_ID in neighbor_place.occupants:  # For every person in the neighbor place...
+    #
+				# 		if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
+				# 			await self._add_direct(neighbor_occ_ID, occ_channel, eavesdropping = True)
+				# 		else:
+				# 			await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name)  # Neighbor only hears occ indirectly.
 
 		return self.guild_directs, self.guild_indirects
-
-#Character
-@s(auto_attribs = True)
-class Character:
-	id: int = ib(default = 0)
-
-	def __attrs_post_init__(self):
-
-		def return_dict(cursor, characters):
-			fields = [column[0] for column in cursor.description]
-			return {field_name: data for field_name, data in zip(fields, characters)}
-
-		character_con = connect(join(getcwd(), 'data', 'character.db'))
-		character_con.row_factory = return_dict
-		cursor = character_con.cursor()
-		cursor.execute(f"""SELECT * FROM characters WHERE character_ID = {self.id} LIMIT 1""")
-		char_data = cursor.fetchone()
-
-		char_data = char_data or dict()
-
-		self.channel_ID = self.id
-
-		self.name = char_data.get('name', None)
-		self.avatar = char_data.get('avatar', None)
-		self.location = char_data.get('location', None)
-		self.eavesdropping = char_data.get('eavesdropping', None)
-		self.roles = {int(role_ID) for role_ID in char_data.get('roles', '').split()}
-
-		return
-
-	async def save(self):
-
-		character_con = connect(getcwd() + '/data/character.db')
-		cursor = character_con.cursor()
-
-		self.roles = ' '.join([str(role_ID) for role_ID in self.roles])
-
-		print(f'Saved roles as {self.roles}')
-
-		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " +
-			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
-			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
-
-		character_con.commit()
-		character_con.close()
-		return
-
-	async def delete(self):
-
-		character_con = connect(getcwd() + '/data/character.db')
-		cursor = character_con.cursor()
-
-		cursor.execute("DELETE FROM characters WHERE character_ID = ?", (self.id,))
-		character_con.commit()
-		print(f'Character deleted, ID: {self.id}.')
-		return
