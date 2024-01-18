@@ -4,6 +4,8 @@
 from discord import ApplicationContext, Bot, Option, File
 from discord.ext import commands
 from libraries.universal import *
+from timeit import timeit
+from libraries.new_classes import test_func, tester_func
 
 #Classes
 class OwnerCommands(commands.Cog):
@@ -19,6 +21,12 @@ class OwnerCommands(commands.Cog):
 		description = 'Reloads all the cogs.',
 		guild_ids = [1111152704279035954])
 	async def refresh(self, ctx: ApplicationContext):
+
+
+		print(f'Finished in {timeit(test_func(ctx.author.id), number=10000)}')
+		print(f'Finished in {timeit(tester_func(ctx), number=10000)}')
+
+		return
 
 		await ctx.defer(ephemeral = True)
 

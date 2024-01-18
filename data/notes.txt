@@ -30,3 +30,10 @@ Place:
 	channel_ID: int # The place's channel ID
 	occupants: dict(character_ID: int, MUST match each character's character.location : character_name: str, MUST match each character's character.name)
 	neighbors: dict(location_name: str : Path)
+
+
+
+	Components: The paths, locations, in memory/loaded
+	Guild Data: Just the database, what's saved in the books
+	Channel Manager: Synchronicity w/ server + Guild Data
+	Listener Manager: Assembling channels according to Guild Data

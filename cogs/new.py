@@ -16,6 +16,7 @@ from libraries.formatting import format_words, discordify, unique_name, \
 from libraries.autocomplete import complete_places
 from data.listeners import direct_listeners, queue_refresh, \
 	to_direct_listeners
+from libraries.new_classes import ChannelManager
 
 
 #Classes
@@ -31,7 +32,7 @@ class NewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(
+		GD = GuildData(
 			ctx.guild_id,
 			load_places = True,
 			load_characters = True,
@@ -39,15 +40,13 @@ class NewCommands(commands.Cog):
 
 		submitted_name = await discordify(name)
 		name = submitted_name if submitted_name else 'new-place'
-		name = await discordify(name)
-		name = await unique_name(name[:24], guild_data.places.keys())
 
 		async def refresh(interaction: Interaction = None):
 
 			nonlocal name
-			name = view.name() if view.name() else name
+			name = view.name() or name
 			name = await discordify(name)
-			name = await unique_name(name[:24], guild_data.places.keys())
+			name = await unique_name(name, GD.places.keys())
 
 			description = f'Whitelist: {await format_whitelist(view.roles(), view.characters().keys())}'
 
@@ -61,17 +60,16 @@ class NewCommands(commands.Cog):
 
 			await loading(interaction)
 
-			maker = ChannelMaker(interaction.guild, 'places')
-			await maker.initialize()
-			new_channel = await maker.create_channel(name)
+			CM = ChannelManager(interaction.guild)
+			new_channel = await CM.create_channel('places', name)
 
-			await guild_data.create_place(
+			await GD.create_place(
 				name = name,
 				channel_ID = new_channel.id,
 				role_IDs = view.roles(),
 				char_IDs = view.characters())
-			guild_data.roles |= view.roles()
-			await guild_data.save()
+			GD.roles |= view.roles()
+			await GD.save()
 
 			embed, _ = await mbd(
 				 f'**{name.capitalize()}** created!',
@@ -92,7 +90,7 @@ class NewCommands(commands.Cog):
 
 		view = DialogueView(refresh)
 		await view.add_roles()
-		await view.add_characters(guild_data.characters)
+		await view.add_characters(GD.characters)
 		await view.add_submit(submit)
 		await view.add_rename(name)
 		await view.add_cancel()
@@ -106,16 +104,17 @@ class NewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(
+		GD = GuildData(
 			ctx.guild_id,
 			load_places = True,
 			load_characters = True,
 			load_roles = True)
+		CM = ChannelManager(guild_data = GD)
 
 		async def create_paths(origin_place_name: str):
 
 			origin_place_name = origin_place_name
-			origin_place = guild_data.places[origin_place_name]
+			origin_place = GD.places[origin_place_name]
 			destinations = set()
 
 			async def refresh(interaction: Interaction = None):
@@ -128,7 +127,7 @@ class NewCommands(commands.Cog):
 					view.overwriting,
 					origin_place,
 					view.places(),
-					guild_data)
+					GD)
 
 				description += destination_message
 
@@ -159,14 +158,14 @@ class NewCommands(commands.Cog):
 				return embed, file
 
 			def checks():
-				nonlocal destinations
+				#nonlocal destinations
 				return not destinations
 
 			async def submit(interaction: Interaction):
 
 				await loading(interaction)
 
-				nonlocal origin_place_name, destinations
+				#nonlocal origin_place_name, destinations
 
 				#Make paths
 				path = Path(
@@ -176,7 +175,7 @@ class NewCommands(commands.Cog):
 				existing_paths = 0
 				for destination in destinations:
 
-					if await guild_data.set_path(
+					if await GD.set_path(
 						origin_place_name,
 						destination,
 						path,
@@ -184,8 +183,8 @@ class NewCommands(commands.Cog):
 
 						existing_paths += 1
 
-				await guild_data.save()
-				neighbors_dict = await guild_data.filter_places(destinations)
+				await GD.save()
+				neighbors_dict = await GD.filter_places(destinations)
 				await queue_refresh(interaction.guild)
 
 				whitelist = await format_whitelist(view.roles(), view.characters())
@@ -246,8 +245,8 @@ class NewCommands(commands.Cog):
 
 				#Produce map of new paths
 				neighbors_dict[origin_place_name] = origin_place
-				subgraph = await guild_data.to_graph(neighbors_dict)
-				graph_view = await guild_data.to_map(subgraph)
+				subgraph = await GD.to_graph(neighbors_dict)
+				graph_view = await GD.to_map(subgraph)
 				embed, file = await mbd(
 					'New path results.',
 					description,
@@ -264,10 +263,10 @@ class NewCommands(commands.Cog):
 
 			view = DialogueView(refresh, checks)
 			await view.add_places(
-				{name for name, place in guild_data.places.items() if place is not origin_place},
+				{name for name, place in GD.places.items() if place is not origin_place},
 				singular = False)
 			await view.add_roles()
-			await view.add_characters(guild_data.characters)
+			await view.add_characters(GD.characters)
 			await view.add_submit(submit)
 			await view.add_directionality()
 			if origin_place.neighbors:
@@ -278,31 +277,30 @@ class NewCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name, origin)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await create_paths(result)
-			case None:
-				embed, _ = await mbd(
-					'Connect places?',
-					"You can create a new path three ways:" + \
-						"\n• Call this command inside of a place channel." + \
-						"\n• Do `/new place #place-channel`." + \
-						"\n• Select a place channel with the list below.",
-					"This is just to select the origin, you'll select the destination(s) next.")
+		async def select_menu():
 
-				async def submit_locations(interaction: Interaction):
-					await ctx.delete()
-					await create_paths(list(view.places())[0])
-					return
+			embed, _ = await mbd(
+				'Connect places?',
+				"You can create a new path three ways:" + \
+					"\n• Call this command inside of a place channel." + \
+					"\n• Do `/new place #place-channel`." + \
+					"\n• Select a place channel with the list below.",
+				"This is just to select the origin, you'll select the destination(s) next.")
 
-				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), callback = submit_locations)
-				await view.add_cancel()
-				await send_message(ctx.respond, embed, view)
+			async def submit_locations(interaction: Interaction):
+				await ctx.delete()
+				await create_paths(list(view.places())[0])
+				return
 
+			view = DialogueView()
+			await view.add_places(GD.places.keys(), callback = submit_locations)
+			await view.add_cancel()
+			await send_message(ctx.respond, embed, view)
+			return
+
+		place_name = CM.identify_place_channel(ctx, select_menu, origin)
+		if place_name:
+			await create_paths(place_name)
 
 		return
 

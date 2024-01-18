@@ -111,38 +111,9 @@ async def character_change(channel: TextChannel, char_data):
 	return
 
 
-#Guild
-async def identify_place_channel(place_names: dict, origin_channel_name: str = '', presented_channel_name: str = ''):
-
-	if not place_names:
-
-		embed, _ = await mbd(
-			'Easy, bronco.',
-			"You've got no places to work with.",
-			'Make some first with /new place.')
-
-		return embed
-
-	elif presented_channel_name:
-
-		if presented_channel_name in place_names:
-			return presented_channel_name
-
-		else:
-
-			embed, _ = await mbd(
-				'What?',
-				f"**#{presented_channel_name}** isn't a place channel. Did" + \
-					" you select the wrong one?",
-				'Try calling the command again.')
-
-			return embed
-
-	if origin_channel_name in place_names:
-		return origin_channel_name
-
-	else:
-		return None
+# Guild
+async def identify_place_channel(**args):
+	return
 
 async def identify_character_channel(characters: dict, origin_channel_id: int = 0, presented_character_name: str = '', presented_character_id: int = 0):
 
@@ -188,7 +159,7 @@ async def identify_character_channel(characters: dict, origin_channel_id: int = 
 
 	return None
 
-#Checks
+# Checks
 async def no_redundancies(test, embed: Embed, interaction: Interaction, file = None):
 
 	if test:
