@@ -6,7 +6,8 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get, get_or_fetch
 
-from libraries.classes import *
+from libraries.new_classes import GuildData, ChannelManager, \
+	DialogueView, ListenerManager
 from libraries.universal import *
 from libraries.formatting import *
 from libraries.autocomplete import *
@@ -27,11 +28,12 @@ class DeleteCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True)
+		GD = GuildData(ctx.guild_id, load_places = True)
+		CM = ChannelManager(GD = GD)
 
 		async def delete_locations(condemned_place_names: list):
 
-			condemned_places = await guild_data.filter_places(condemned_place_names)
+			condemned_places = await GD.filter_places(condemned_place_names)
 
 			async def confirm_delete(interaction: Interaction):
 
@@ -63,11 +65,11 @@ class DeleteCommands(commands.Cog):
 					if place_channel:
 						await place_channel.delete()
 					else:
-						await guild_data.delete_place(name)
-						await guild_data.save()
+						await GD.delete_place(name)
+						await GD.save()
 						sleep(.5)
 
-				if not guild_data.places:
+				if not GD.places:
 					category = get(interaction.guild.categories, name = 'places')
 					if category:
 						await category.delete()
@@ -105,31 +107,31 @@ class DeleteCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name, given_place)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await delete_locations([result])
-			case None:
-				embed, _ = await mbd(
-					'Delete place(s)?',
-					"You can delete a location four ways:" + \
-						"\n• Call this command inside of a place channel." + \
-						"\n• Do `/delete place #place-channel`." + \
-						"\n• Delete the #place-channel itself." + \
-						"\n• Select one or more places from the dropdown below.",
-					'This will delete the place, its paths, and its channel.')
+		async def select_menu():
 
-				async def submit_locations(interaction: Interaction):
-					await ctx.delete()
-					await delete_locations(view.places())
-					return
+			embed, _ = await mbd(
+				'Delete place(s)?',
+				"You can delete a location four ways:" + \
+					"\n• Call this command inside of a place channel." + \
+					"\n• Do `/delete place #place-channel`." + \
+					"\n• Delete the #place-channel itself." + \
+					"\n• Select one or more places from the dropdown below.",
+				'This will delete the place, its paths, and its channel.')
 
-				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), singular = False, callback = submit_locations)
-				await view.add_cancel()
-				await send_message(ctx.respond, embed, view)
+			async def submit_locations(interaction: Interaction):
+				await ctx.delete()
+				await delete_locations(view.places())
+				return
+
+			view = DialogueView()
+			await view.add_places(GD.places.keys(), singular = False, callback = submit_locations)
+			await view.add_cancel()
+			await send_message(ctx.respond, embed, view)
+
+			return
+
+		if result := await CM.identify_place_channel(ctx, select_menu, given_place):
+			await delete_locations([result])
 
 		return
 
@@ -138,11 +140,12 @@ class DeleteCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True)
+		GD = GuildData(ctx.guild_id, load_places = True)
+		CM = ChannelManager(GD = GD)
 
 		async def delete_paths(origin_place_name: str):
 
-			origin_place = guild_data.places[origin_place_name]
+			origin_place = GD.places[origin_place_name]
 
 			neighbors = origin_place.neighbors
 			if not neighbors:
@@ -154,8 +157,8 @@ class DeleteCommands(commands.Cog):
 				await send_message(ctx.respond, embed, ephemeral = True)
 				return
 
-			impacted_places = await guild_data.filter_places(list(neighbors.keys()) + [origin_place_name])
-			graph = await guild_data.to_graph(impacted_places)
+			impacted_places = await GD.filter_places(list(neighbors.keys()) + [origin_place_name])
+			graph = await GD.to_graph(impacted_places)
 			description = f'<#{origin_place.channel_ID}> has these connections'
 			graph_image = None
 
@@ -169,10 +172,10 @@ class DeleteCommands(commands.Cog):
 				else:
 					selected_neighbors = {name : neighbors[name] for name in view.paths()}
 					full_description += ", but you'll be deleting the following:" + \
-						await guild_data.format_paths(selected_neighbors)
+						await GD.format_paths(selected_neighbors)
 
 				path_colors = await format_colors(graph, origin_place_name, view.paths(), 'red')
-				graph_image = await guild_data.to_map(graph, path_colors)
+				graph_image = await GD.to_map(graph, path_colors)
 
 				embed, file = await mbd(
 					'Delete paths(s)?',
@@ -192,13 +195,13 @@ class DeleteCommands(commands.Cog):
 				nonlocal graph_image
 
 				for neighbor in view.paths():
-					await guild_data.delete_path(origin_place_name, neighbor)
+					await GD.delete_path(origin_place_name, neighbor)
 
-				await guild_data.save()
+				await GD.save()
 
 				await queue_refresh(interaction.guild)
 
-				deleted_neighbors = await guild_data.filter_places(view.paths())
+				deleted_neighbors = await GD.filter_places(view.paths())
 
 				#Inform neighbors occupants and neighbor nodes
 				player_embed, _ = await mbd(
@@ -254,30 +257,30 @@ class DeleteCommands(commands.Cog):
 			embed, file = await refresh()
 			await send_message(ctx.respond, embed, view, file, ephemeral = True)
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name, given_place)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await delete_paths(result)
-			case None:
-				embed, _ = await mbd(
-					'Delete path(s)?',
-					"You can delete a path three ways:" + \
-						"\n• Call this command inside of a place channel." + \
-						"\n• Do `/delete path #place-channel`." + \
-						"\n• Select a place from the dropdown below.",
-					"This is to select the origin, you'll choose which paths to delete next.")
+		async def select_menu():
 
-				async def submit_location(interaction: Interaction):
-					await ctx.delete()
-					await delete_paths(list(view.places())[0])
-					return
+			embed, _ = await mbd(
+				'Delete path(s)?',
+				"You can delete a path three ways:" + \
+					"\n• Call this command inside of a place channel." + \
+					"\n• Do `/delete path #place-channel`." + \
+					"\n• Select a place from the dropdown below.",
+				"This is to select the origin, you'll choose which paths to delete next.")
 
-				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), singular = True, callback = submit_location)
-				await view.add_cancel()
-				await send_message(ctx.respond, embed, view)
+			async def submit_location(interaction: Interaction):
+				await ctx.delete()
+				await delete_paths(list(view.places())[0])
+				return
+
+			view = DialogueView()
+			await view.add_places(GD.places.keys(), singular = True, callback = submit_location)
+			await view.add_cancel()
+			await send_message(ctx.respond, embed, view)
+
+			return
+
+		if result := await CM.identify_place_channel(ctx, select_menu, given_place):
+			await delete_paths(result)
 
 		return
 
@@ -286,13 +289,13 @@ class DeleteCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(
+		GD = GuildData(
 			ctx.guild_id,
 			load_places = True,
 			load_characters = True,
 			load_roles = True)
 
-		if not (guild_data.places or guild_data.characters or guild_data.roles):
+		if not (GD.places or GD.characters or GD.roles):
 
 			embed, _ = await mbd(
 				'Nothing to delete!',
@@ -305,7 +308,7 @@ class DeleteCommands(commands.Cog):
 
 			await loading(interaction)
 
-			await guild_data.delete(interaction.guild)
+			await GD.delete(interaction.guild)
 
 			embed, _ = await mbd(
 				'See you.',
@@ -329,9 +332,9 @@ class DeleteCommands(commands.Cog):
 		await view.add_cancel()
 		embed, _ = await mbd(
 			'Delete all data?',
-			f"You're about to delete {len(guild_data.places)} places" + \
-				f" and {await guild_data.count_paths()} paths, alongside" + \
-				f" {len(guild_data.characters)} character(s).",
+			f"You're about to delete {len(GD.places)} places" +
+				f" and {await GD.count_paths()} paths, alongside" +
+				f" {len(GD.characters)} character(s).",
 			'This will also delete associated channels from the server.')
 		await send_message(ctx.respond, embed, view)
 		return
@@ -341,7 +344,8 @@ class DeleteCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		CM = ChannelManager(GD = GD)
 
 		async def delete_characters(condemned_characters: dict):
 
@@ -358,13 +362,13 @@ class DeleteCommands(commands.Cog):
 						await character_channel.delete()
 						await remove_speaker(character_channel)
 					else:
-						await guild_data.delete_character(character_ID)
-						await guild_data.save()
+						await GD.delete_character(character_ID)
+						await GD.save()
 						direct_listeners.pop(character_ID)
 						indirect_listeners.pop(character_ID)
 						sleep(.5)
 
-				if not guild_data.characters:
+				if not GD.characters:
 					category = get(interaction.guild.categories, name = 'characters')
 					if category:
 						await category.delete()
@@ -403,50 +407,49 @@ class DeleteCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
-		result = await identify_character_channel(guild_data.characters, ctx.channel.id, given_character)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, dict):
-				await delete_characters(result)
-			case None:
+		async def select_menu():
 
-				description = 'You can delete a character four ways:' + \
-					'\n• Call this command inside of a character channel.' + \
-					'\n• Do `/delete character character-name`.' + \
-					'\n• Delete the **#character-channel** itself.' + \
-					'\n• Select one or more characters from the dropdown below.'
+			description = 'You can delete a character four ways:' + \
+				'\n• Call this command inside of a character channel.' + \
+				'\n• Do `/delete character character-name`.' + \
+				'\n• Delete the **#character-channel** itself.' + \
+				'\n• Select one or more characters from the dropdown below.'
 
-				async def refresh():
+			async def refresh():
 
-					nonlocal description
+				nonlocal description
 
-					if view.character_select.values and not view.characters():
-						description = 'Because you have more characters than can' + \
-							' fit in a Text dropdown, this uses a Channel dropdown.' + \
-							" It's almost the same, just choose the character channels" + \
-							' instead of the character names. Non-character channels' + \
-							' get ignored.'
+				if view.character_select.values and not view.characters():
+					description = 'Because you have more characters than can' + \
+						' fit in a Text dropdown, this uses a Channel dropdown.' + \
+						" It's almost the same, just choose the character channels" + \
+						' instead of the character names. Non-character channels' + \
+						' get ignored.'
 
-					embed, _ = await mbd(
-						'Delete character(s)?',
-						description,
-						"This will only select them, you'll be asked if you want to delete them for sure after this.")
-					return embed, None
+				embed, _ = await mbd(
+					'Delete character(s)?',
+					description,
+					"This will only select them, you'll be asked if you want to delete them for sure after this.")
+				return embed, None
 
-				def checks():
-					return not view.characters()
+			def checks():
+				return not view.characters()
 
-				async def submit_characters(interaction: Interaction):
-					await ctx.delete()
-					await delete_characters(view.characters())
-					return
+			async def submit_characters(interaction: Interaction):
+				await ctx.delete()
+				await delete_characters(view.characters())
+				return
 
-				view = DialogueView()
-				await view.add_characters(guild_data.characters, callback = submit_characters)
-				await view.add_cancel()
-				embed, _ = await refresh()
-				await send_message(ctx.respond, embed, view)
+			view = DialogueView()
+			await view.add_characters(GD.characters, callback = submit_characters)
+			await view.add_cancel()
+			embed, _ = await refresh()
+			await send_message(ctx.respond, embed, view)
+
+			return
+
+		if result := await CM.identify_character_channel(ctx, select_menu, given_character):
+			await delete_characters(result)
 
 		return
 

@@ -3,12 +3,12 @@
 #Import-ant Libraries
 from discord import Guild, PermissionOverwrite, Interaction, \
 	ComponentType, InputTextStyle, ButtonStyle, TextChannel, \
-	ChannelType, CategoryChannel, ApplicationContext
+	ChannelType, CategoryChannel, ApplicationContext, MISSING
 from discord.errors import NotFound
 from discord.utils import get, get_or_fetch
 from discord.ui import View, Select, Button, Modal, InputText
 
-from libraries.universal import mbd
+from libraries.universal import mbd, send_message
 from libraries.formatting import format_whitelist
 from data.listeners import direct_listeners, indirect_listeners, \
 	remove_speaker
@@ -104,11 +104,12 @@ class Location(Component):
 
 		return
 
-	async def add_occupants(self, occupants: dict):
-		return self.occupants.update(occupants)
+	async def add_occupants(self, arriving: dict):
+		self.occupants |= arriving
+		return
 
-	async def remove_occupants(self, occupants: dict):
-		self.occupants = {occ_ID : occ_name for occ_ID, occ_name in self.occupants.items() if occ_ID not in occupants}
+	async def remove_occupants(self, departing: dict):
+		self.occupants -= departing
 		return
 
 	async def __dict__(self):
@@ -163,8 +164,6 @@ class Character:
 
 		self.roles = ' '.join([str(role_ID) for role_ID in self.roles])
 
-		print(f'Saved roles as {self.roles}')
-
 		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " +
 			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
 			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
@@ -203,7 +202,7 @@ class GuildData:
 		cursor = guild_con.cursor()
 
 		cursor.execute("SELECT * FROM guilds WHERE guild_ID = ? LIMIT 1", (self.guild_ID,))
-		guild_data = cursor.fetchone()
+		GD = cursor.fetchone()
 		guild_con.close()
 
 		self.places = dict()
@@ -216,14 +215,14 @@ class GuildData:
 		self.peephole = True
 		self.eavesdropping_allowed = True
 
-		self.first_boot = not guild_data
+		self.first_boot = not GD
 
 		if self.first_boot:
 			return
 
 		if self.load_places:
 
-			decoded_places = b64decode(guild_data['places'])
+			decoded_places = b64decode(GD['places'])
 			places_dict = loads(decoded_places)
 
 			for name, place_data in places_dict.items():
@@ -235,14 +234,14 @@ class GuildData:
 					neighbors = place_data.get('neighbors', dict()))
 
 		if self.load_characters:
-			decoded_chars = b64decode(guild_data['characters'])
+			decoded_chars = b64decode(GD['characters'])
 			self.characters = loads(decoded_chars)
 
 		if self.load_roles:
-			self.roles = {int(role_ID) for role_ID in guild_data['roles'].split()}
+			self.roles = {int(role_ID) for role_ID in GD['roles'].split()}
 
 		if self.load_settings:
-			decoded_settings = b64decode(guild_data['settings'])
+			decoded_settings = b64decode(GD['settings'])
 			settings_dict = loads(decoded_settings)
 
 			self.view_distance = settings_dict.get('view_distance', 99)
@@ -289,56 +288,90 @@ class GuildData:
 		return {name : self.places[name] for name in place_names}
 
 	async def get_occupants(self, places: dict = None):
-		places = places if places else self.places
+		places = places or self.places
 		return {occ_ID for place in places for occ_ID in place.occupants}
+
+	async def _gate_guard(self, comp: Component, char_ID: int, role_IDs: iter):
+
+		if not comp.allowed_characters and not comp.allowed_roles:
+			return True
+
+		elif char_ID in comp.allowed_characters:
+			return True
+
+		return bool(comp.allowed_roles.intersection(role_IDs))
 
 	async def accessible_locations(self, role_IDs: iter, char_ID: int, origin: str):
 
+		accessible = set()
+		seen_places = set()
+
+		async def identify_accessible_neighbors(place_name: str):
+
+			seen_places.add(place_name)
+			place = self.places[place_name]
+
+			if not await self._gate_guard(place, char_ID, role_IDs):
+				return False
+
+			for neighbor_name, path in place.neighbors.items():
+
+				if neighbor_name in seen_places:
+					continue
+
+				if path.directionality < 1:
+					continue
+
+				if await self._gate_guard(path, char_ID, role_IDs):
+					await identify_accessible_neighbors(neighbor_name)
+
+			accessible.add(place_name)
+			return True
+
+		if not await identify_accessible_neighbors(origin):
+			accessible.add(origin)
+
+		return accessible
+
+	async def accessible_map(self, role_IDs: iter, char_ID: int, origin: str):
+
 		graph = DiGraph()
+		seen_places = set()
 
-		accessible_places = set()
-		inaccessible_places = set()
+		async def identify_accessible_neighbors(place_name: str):
 
-		for name, place in self.places.items():
+			seen_places.add(place_name)
+			place = self.places[place_name]
 
-			if name == origin:
-				graph.add_place(name)
-				accessible_places.add(name)
+			if not await self._gate_guard(place, char_ID, role_IDs):
+				return False
 
-			elif ((not place.allowed_characters) or (char_ID in place.allowed_characters)) \
-				and ((not place.allowed_roles) or any(ID in place.allowed_roles for ID in role_IDs)):
-				graph.add_place(name)
-				accessible_places.add(name)
+			graph.add_node(place_name)
 
-			else:
-				inaccessible_places.add(name)
+			for neighbor_name, path in place.neighbors.items():
 
-		completed_paths = set()
-
-		for name in accessible_places:
-
-			for neighbor, path in self.places[name].neighbors.items():
-
-				if (neighbor not in accessible_places
-					or neighbor in completed_paths):
+				if neighbor_name in seen_places:
 					continue
 
-				if ((not path.allowed_characters and not path.allowed_roles)
-					or char_ID in path.allowed_characters
-					or any(ID in path.allowed_roles for ID in role_IDs)):
-					pass
-				else:
+				if path.directionality < 1:
 					continue
 
-				if path.directionality > 0:
-					graph.add_path(name, neighbor)
+				if await self._gate_guard(path, char_ID, role_IDs):
 
-				if path.directionality < 2:
-					graph.add_path(neighbor, name)
+					if not await identify_accessible_neighbors(neighbor_name):
+						continue
 
-			completed_paths.add(name)
+					graph.add_edge(place_name, neighbor_name)
 
-		return ego_graph(graph, origin, radius = 99)
+					if path.directionality == 1:
+						graph.add_edge(neighbor_name, place_name)
+
+			return True
+
+		if not await identify_accessible_neighbors(origin):
+			graph.add_node(origin)
+
+		return graph
 
 	# Paths
 	async def set_path(self, origin: str, destination: str, path: Path, overwrite: bool = False):
@@ -414,7 +447,23 @@ class GuildData:
 
 		return description
 
-	#Characters
+	# Characters
+	async def validate_membership(self, char_ID: int, ctx: ApplicationContext = None):
+
+		if char_ID in self.characters:
+			return True
+
+		elif ctx:
+			embed, _ = await mbd(
+				'Hold on.',
+				'This is a command for characters. If you have access' \
+					' to any Character Channels, call the command' \
+					' in there instead.',
+				'Otherwise, ask a Host to make a /new character for you.')
+			await send_message(ctx.respond, embed)
+
+		return False
+
 	async def delete_character(self, char_ID: int):
 
 		if char_ID not in self.characters:
@@ -430,30 +479,20 @@ class GuildData:
 
 		return condemned_char, last_seen_place
 
-	async def _evict_character(self,
-		char_channel: TextChannel = None,
-		char_data: Character = None):
+	async def evict_character(self, char_data: Character):
 
-		if char_data:
-			self.places[char_data.location].remove_occupants({char_data.channel_ID})
-			char_data.location = None
-
-		if char_channel:
-			await remove_speaker(char_channel)
-
+		occupied_place = self.places[char_data.location]
+		await occupied_place.remove_occupants({char_data.channel_ID})
+		char_data.location = None
+		char_data.eavesdropping = None
 		return
 
-	async def _insert_character(self,
-		char_data: Character,
-		new_place_name: str,
-		new_place: Location,
-		listener_manager = None):
+	async def insert_character(self, char_data: Character, new_place_name: str):
 
 		char_data.location = new_place_name
-		self.places[char_data.location].add_occupants({char_data.channel_ID})
-
-		if listener_manager:
-			await listener_manager.insert_character(char_data, new_place)
+		new_place = self.places[new_place_name]
+		await new_place.add_occupants({char_data.channel_ID})
+		return
 
 
 	#Server Data
@@ -1066,7 +1105,7 @@ class DialogueView(View):
 			return "\n• New whitelist(s)-- will overwrite the old whitelist:" + \
 				f" {await format_whitelist(self.roles(), self.characters())}"
 
-		first_component = next(components, None)
+		first_component = next(iter(components), None)
 
 		if len(components) == 1:
 			return "\n• Whitelist:" + \
@@ -1158,21 +1197,15 @@ class ChannelManager:
 
 		return await channel.create_webhook(name = 'Proximity', avatar = self.avatar)
 
-	async def send_embed(
-		self,
-		channel: TextChannel,
-		send_method: callable,
-		title: str = 'No Title',
-		description: str = 'No description.',
-		footer: str = 'No footer.',
-		image_details = None):
+	async def send_embed(self, channel: TextChannel, send_method: callable, title: str = 'No Title', description: str = 'No description.', footer: str = 'No footer.', image_details = None):
 
 		embed, file = await mdb(title, description, footer, image_details)
 		await send_message(embed, file)
 
-	async def identify_place_channel(self, ctx: ApplicationContext, submission: callable,  presented_name: str = ''):
+	# Validate Channels
+	async def identify_place_channel(self, ctx: ApplicationContext, submission: callable = None,  presented_name: str = ''):
 
-		if not place_names:
+		if not self.GD.places:
 
 			embed, _ = await mbd(
 				'Easy, bronco.',
@@ -1180,7 +1213,6 @@ class ChannelManager:
 				'Make some first with /new place.')
 			await send_message(ctx.respond, embed)
 			return
-
 
 		elif presented_name:
 
@@ -1191,36 +1223,72 @@ class ChannelManager:
 
 				embed, _ = await mbd(
 					'What?',
-					f"**#{presented_name}** isn't a place channel. Did" + \
+					f"**#{presented_name}** isn't a place channel. Did" +
 						" you select the wrong one?",
 					'Try calling the command again.')
 				await send_message(ctx.respond, embed)
 				return
 
-		if ctx.channel.name in place_names:
+		if ctx.channel.name in self.GD.places:
 			return ctx.channel.name
 
-		return await submission()
+		if submission:
+			return await submission()
 
+		return ''
+
+	async def identify_character_channel(self, ctx: ApplicationContext, submission: callable = None, presented_name: str = '', presented_id: int = 0):
+
+		if not self.GD.characters:
+
+			embed, _ = await mbd(
+				'Easy, bronco.',
+				"You've got no characters yet.",
+				'Make a /new place so you can add a /new character.')
+			await send_message(ctx.respond, embed)
+			return
+
+		elif presented_id:  # Character given (channel)
+
+			if presented_id in self.GD.characters:
+				return {presented_character_id : self.GD.characters[presented_id]}
+
+			embed, _ = await mbd(
+				'What?',
+				f"<#{presented_id}> isn't a character channel. Did" + \
+					" you select the wrong one?",
+				'Try calling the command again.')
+			await send_message(ctx.respond, embed)
+			return
+
+		elif presented_name:  # Character given (text)
+
+			if found_character := next({ID : name for ID, name in self.GD.characters.items() if \
+					name == presented_name}, None):
+				return found_character
+
+			embed, _ = await mbd(
+				'What?',
+				f"*{presented_character_name}* isn't a character. Did" + \
+					" you select the wrong one?",
+				'Try calling the command again.')
+			await send_message(ctx.respond, embed)
+			return
+
+		elif ctx.channel.id in self.GD.characters:  # Character channel
+			return {ctx.channel.id : self.GD.characters[ctx.channel.id]}
+
+		if submission:
+			return await submission()
+
+		return ''
 
 @s(auto_attribs = True)
 class ListenerManager:
 	guild: Guild = ib(default = None)
-	direct_listeners: dict = ib(direct_listeners)
-	indirect_listeners: dict = ib(indirect_listeners)
-	guild_directs: dict = Factory(dict)
-	guild_indirects: dict = Factory(dict)
+	GD: GuildData = ib(default = None)
 	cached_channels: dict = Factory(dict)
 	cached_characters: dict = Factory(dict)
-
-	def __attrs_post_init__(self):
-		self.guild_data = GuildData(
-			self.guild.id,
-			load_places = True,
-			load_characters = True,
-			load_settings = True)
-
-		return
 
 	async def load_channels(self):
 		self.channels = await self.guild.fetch_channels()
@@ -1228,23 +1296,22 @@ class ListenerManager:
 
 	async def _add_direct(self, speaker: int, listener: TextChannel, eavesdropping: bool):
 
-		self.guild_directs.setdefault(speaker, set())
-		self.guild_directs[speaker].add((listener, eavesdropping))
+		direct_listeners.setdefault(speaker, set())
+		direct_listeners[speaker].add((listener, eavesdropping))
 
 		return
 
 	async def _add_indirect(self, speaker: int, listener: TextChannel, speaker_location: str):
 
-		self.guild_indirects.setdefault(speaker, set())
-		self.guild_indirects[speaker].add((listener, speaker_location))
+		indirect_listeners.setdefault(speaker, set())
+		indirect_listeners[speaker].add((listener, speaker_location))
 
 		return
 
 	async def _load_channel(self, channel_ID: int):
 
 		channel = self.cached_channels.get(channel_ID, None)
-		if not channel:
-			channel = get(self.channels, id = channel_ID)
+		if channel := get(self.channels, id = channel_ID):
 			self.cached_channels[channel_ID] = channel
 
 		return channel
@@ -1252,7 +1319,6 @@ class ListenerManager:
 	async def _load_character(self, character_ID: int):
 
 		character = self.cached_characters.get(character_ID, None)
-
 		if not character:
 			character = Character(character_ID)
 			self.cached_characters[character_ID] = character
@@ -1261,43 +1327,65 @@ class ListenerManager:
 
 	async def clean_listeners(self):
 
-		for character_ID in self.guild_data.characters.keys():
-			self.direct_listeners.pop(character_ID, None)
-			self.indirect_listeners.pop(character_ID, None)
+		for character_ID in self.GD.characters.keys():
+			direct_listeners.pop(character_ID, None)
+			indirect_listeners.pop(character_ID, None)
 
-		for place in self.guild_data.places.values():
-			self.direct_listeners.pop(place.channel_ID, None)
+		for place in self.GD.places.values():
+			direct_listeners.pop(place.channel_ID, None)
 
 		return
 
-	async def insert_character(self, char_data: Character, place: Location = None, skip_eaves: bool = False):
+	async def remove_channel(self, channel_ID: int = 0, channel: TextChannel = None):
+
+		condemned_channel = channel or await self._load_channel(channel_ID)
+
+		for listener_dict in [direct_listeners, indirect_listeners]:
+
+			own_listeners = listener_dict.pop(condemned_channel.id, set())
+
+			for listener_channel, secondary in own_listeners:
+
+				their_listeners = listener_dict.get(listener_channel.id, dict())
+
+				their_listeners.discard((condemned_channel, secondary))
+
+				if not their_listeners:
+					listener_dict.pop(listener_channel.id)
+
+		return
+
+	async def insert_character(self, char_data: Character, skip_eaves: bool = False):
 
 		char_channel = await self._load_channel(char_data.channel_ID)
 
-		place = place or self.guild_data.places[char_data.location]
+		place = self.GD.places[char_data.location]
 		place_channel = await self._load_channel(place.channel_ID)
 
+		# Listen to place (and vice versa)
 		await self._add_direct(char_data.channel_ID, place_channel, eavesdropping = False)
 		await self._add_direct(place.channel_ID, char_channel, eavesdropping = False)
 
+		# Listen to other characters nearby
 		for occ_ID in place.occupants:
 
-			if occ_ID == char_data.channel_ID:  # Skip yourself.
+			if occ_ID == char_data.channel_ID:
 				continue
 
 			their_channel = await self._load_channel(occ_ID)
 			await self._add_direct(occ_ID, char_channel, eavesdropping = False)
 			await self._add_direct(char_data.channel_ID, their_channel, eavesdropping = False)
 
+		# Listen to neighbors
 		for neighbor_name in place.neighbors.keys():
 
-			neighbor_place = self.guild_data.places[neighbor_name]
+			neighbor_place = self.GD.places[neighbor_name]
 
 			if skip_eaves:
 				await self._add_indirect(neighbor_place.channel_ID, char_channel, neighbor_name)
 
 			else:
-				if self.guild_data.eavesdropping_allowed and neighbor_name == char_data.eavesdropping:
+				if self.GD.eavesdropping_allowed and neighbor_name == char_data.eavesdropping:
 					await self._add_direct(neighbor_occ_ID, char_channel, eavesdropping = True)
 
 				else:
@@ -1305,7 +1393,7 @@ class ListenerManager:
 
 			for neighbor_occ_ID in neighbor_place.occupants:
 
-				if self.guild_data.eavesdropping_allowed:
+				if self.GD.eavesdropping_allowed:
 
 					occ_char = Character(neighbor_occ_ID)
 
@@ -1315,43 +1403,136 @@ class ListenerManager:
 
 				await self._add_indirect(neighbor_occ_ID, char_channel, neighbor_name)  # Neighbor only hears occ indirectly.
 
+		return
 
 	async def build_listeners(self):
 
-		for place_name, place in self.guild_data.places.items():  # For every place in the graph
+		for place in self.GD.places.values():
 
-			for occ_ID in place.occupants:  # For each occupant...
+			for occ_ID in place.occupants:
 
 				await self.insert_character(Character(occ_ID), place)
 
-				# occ_channel = await self._load_channel(occ_ID)
-				# occ_player = await self._load_character(occ_ID)
-    #
-				# await self._add_direct(occ_ID, place_channel, eavesdropping = False)  # Location listens to player
-				# await self._add_direct(place.channel_ID, occ_channel, eavesdropping = False)  # Player listens to location
-    #
-				# for other_occ_ID in place.occupants:  # Add all other occupants as listeners...
-    #
-				# 	if other_occ_ID == occ_ID:  # Skip yourself.
-				# 		continue
-    #
-				# 	await self._add_direct(other_occ_ID, occ_channel, eavesdropping = False)  # Add them as a listener to you.
-    #
-				# for neighbor_place_name in place.neighbors.keys():
-    #
-				# 	neighbor_place = self.guild_data.places[neighbor_place_name]
-    #
-				# 	if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
-				# 		await self._add_direct(neighbor_place.channel_ID, occ_channel, eavesdropping = True)
-				# 	else:
-				# 		await self._add_indirect(neighbor_place.channel_ID, occ_channel, neighbor_place_name)
-    #
-				# 	for neighbor_occ_ID in neighbor_place.occupants:  # For every person in the neighbor place...
-    #
-				# 		if self.guild_data.eavesdropping_allowed and neighbor_place_name == occ_player.eavesdropping:
-				# 			await self._add_direct(neighbor_occ_ID, occ_channel, eavesdropping = True)
-				# 		else:
-				# 			await self._add_indirect(neighbor_occ_ID, occ_channel, neighbor_place_name)  # Neighbor only hears occ indirectly.
+		return
 
-		return self.guild_directs, self.guild_indirects
+@s(auto_attribs = True)
+class Paginator():
+	interaction: Interaction = ib(default = None)
+	title_prefix: str = ib(default = '')
+	all_pages: dict = Factory(dict)
+	all_images: dict = Factory(dict)
+
+	def __attrs_post_init__(self):
+		self.current_page = 0
+		self.total_pages = len(self.all_pages)
+
+	async def _close_dialogue(self, interaction: Interaction):
+
+		embed, _ = await mbd(
+			'All done.',
+			'Window closed.',
+			'Feel free to call the command again.')
+
+		await self.interaction.followup.edit_message(
+			message_id = self.interaction.message.id,
+			embed = embed,
+			file = MISSING,
+			view = None)
+		return
+
+	async def _determine_arrows(self, page: int):
+		return page > 0, page < self.total_pages - 1
+
+	async def _flip_page_right(self, interaction: Interaction):
+
+		await interaction.response.defer()
+		self.current_page += 1
+		self.interaction = interaction
+		await self.refresh_embed()
+		return
+
+	async def _flip_page_left(self, interaction: Interaction):
+
+		await interaction.response.defer()
+		self.current_page -= 1
+		self.interaction = interaction
+		await self.refresh_embed()
+		return
+
+	async def _construct_buttons(self, left_arrow_enabled: bool, right_arrow_enabled: bool):
+
+		view = DialogueView()
+
+		if left_arrow_enabled:
+			label = '<'
+			disabled = False
+		else:
+			label = '-'
+			disabled = True
+
+		left = Button(
+			label = label,
+			style = ButtonStyle.secondary,
+			disabled = disabled)
+		left.callback = self._flip_page_left
+		view.add_item(left)
+
+		if right_arrow_enabled:
+			label = '>'
+			callback = self._flip_page_right
+		else:
+			label = 'Done'
+			callback = self._close_dialogue
+
+		right = Button(
+			label = label,
+			style = ButtonStyle.secondary)
+		right.callback = callback
+		view.add_item(right)
+
+		return view
+
+	async def refresh_embed(self):
+
+		subheader, page_content = list(self.all_pages.items())[self.current_page]
+
+		page_title = f'{self.title_prefix} {self.current_page + 1}: ' + \
+			subheader
+
+		picture = self.all_images.get(subheader, None)
+		picture_view = (picture, 'full') if picture else None
+
+		embed, file = await mbd(
+			page_title,
+			page_content,
+			'Use the buttons below to flip the page.',
+			picture_view)
+
+		left_arrow_enabled, right_arrow_enabled = \
+			await self._determine_arrows(self.current_page)
+
+		if self.current_page < 1:
+			furthest_left, furthest_right = True, self.total_pages > 1
+		elif self.current_page == self.total_pages - 2:
+			furthest_left, furthest_right = self.current_page < 1, False
+		else:
+			furthest_left, furthest_right = await self._determine_arrows(self.current_page - 1)
+
+
+		if furthest_left != left_arrow_enabled or \
+			furthest_right != right_arrow_enabled:
+
+			await self.interaction.followup.edit_message(
+				message_id = self.interaction.message.id,
+				embed = embed,
+				file = file if file else MISSING,
+				view = await self._construct_buttons(left_arrow_enabled, right_arrow_enabled))
+		else:
+
+			await self.interaction.followup.edit_message(
+				message_id = self.interaction.message.id,
+				embed = embed,
+				file = file if file else MISSING) #Might be attachments = MISSING
+
+		return
 

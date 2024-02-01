@@ -6,17 +6,16 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get_or_fetch
 
-from libraries.classes import GuildData, ChannelMaker, Path, Location, \
-	DialogueView, Character
+from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
+	DialogueView, Character, ListenerManager
 from libraries.universal import mbd, loading, no_redundancies, \
 	send_message, identify_place_channel, character_change
 from libraries.formatting import format_words, discordify, unique_name, \
 	format_whitelist, format_new_neighbors, embolden, \
 	format_channels, format_roles, format_avatar
-from libraries.autocomplete import complete_places
+from libraries.autocomplete import complete_places, exclusionary_places
 from data.listeners import direct_listeners, queue_refresh, \
 	to_direct_listeners
-from libraries.new_classes import ChannelManager
 
 
 #Classes
@@ -100,7 +99,7 @@ class NewCommands(commands.Cog):
 		return
 
 	@new_group.command(name = 'path', description = 'Connect two places.')
-	async def path(self, ctx: ApplicationContext, origin: Option(str, description = 'Which place to start from?', autocomplete = complete_places) = ''):
+	async def path(self, ctx: ApplicationContext, origin: Option(str, description = 'Which place to start from?', autocomplete = exclusionary_places) = ''):
 
 		await ctx.defer(ephemeral = True)
 
@@ -109,7 +108,7 @@ class NewCommands(commands.Cog):
 			load_places = True,
 			load_characters = True,
 			load_roles = True)
-		CM = ChannelManager(guild_data = GD)
+		CM = ChannelManager(GD = GD)
 
 		async def create_paths(origin_place_name: str):
 
@@ -298,9 +297,8 @@ class NewCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view)
 			return
 
-		place_name = CM.identify_place_channel(ctx, select_menu, origin)
-		if place_name:
-			await create_paths(place_name)
+		if result := await CM.identify_place_channel(ctx, select_menu, origin):
+			await create_paths(result)
 
 		return
 
@@ -309,24 +307,20 @@ class NewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		CM = ChannelManager(GD = GD)
 		valid_url = False
 		name = name[:24]
 		allowed_people = None
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-				return
-			case _ if isinstance(result, str):
-				place_name = result
-			case None:
-				place_name = None
+		if result := await CM.identify_place_channel(ctx, presented_name = name) is None:
+			return
+
+		place_name = result
 
 		async def refresh():
 
-			nonlocal guild_data, valid_url, name, place_name, allowed_people
+			nonlocal valid_url, name, place_name, allowed_people
 
 			description = '\n• Character name: '
 			name = view.name() or name
@@ -337,7 +331,7 @@ class NewCommands(commands.Cog):
 				place_name = view.places()[0]
 
 			if place_name:
-				place = guild_data.places[place_name]
+				place = GD.places[place_name]
 				description += f"<#{place.channel_ID}>"
 			else:
 				description += "Use the dropdown to choose where they'll join."
@@ -375,12 +369,11 @@ class NewCommands(commands.Cog):
 
 			await loading(interaction)
 
-			nonlocal guild_data, valid_url, name, place_name, allowed_people
+			nonlocal GD, valid_url, name, place_name, allowed_people
 
 			#Inform character
-			maker = ChannelMaker(interaction.guild, 'characters')
-			await maker.initialize()
-			character_channel = await maker.create_channel(await discordify(name), allowed_people)
+			CM = ChannelManager(interaction.guild)
+			character_channel = await CM.create_channel('characters', await discordify(name), allowed_people)
 
 			embed, _ = await mbd(
 				f'Welcome to your Character Channel, {name}.',
@@ -388,8 +381,8 @@ class NewCommands(commands.Cog):
 				f"\n• Other people who can send messages here can also RP as {name}." + \
 				f"\n• Start the message with `\\` if you don't want it to leave this chat." + \
 				f"\n• You can `/look` around. {name} is at **#{place_name}** right now." + \
-				"\n• Do `/map` to see nearby places and `/move` to go there." + \
-				"\n• You can `/eavesdrop` on characters in nearby places." + \
+				"\n• Do `/move` to go to other places you can reach." + \
+				"\n• You can `/eavesdrop` on nearby characters." + \
 				"\n• Other people can't see your `/commands` directly..." + \
 				"\n• ...Until you hit Submit, and start moving or eavesdropping.",
 				'You can always type /help to get more help.')
@@ -407,7 +400,7 @@ class NewCommands(commands.Cog):
 			await char_data.save()
 
 			#Inform the node occupants
-			place = guild_data.places[place_name]
+			place = GD.places[place_name]
 			player_embed, _ = await mbd(
 				'Someone new.',
 				f"*{char_data.name}* is here.",
@@ -420,9 +413,9 @@ class NewCommands(commands.Cog):
 				occupants_only = True)
 
 			#Add the players to the guild nodes as occupants
-			await place.add_occupants({char_data.id})
-			guild_data.characters[char_data.id] = char_data.name
-			await guild_data.save()
+			await GD.insert_character(char_data, place_name)
+			GD.characters[char_data.id] = char_data.name
+			await GD.save()
 
 			await character_change(character_channel, char_data)
 
@@ -439,7 +432,9 @@ class NewCommands(commands.Cog):
 			place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
 			await place_channel.send(embed = embed)
 
-			await queue_refresh(interaction.guild)
+			LM = ListenerManager(interaction.guild, GD)
+			await LM.load_channels()
+			await LM.insert_character(char_data, skip_eaves = True)
 
 			return await no_redundancies(
 				(interaction.channel.name == place_name),
@@ -447,7 +442,7 @@ class NewCommands(commands.Cog):
 				interaction)
 
 		view = DialogueView(refresh, checks)
-		await view.add_places(guild_data.places.keys())
+		await view.add_places(GD.places.keys())
 		await view.add_people()
 		await view.add_roles()
 		await view.add_submit(submit)

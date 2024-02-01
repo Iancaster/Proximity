@@ -14,23 +14,23 @@ from asyncio import sleep
 # Functions
 async def create_location(guild: Guild, location_name: str = 'test-location'):
 
-	guild_data = GuildData(guild.id, load_places = True)
+	GD = GuildData(guild.id, load_places = True)
 
-	original_place_count = len(guild_data.places)
+	original_place_count = len(GD.places)
 
-	name = await unique_name(location_name, guild_data.places)
+	name = await unique_name(location_name, GD.places)
 
 	maker = ChannelMaker(guild, 'places')
 	await maker.initialize()
 	new_channel = await maker.create_channel(name)
 
-	await guild_data.create_place(
+	await GD.create_place(
 		name = name,
 		channel_ID = new_channel.id,
 		role_IDs = set(),
 		char_IDs = set())
-	#guild_data.roles |= view.roles()
-	await guild_data.save()
+	#GD.roles |= view.roles()
+	await GD.save()
 
 	whitelist = await format_whitelist(set(), set())
 	embed, _ = await mbd(
@@ -54,26 +54,26 @@ async def create_location(guild: Guild, location_name: str = 'test-location'):
 	elif verify_channel.category.name != 'places':
 		flaws.append('channel was not placed into the correct category')
 
-	guild_data = GuildData(guild.id, load_places = True)
-	verify_location = guild_data.places.get('test', None)
+	GD = GuildData(guild.id, load_places = True)
+	verify_location = GD.places.get('test', None)
 
 	if not verify_location:
 		return flaws.append('data was not written')
 
-	if len(guild_data.places) <= original_place_count:
+	if len(GD.places) <= original_place_count:
 		flaws.append('place overwrote existing location')
 
 	return flaws
 
 async def delete_location_channel(guild: Guild, location_name: str):
 
-	guild_data = GuildData(guild.id, load_places = True)
-	place = guild_data.places.get(location_name, None)
+	GD = GuildData(guild.id, load_places = True)
+	place = GD.places.get(location_name, None)
 
 	flaws = []
 
 	if not place:
-		flaws.append('place did not exist in the guild_data')
+		flaws.append('place did not exist in the GD')
 		return flaws
 
 
@@ -83,7 +83,7 @@ async def delete_location_channel(guild: Guild, location_name: str):
 	else:
 		flaws.append('could not locate the location channel to delete')
 
-	if len(guild_data.places) == 1:
+	if len(GD.places) == 1:
 		category = get(guild.categories, name = 'places')
 		if category:
 			await category.delete()
@@ -99,21 +99,21 @@ async def create_path(guild: Guild, path_data: tuple[str, str]):
 		allowed_roles = set(),
 		allowed_characters = set())
 
-	guild_data = GuildData(guild.id, load_places = True)
+	GD = GuildData(guild.id, load_places = True)
 
-	await guild_data.set_path(
+	await GD.set_path(
 		path_data[0],
 		path_data[1],
 		path,
 		False)
 
-	await guild_data.save()
+	await GD.save()
 
 	return
 
 async def create_character(guild: Guild, char_data: tuple[str, str]):
 
-	guild_data = GuildData(
+	GD = GuildData(
 		guild.id,
 		load_places = True,
 		load_characters = True)
@@ -128,11 +128,11 @@ async def create_character(guild: Guild, char_data: tuple[str, str]):
 	char_data.name = char_data[0]
 	await char_data.save()
 
-	place = guild_data.places[char_data[1]]
+	place = GD.places[char_data[1]]
 	#Add the players to the guild nodes as occupants
 	await place.add_occupants({char_data.id})
-	guild_data.characters[char_data.id] = char_data.name
-	await guild_data.save()
+	GD.characters[char_data.id] = char_data.name
+	await GD.save()
 
 	return
 

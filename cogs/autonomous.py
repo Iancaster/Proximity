@@ -5,7 +5,7 @@ from discord import Bot, Message, Guild, Member
 from discord.ext import commands, tasks
 from discord.utils import get_or_fetch, get
 
-from libraries.classes import *
+from libraries.new_classes import GuildData, ListenerManager, Character
 from libraries.universal import *
 from libraries.formatting import *
 from data.listeners import *
@@ -38,13 +38,11 @@ class Autonomous(commands.Cog):
 
 		for guild in list(outdated_guilds):
 
-			listener_manager = ListenerManager(guild)
-			await listener_manager.load_channels()
-			await listener_manager.clean_listeners()
-			directs, indirects = await listener_manager.build_listeners()
-
-			direct_listeners.update(directs)
-			indirect_listeners.update(indirects)
+			GD = GuildData(guild.id, load_places = True, load_characters = True)
+			LM = ListenerManager(guild, GD)
+			await LM.load_channels()
+			await LM.clean_listeners()
+			await LM.build_listeners()
 
 			outdated_guilds.remove(guild)
 			updated_guild_IDs.add(guild.id)
@@ -102,6 +100,8 @@ class Autonomous(commands.Cog):
 		if self.webhooks_ready:
 			await self._update_webhooks()
 
+		print(next(self.loading), end = '\r')
+
 		return
 
 	@commands.Cog.listener()
@@ -124,7 +124,7 @@ class Autonomous(commands.Cog):
 		if message.content[0] == '\\':
 			return
 
-		await relay(message, Character)
+		await relay(message, Character(message.channel.id))
 		return
 
 	@commands.Cog.listener()
@@ -172,12 +172,12 @@ class Autonomous(commands.Cog):
 	@commands.Cog.listener()
 	async def on_guild_channel_delete(self, channel):
 
-		guild_data = GuildData(
+		GD = GuildData(
 			channel.guild.id,
 			load_places = True,
 			load_characters = True)
 
-		found_place = [(name, place) for name, place in guild_data.places.items() if place.channel_ID == channel.id]
+		found_place = [(name, place) for name, place in GD.places.items() if place.channel_ID == channel.id]
 
 		if found_place:
 
@@ -188,12 +188,12 @@ class Autonomous(commands.Cog):
 				await maker.initialize()
 				remade_channel = await maker.create_channel(place_name)
 				place.channel_ID = remade_channel.id
-				guild_data.places[place_name] = place
-				await guild_data.save()
+				GD.places[place_name] = place
+				await GD.save()
 
 				await replace_speaker(channel, remade_channel)
 
-				names = await get_names(place.occupants, guild_data.characters)
+				names = await get_names(place.occupants, GD.characters)
 
 				embed, _ = await mbd(
 					'Not so fast.',
@@ -206,8 +206,8 @@ class Autonomous(commands.Cog):
 				await remade_channel.send(embed = embed)
 				return
 
-			await guild_data.delete_place(place_name)
-			await guild_data.save()
+			await GD.delete_place(place_name)
+			await GD.save()
 
 			#Inform neighbor places and occupants that the place is deleted now
 			player_embed, _ = await mbd(
@@ -223,13 +223,13 @@ class Autonomous(commands.Cog):
 				await to_direct_listeners(
 					player_embed,
 					channel.guild,
-					guild_data.places[neighbor_place_name].channel_ID,
+					GD.places[neighbor_place_name].channel_ID,
 					occupants_only = True)
 
 				neighbor_place_channel = await get_or_fetch(
 					channel.guild,
 					'channel',
-					guild_data.places[neighbor_place_name].channel_ID,
+					GD.places[neighbor_place_name].channel_ID,
 					default = None)
 				if neighbor_place_channel:
 					await neighbor_place_channel.send(embed = host_embed)
@@ -237,11 +237,11 @@ class Autonomous(commands.Cog):
 			await remove_speaker(channel)
 			return
 
-		char_name = guild_data.characters.get(channel.id, None)
+		char_name = GD.characters.get(channel.id, None)
 		if char_name:
 
-			char_data, last_seen = await guild_data.delete_character(channel.id)
-			await guild_data.save()
+			char_data, last_seen = await GD.delete_character(channel.id)
+			await GD.save()
 
 			await remove_speaker(channel)
 
@@ -282,14 +282,14 @@ class Autonomous(commands.Cog):
 		if channel in broken_webhook_channels:
 			return
 
-		guild_data = GuildData(channel.guild.id,
+		GD = GuildData(channel.guild.id,
 			load_places = True,
 			load_characters = True)
 
-		if channel.id in guild_data.characters:
+		if channel.id in GD.characters:
 			broken_webhook_channels.add(channel)
 
-		found_place = get(guild_data.places.values(), channel_ID = channel.id)
+		found_place = get(GD.places.values(), channel_ID = channel.id)
 		if found_place:
 			broken_webhook_channels.add(channel)
 

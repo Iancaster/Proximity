@@ -28,12 +28,10 @@ async def wait_for_listeners(guild: Guild):
 		await sleep(1)
 	return
 
-async def relay(msg: Message, character_class):
+async def relay(msg: Message, speaker):
 
 	if msg.guild.id not in updated_guild_IDs:
 		await wait_for_listeners(msg.guild)
-
-	speaker = character_class(msg.channel.id)
 
 	speaker_name = speaker.name
 	speaker_avatar = speaker.avatar or NO_AVATAR_URL

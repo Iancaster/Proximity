@@ -5,7 +5,7 @@ from discord import ApplicationContext, Option, \
 	SlashCommandGroup, Embed
 from discord.ext import commands
 
-from libraries.classes import *
+from libraries.new_classes import GuildData, ChannelManager, ListenerManager
 from libraries.universal import *
 from libraries.formatting import *
 from data.listeners import *
@@ -29,10 +29,10 @@ class DebugCommands(commands.Cog):
 	@debug_group.command(name = 'listeners', description = 'See what channels proxy their messages to which others.')
 	async def listeners(self, ctx: ApplicationContext, listener_type: Option(str, description = 'Direct or indirect listeners?', name = 'type', choices = ['direct','indirect'], default = 'direct')):
 
-		guild_data = GuildData(ctx.guild.id, load_places = True, load_characters = True)
+		GD = GuildData(ctx.guild.id, load_places = True, load_characters = True)
 
-		channels_to_check = {place.channel_ID : name for name, place in guild_data.places.items()}
-		channels_to_check.update(guild_data.characters)
+		channels_to_check = {place.channel_ID : name for name, place in GD.places.items()}
+		channels_to_check.update(GD.characters)
 
 		if not channels_to_check:
 
@@ -71,7 +71,7 @@ class DebugCommands(commands.Cog):
 
 
 		if graph:
-			listener_view = (await guild_data.to_map(graph), 'full')
+			listener_view = (await GD.to_map(graph), 'full')
 		else:
 			listener_view = None
 
@@ -96,7 +96,7 @@ class DebugCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(
+		GD = GuildData(
 			ctx.guild_id,
 			load_places = True,
 			load_characters = True,
@@ -110,10 +110,10 @@ class DebugCommands(commands.Cog):
 
 		embed.set_footer(text = 'Peer behind the veil.')
 
-		if guild_data.places:
+		if GD.places:
 
 			description = ''
-			for index, place in enumerate(guild_data.places.values()):
+			for index, place in enumerate(GD.places.values()):
 				description += f"\n{index}. <#{place.channel_ID}>"
 				if place.allowed_roles or place.allowed_characters:
 					description += "\n-- Whitelist:" + \
@@ -135,10 +135,10 @@ class DebugCommands(commands.Cog):
 				value = 'You can make some places with `/new place`.',
 				inline = False)
 
-		if guild_data.characters:
+		if GD.characters:
 			embed.add_field(
 				name = 'Characters:',
-				value = f'\n• {await format_channels(guild_data.characters.keys())}',
+				value = f'\n• {await format_channels(GD.characters.keys())}',
 				inline = False)
 		else:
 			embed.add_field(
@@ -146,10 +146,10 @@ class DebugCommands(commands.Cog):
 				value = 'You can add some new characters with `/new character`.',
 				inline = False)
 
-		if guild_data.roles:
+		if GD.roles:
 			embed.add_field(
 				name = 'Protected Roles:',
-				value = f"\n• {await format_words([f'<@&{ID}>' for ID in guild_data.roles])}" + \
+				value = f"\n• {await format_words([f'<@&{ID}>' for ID in GD.roles])}" + \
 					'\n\*Note: "Protected Roles" are roles that have been added to a whitelist' + \
 					" and so there's a failsafe to prevent accidentally deleting that role.",
 				inline = False)

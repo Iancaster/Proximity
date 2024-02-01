@@ -23,8 +23,8 @@ async def on_connect():
 	# tests_checklist = {
 	# 	'Location Tests' : [
 	# 		#('Delete Location', 'the-gardens'),
-	# 		#('Create Location', 'the-courtyard'),
-	# 		#('Create Character', ('lancaster', 'the-courtyard')),
+	# 		('Create Location', 'the-courtyard'),
+	# 		('Create Character', ('lancaster', 'the-courtyard')),
 	# 		#('Create Location', 'the-gardens'),
 	# 		#('Create Location', 'the-village-outskirts'),
 	# 		#('Delete Location', 'the-courtyard'),
@@ -34,13 +34,10 @@ async def on_connect():
 	# 		]
 	# 	}
 
-	# test_guild = await bot.fetch_guild(1114005940392439899)
+	#test_guild = await bot.fetch_guild(1114005940392439899)
 
-	# from libraries.classes import Character
-	# my_guy = Character(1196173831610564708)
-	# print(my_guy.roles)
-	# print()
-
+	#from libraries.classes import Character
+	#my_guy = Character(1196173831610564708)
 	#await tests(tests_checklist, test_guild)
 
 	#print('Exiting.')

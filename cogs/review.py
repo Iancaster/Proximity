@@ -6,7 +6,8 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get, get_or_fetch
 
-from libraries.classes import GuildData, DialogueView, Character
+from libraries.new_classes import GuildData, DialogueView, Character, \
+	ChannelManager, ListenerManager
 from libraries.universal import mbd, loading, no_redundancies, \
 	send_message, identify_place_channel, character_change, \
 	identify_character_channel
@@ -32,11 +33,12 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		CM = ChannelManager(GD = GD)
 
 		async def review_places(place_names: list):
 
-			reviewing_places = await guild_data.filter_places(place_names)
+			reviewing_places = await GD.filter_places(place_names)
 
 			if len(reviewing_places) == 1:
 				reviewing_place = list(reviewing_places.values())[0]
@@ -46,17 +48,17 @@ class ReviewCommands(commands.Cog):
 				title = f'Reviewing {len(reviewing_places)} place(s).'
 				description = f"• Selected places: {await format_channels({place.channel_ID for place in reviewing_places.values()})}"
 
-			occupants = await guild_data.get_occupants(reviewing_places.values())
+			occupants = await GD.get_occupants(reviewing_places.values())
 			description += f"\n• Occupants: {await format_channels(occupants) if occupants else 'No people here.'}"
 
-			graph = await guild_data.to_graph()
+			graph = await GD.to_graph()
 			subgraph = DiGraph()
 			for place in place_names:
 				ego = ego_graph(graph, place, radius = 1)
 				subgraph = compose(subgraph, ego)
 
 			if subgraph.edges:
-				graph_view = (await guild_data.to_map(subgraph), 'full')
+				graph_view = (await GD.to_map(subgraph), 'full')
 			else:
 				description += "\n• Neighbors: There are no paths connected to any of the places you gave."
 				graph_view = None
@@ -70,7 +72,7 @@ class ReviewCommands(commands.Cog):
 				full_description = description
 				if view.name():
 					new_name = await discordify(view.name())
-					new_name = await unique_name(new_name, guild_data.places.keys())
+					new_name = await unique_name(new_name, GD.places.keys())
 					full_description = f'• Renaming this place to {new_name}.\n{description}'
 				else:
 					new_name = None
@@ -100,7 +102,7 @@ class ReviewCommands(commands.Cog):
 					description += '\n• Removed the whitelist(s).'
 					for name, place in reviewing_places.items():
 
-						await guild_data.places[name].clear_whitelist()
+						await GD.places[name].clear_whitelist()
 						embed, _ = await mbd(
 							'Opening up.',
 							'You somehow feel like this place just easier to get to.',
@@ -126,21 +128,21 @@ class ReviewCommands(commands.Cog):
 							place.channel_ID,
 							occupants_only = True)
 
-						await guild_data.places[name].set_roles(view.roles())
-						await guild_data.places[name].set_characters(view.characters())
+						await GD.places[name].set_roles(view.roles())
+						await GD.places[name].set_characters(view.characters())
 
 				if new_name:
 
 					old_name = list(reviewing_places.keys())[0]
-					place_data = guild_data.places.pop(old_name)
-					guild_data.places[new_name] = place_data
+					place_data = GD.places.pop(old_name)
+					GD.places[new_name] = place_data
 
 					place_channel = get(interaction.guild.text_channels, id = place_data.channel_ID)
 					await place_channel.edit(name = new_name)
 
 					description += f"\n• Renamed **#{old_name}** to <#{place_data.channel_ID}>."
 
-				await guild_data.save()
+				await GD.save()
 
 				await queue_refresh(interaction.guild)
 
@@ -159,7 +161,7 @@ class ReviewCommands(commands.Cog):
 
 			view = DialogueView(refresh, checks)
 			await view.add_roles()
-			await view.add_characters(guild_data.characters)
+			await view.add_characters(GD.characters)
 			await view.add_submit(submit)
 			if len(reviewing_places) == 1:
 				await view.add_rename(place_names[0])
@@ -172,31 +174,30 @@ class ReviewCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, file, ephemeral = True)
 			return
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name, given_place)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await review_places([result])
-			case None:
-				embed, _ = await mbd(
-					'Review place(s)?',
-					"You can review a place four ways:" +
-						"\n• Call this command inside of a place channel." +
-						"\n• Do `/review place review #place-channel`." +
-						"\n• Select one or more places with the list below." +
-						"\n• To rename a place, you can just rename the channel.",
-					'This will allow you to view place details, like paths and whitelists.')
+		async def select_menu():
 
-				async def submit_locations(interaction: Interaction):
-					await ctx.delete()
-					await review_places(view.places())
-					return
+			embed, _ = await mbd(
+				'Review place(s)?',
+				"You can review a place four ways:" +
+					"\n• Call this command inside of a place channel." +
+					"\n• Do `/review place review #place-channel`." +
+					"\n• Select one or more places with the list below." +
+					"\n• To rename a place, you can just rename the channel.",
+				'This will allow you to view place details, like paths and whitelists.')
 
-				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), singular = False, callback = submit_locations)
-				await view.add_cancel()
-				await send_message(ctx.respond, embed, view = view)
+			async def submit_locations(interaction: Interaction):
+				await ctx.delete()
+				await review_places(view.places())
+				return
+
+			view = DialogueView()
+			await view.add_places(GD.places.keys(), singular = False, callback = submit_locations)
+			await view.add_cancel()
+			await send_message(ctx.respond, embed, view = view)
+			return
+
+		if result := await CM.identify_place_channel(ctx, select_menu, given_place):
+			await review_places([result])
 
 		return
 
@@ -205,12 +206,13 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True)
+		GD = GuildData(ctx.guild_id, load_places = True)
+		CM = ChannelManager(GD = GD)
 
 		async def review_paths(place_name: str):
 
 			place_name = place_name
-			origin_place = guild_data.places[place_name]
+			origin_place = GD.places[place_name]
 			neighbors = origin_place.neighbors
 			if not neighbors:
 				embed, _ = await mbd(
@@ -221,8 +223,8 @@ class ReviewCommands(commands.Cog):
 				await send_message(ctx.respond, embed, ephemeral = True)
 				return
 
-			impacted_places = await guild_data.filter_places(list(neighbors.keys()) + [place_name])
-			graph = await guild_data.to_graph(impacted_places)
+			impacted_places = await GD.filter_places(list(neighbors.keys()) + [place_name])
+			graph = await GD.to_graph(impacted_places)
 			selected_paths = []
 			graph_view = None
 
@@ -242,10 +244,10 @@ class ReviewCommands(commands.Cog):
 				if view.paths() and view.paths != selected_paths:
 					selected_paths = view.paths()
 					path_colors = await format_colors(graph, place_name, view.paths(), 'blue')
-					graph_view = (await guild_data.to_map(graph, path_colors), 'full')
+					graph_view = (await GD.to_map(graph, path_colors), 'full')
 				elif view.paths != selected_paths:
 					selected_paths = view.paths()
-					graph_view = (await guild_data.to_map(graph), 'full')
+					graph_view = (await GD.to_map(graph), 'full')
 
 				embed, file = await mbd(
 					'Review path(s)?',
@@ -265,7 +267,7 @@ class ReviewCommands(commands.Cog):
 					description = '\n• Removed the whitelist(s).'
 					for neighbor_name in view.paths():
 						await origin_place.neighbors[neighbor_name].clear_whitelist()
-						await guild_data.places[neighbor_name].neighbors[place_name].clear_whitelist()
+						await GD.places[neighbor_name].neighbors[place_name].clear_whitelist()
 
 				else:
 					revising_paths = [origin_place.neighbors[name] for name in view.paths()][0]
@@ -274,12 +276,12 @@ class ReviewCommands(commands.Cog):
 
 					for neighbor_name in view.paths():
 						origin_place.neighbors[neighbor_name].allowed_roles = view.roles()
-						guild_data.places[neighbor_name].neighbors[place_name].allowed_characters = view.characters()
+						GD.places[neighbor_name].neighbors[place_name].allowed_characters = view.characters()
 
-				await guild_data.save()
+				await GD.save()
 
 				#Inform neighbors occupants and neighbor locations
-				neighbor_places = await guild_data.filter_places(view.paths())
+				neighbor_places = await GD.filter_places(view.paths())
 				neighbor_mentions = await format_channels({place.channel_ID for place in neighbor_places.values()})
 				player_embed, _ = await mbd(
 					'Hm?',
@@ -326,7 +328,7 @@ class ReviewCommands(commands.Cog):
 			view = DialogueView(refresh, checks)
 			await view.add_paths(neighbors)
 			await view.add_roles()
-			await view.add_characters(guild_data.characters)
+			await view.add_characters(GD.characters)
 			await view.add_submit(submit)
 			if any(path.allowed_roles or path.allowed_characters for path in neighbors.values()):
 				await view.add_clear()
@@ -336,30 +338,28 @@ class ReviewCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, file, ephemeral = True)
 			return
 
-		result = await identify_place_channel(guild_data.places.keys(), ctx.channel.name, given_place)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, str):
-				await review_paths(result)
-			case None:
-				embed, _ = await mbd(
-					'Review path(s)?',
-					"You can review path whitelists three ways:" + \
-						"\n• Call this command inside of a place channel." + \
-						"\n• Do `/review path #place-channel`." + \
-						"\n• Select a place with the list below.",
-					"This is just to select the origin, you'll select which paths next.")
+		async def select_menu():
+			embed, _ = await mbd(
+				'Review path(s)?',
+				"You can review path whitelists three ways:" + \
+					"\n• Call this command inside of a place channel." + \
+					"\n• Do `/review path #place-channel`." + \
+					"\n• Select a place with the list below.",
+				"This is just to select the origin, you'll select which paths next.")
 
-				async def submit_location(interaction: Interaction):
-					await ctx.delete()
-					await review_paths(list(view.places())[0])
-					return
+			async def submit_location(interaction: Interaction):
+				await ctx.delete()
+				await review_paths(list(view.places())[0])
+				return
 
-				view = DialogueView()
-				await view.add_places(guild_data.places.keys(), callback = submit_location)
-				await view.add_cancel()
-				await send_message(ctx.respond, embed, view)
+			view = DialogueView()
+			await view.add_places(GD.places.keys(), callback = submit_location)
+			await view.add_cancel()
+			await send_message(ctx.respond, embed, view)
+			return
+
+		if result := await CM.identify_place_channel(ctx, select_menu, given_place):
+			await review_paths(result)
 
 		return
 
@@ -368,19 +368,19 @@ class ReviewCommands(commands.Cog):
 
 		await ctx.defer(ephemeral = True)
 
-		guild_data = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+		CM = ChannelManager(GD = GD)
 
 		async def review_character(reviewing_characters: dict):
 
 			characters_dict = {char_ID : Character(char_ID) for char_ID in reviewing_characters.keys()}
+			valid_url = False
 			if len(reviewing_characters) == 1:
 				char_ID, char_name = list(reviewing_characters.items())[0]
 				char_data = Character(char_ID)
-				valid_url = False
 			else:
 				existing_locations = {character.location for character in characters_dict.values()}
 				existing_roles = {role for character in characters_dict.values() for role in character.roles}
-
 
 			async def singular_refresh():
 
@@ -403,7 +403,7 @@ class ReviewCommands(commands.Cog):
 				elif char_data.roles:
 					description += f'\n• Roles: {await format_roles(char_data.roles)}'
 
-				if char_data.eavesdropping and guild_data.eavesdropping_allowed:
+				if char_data.eavesdropping and GD.eavesdropping_allowed:
 					description += f'\n• Eavesdropping on: **#{char_data.eavesdropping}**'
 
 				if view.url():
@@ -443,15 +443,21 @@ class ReviewCommands(commands.Cog):
 				return embed, _
 
 			def checks():
-				return not (view.places() or view.roles() or view.name() or view.clearing)
+				return not (valid_url or view.places() or view.roles() or view.name() or view.clearing)
 
 			async def submit(interaction: Interaction):
 
 				await loading(interaction)
 
-				character_channels = {char_ID : await get_or_fetch('channel', interaction.guild, char_ID) for char_ID in reviewing_characters}
+				nonlocal char_data
+
+				LM = ListenerManager(interaction.guild, GD)
+				await LM.load_channels()
+
+				character_channels = {char_ID : await get_or_fetch(interaction.guild, 'channel', char_ID) for char_ID in reviewing_characters}
 
 				description = ''
+				image_view = None
 				if len(reviewing_characters) == 1:
 
 					if view.name():
@@ -460,13 +466,14 @@ class ReviewCommands(commands.Cog):
 						await character_channels[char_ID].edit(name = view.name())
 
 					if view.url() and valid_url:
-						description += f"• Changed *{char_data.name}*'s avatar to *{view.url()}*."
+						description += f"• Changed *{char_data.name}*'s avatar to [this]({view.url()})."
 						char_data.avatar = view.url()
+						image_view = (view.url(), 'thumb')
 
 					if view.name() or view.url():
 						await character_change(character_channels[char_ID], char_data)
 
-					title = f'Reviewed {char_data.name}'
+					title = f'Reviewed {char_data.name}.'
 
 				else:
 					title = f'Reviewed {len(reviewing_characters)} Characters.'
@@ -483,22 +490,36 @@ class ReviewCommands(commands.Cog):
 					for character in characters_dict.values():
 						character.roles = view.roles()
 
+				informed_channels = set()
+
 				if view.places():
 
-					destination_name = view.places()[0]
-					destination_place = guild_data.places[destination_name]
+					LM = ListenerManager(ctx.guild, GD)
+					await LM.load_channels()
+
+					dest_name = view.places()[0]
+					destination_place = GD.places[dest_name]
 					description += f"• Relocated them to <#{destination_place.channel_ID}>."
 
+					informed_channels.add(await LM._load_channel(desination_place.channel_ID))
+
 					vacating_places = {char_data.location : \
-						{}.setdefault(char_data.location, set()).union({char_ID}) \
+						dict().setdefault(char_data.location, set()).union({char_ID}) \
 						for char_ID, char_data in characters_dict.items()}
 
 					for location, moving_people in vacating_places.items():
 
-						moving_names = {guild_data.characters[char_ID] for char_ID in moving_people}
-						place = guild_data.places[location]
-						place.remove_occupants(moving_people)
+						moving_names = {GD.characters[char_ID] for char_ID in moving_people}
+						place = GD.places[location]
 
+						# Remove people from place
+						for moving_ID in moving_people:
+
+							moving_char = characters_dict[moving_ID]
+							await GD.evict_character(moving_char)
+							await LM.remove_channel(moving_ID)
+
+						# Inform occs
 						embed, _ = await mbd(
 							'Poof.',
 							f'{await format_characters(moving_names)} just got whisked away.',
@@ -508,25 +529,30 @@ class ReviewCommands(commands.Cog):
 							interaction.guild,
 							place.channel_ID)
 
+						# Inform place
 						embed, _ = await mbd(
 							'Teleported.',
 							f'Relocated {await format_channels(moving_people)} to' +
 								f' <#{place.channel_ID}>.',
 							'You can further relocate them with /review player.')
-						origin_channel = await get_or_fetch('channel', interaction.guild, place.channel_ID)
+						origin_channel = await LM._load_channel(place.channel_ID)
 						await origin_channel.send(embed = embed)
 
-					for character_data in characters_dict.items():
-						character_data.location = destination_name
+						informed_channels.add(origin_channel)
 
-					destination_place.add_occupants(characters_dict.keys())
-					await guild_data.save()
+						# Put them back
+						for moving_ID in moving_people:
 
-					await queue_refresh(interaction.guild)
+							moving_char = characters_dict[moving_ID]
+							await GD.insert_character(moving_char, dest_name)
+							await LM.insert_character(char_data, skip_eaves = True)
+							await moving_char.save()
+
+					await GD.save()
 
 					embed, _ = await mbd(
 						'Whoosh.',
-						f'{await format_characters(moving_names)} just appeared here at **#{destination_name}**.',
+						f'{await format_characters(moving_names)} just appeared here at **#{dest_name}**.',
 						"How strange.")
 					await to_direct_listeners(
 						embed,
@@ -537,24 +563,33 @@ class ReviewCommands(commands.Cog):
 						'New arrival(s).',
 						f'{await format_characters(reviewing_characters.values())} got teleported here.',
 						"You can move them again using /review player.")
-					destination_channel = await get_or_fetch('channel', interaction.guild, destination_place.channel_ID)
+					destination_channel = await LM._load_channel(destination_place.channel_ID)
+					await destination_channel.send(embed = embed)
 
-				embed, _ = await mbd(
+				else:
+					(await char_data.save() for char_data in reviewing_characters.values())
+
+				for character in characters_dict.values():
+					their_place = GD.places[character.location]
+					informed_channels.add(await LM._load_channel(their_place.channel_ID))
+
+				embed, file = await mbd(
 					title,
 					description,
-					'You can always undo your changes by calling /review player again.')
+					'You can always undo your changes by calling /review player again.',
+					image_view)
+				for channel in informed_channels:
+					await channel.send(embed = embed, file = file)
+
 				return await no_redundancies(
-					(interaction.channel.id in reviewing_characters),
+					(interaction.channel.id in reviewing_characters or interaction.channel in informed_channels),
 					embed,
 					interaction)
 
 
-
-
-
 			if len(reviewing_characters) == 1:
 				view = DialogueView(singular_refresh, checks)
-				other_places = set(guild_data.places.keys())
+				other_places = set(GD.places.keys())
 				other_places.remove(char_data.location)
 				await view.add_places(other_places)
 				await view.add_roles()
@@ -566,7 +601,7 @@ class ReviewCommands(commands.Cog):
 				embed, file = await singular_refresh()
 			else:
 				view = DialogueView(multiple_refresh, checks)
-				await view.add_places(guild_data.places.keys())
+				await view.add_places(GD.places.keys())
 				await view.add_roles()
 				await view.add_submit(submit)
 				if existing_roles:
@@ -578,49 +613,46 @@ class ReviewCommands(commands.Cog):
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
-		result = await identify_character_channel(guild_data.characters, ctx.channel.id, given_character)
-		match result:
-			case _ if isinstance(result, Embed):
-				await send_message(ctx.respond, result)
-			case _ if isinstance(result, dict):
-				await review_character(result)
-			case None:
+		async def select_menu():
+			description = 'You can review a character three ways:' + \
+				'\n• Call this command inside of a character channel.' + \
+				'\n• Do `/review character character-name`.' + \
+				'\n• Select a character from the dropdown below.'
 
-				description = 'You can review a character three ways:' + \
-					'\n• Call this command inside of a character channel.' + \
-					'\n• Do `/review character character-name`.' + \
-					'\n• Select a character from the dropdown below.'
+			async def refresh():
 
-				async def refresh():
+				nonlocal description
 
-					nonlocal description
+				if view.character_select.values and not view.characters():
+					description = 'Because you have more characters than can' + \
+						' fit in a Text dropdown, this uses a Channel dropdown.' + \
+						" It's almost the same, just choose the character channels" + \
+						' instead of the character names. Non-character channels' + \
+						' get ignored.'
 
-					if view.character_select.values and not view.characters():
-						description = 'Because you have more characters than can' + \
-							' fit in a Text dropdown, this uses a Channel dropdown.' + \
-							" It's almost the same, just choose the character channels" + \
-							' instead of the character names. Non-character channels' + \
-							' get ignored.'
+				embed, _ = await mbd(
+					'Review character?',
+					description,
+					"This will only select them, you'll see their details after this.")
+				return embed, None
 
-					embed, _ = await mbd(
-						'Review character?',
-						description,
-						"This will only select them, you'll see their details after this.")
-					return embed, None
+			def checks():
+				return not view.characters()
 
-				def checks():
-					return not view.characters()
+			async def submit_characters(interaction: Interaction):
+				await ctx.delete()
+				await review_character(view.characters())
+				return
 
-				async def submit_characters(interaction: Interaction):
-					await ctx.delete()
-					await review_character(view.characters())
-					return
+			view = DialogueView()
+			await view.add_characters(GD.characters, callback = submit_characters)
+			await view.add_cancel()
+			embed, _ = await refresh()
+			await send_message(ctx.respond, embed, view)
+			return
 
-				view = DialogueView()
-				await view.add_characters(guild_data.characters, callback = submit_characters)
-				await view.add_cancel()
-				embed, _ = await refresh()
-				await send_message(ctx.respond, embed, view)
+		if result := await CM.identify_character_channel(ctx, select_menu, given_character):
+			await review_character(result)
 
 		return
 

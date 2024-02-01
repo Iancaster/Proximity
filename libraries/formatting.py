@@ -40,7 +40,7 @@ async def format_channels(channel_IDs: iter):
 async def format_places(places: iter):
 	return await format_words([f'**#{place}**' for place in places])
 
-async def format_new_neighbors(overwriting: bool, origin_place, places: set, guild_data):
+async def format_new_neighbors(overwriting: bool, origin_place, places: set, GD):
 
 	description = '\n• Destination(s): '
 
@@ -56,8 +56,8 @@ async def format_new_neighbors(overwriting: bool, origin_place, places: set, gui
 		return description + 'Add some places to draw new paths to using the dropdown below.', set()
 
 	if new_neighbors:
-		destinations = await guild_data.filter_places(new_neighbors)
-		destination_mentions = await format_places({place.channel_ID for place in destinations.values()})
+		destinations = await GD.filter_places(new_neighbors)
+		destination_mentions = await format_channels(place.channel_ID for place in destinations.values())
 		destination_comments.append(destination_mentions)
 
 	if existing_neighbors:
@@ -159,3 +159,4 @@ async def format_avatar(presented_url: str):
 
 	except:
 		return 'bad_link.png', False, '**Error,** that URL is broken somehow. Try another one?'
+
