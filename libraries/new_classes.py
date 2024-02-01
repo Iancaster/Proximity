@@ -1219,7 +1219,7 @@ class ChannelManager:
 			if presented_name in self.GD.places:
 				return presented_name
 
-			else:
+			elif enforce_presented:
 
 				embed, _ = await mbd(
 					'What?',
