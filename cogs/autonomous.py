@@ -121,7 +121,7 @@ class Autonomous(commands.Cog):
 		if message.author.id == 1161017761888219228: #1114004384926421126: #Self.
 			return
 
-		if message.content[0] == '\\':
+		if message.content and message.content[0] == '\\':
 			return
 
 		await relay(message, Character(message.channel.id))

@@ -76,6 +76,12 @@ async def relay(msg: Message, speaker):
 
 	indirects = indirect_listeners.get(msg.channel.id, set())
 	for channel, speaker_location in indirects:
+
+		last_message = await channel.history(limit = 1).flatten()
+
+		if last_message and last_message[0].embeds:
+			continue
+
 		embed, _ = await mbd(
 			'Hm?',
 			f"You think you hear *{speaker_name}* in **#{speaker_location}**.",

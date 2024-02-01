@@ -501,7 +501,7 @@ class ReviewCommands(commands.Cog):
 					destination_place = GD.places[dest_name]
 					description += f"• Relocated them to <#{destination_place.channel_ID}>."
 
-					informed_channels.add(await LM._load_channel(desination_place.channel_ID))
+					informed_channels.add(await LM._load_channel(destination_place.channel_ID))
 
 					vacating_places = {char_data.location : \
 						dict().setdefault(char_data.location, set()).union({char_ID}) \
@@ -545,8 +545,15 @@ class ReviewCommands(commands.Cog):
 
 							moving_char = characters_dict[moving_ID]
 							await GD.insert_character(moving_char, dest_name)
-							await LM.insert_character(char_data, skip_eaves = True)
 							await moving_char.save()
+							await LM.insert_character(char_data, skip_eaves = True)
+
+							embed, _ = await mbd(
+								'How...What?',
+								f'You find yourself now at **#{dest_name}**.',
+								'Better find your bearings.')
+							moving_channel = await LM._load_channel(moving_ID)
+							await moving_channel.send(embed = embed)
 
 					await GD.save()
 
