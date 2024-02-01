@@ -59,7 +59,7 @@ class Autonomous(commands.Cog):
 			valid_webhook_found = False
 			for webhook in list(await channel.webhooks()):
 
-				if valid_webhook_found or webhook.user.id != 1161017761888219228:
+				if valid_webhook_found or webhook.user.id != 1114004384926421126:
 					await webhook.delete()
 					continue
 
@@ -118,7 +118,7 @@ class Autonomous(commands.Cog):
 		if message.webhook_id:
 			return
 
-		if message.author.id == 1161017761888219228: #1114004384926421126: #Self.
+		if message.author.id == 1114004384926421126: #1161017761888219228: #Self.
 			return
 
 		if message.content and message.content[0] == '\\':
