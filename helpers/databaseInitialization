@@ -119,8 +119,8 @@ def count_rows(con, table_name):
 	return rowCount
 
 
-#reate_guild_DB()
-#create_character_DB()
+create_guild_DB()
+create_character_DB()
 
 #con = access_DB('guild')
 #erase_all_guilds(con)
