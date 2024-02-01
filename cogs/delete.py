@@ -100,10 +100,11 @@ class DeleteCommands(commands.Cog):
 			await view.add_confirm(confirm_delete)
 			await view.add_cancel()
 
+			condemned_IDs = {place.channel_ID for place in condemned_places.values()}
 			embed, _ = await mbd(
 				'Confirm deletion?',
-				f"Delete {await format_channels(condemned_places.keys())}?",
-				'This will, of course, delete the channel(s) and any connected paths as well.')
+				f"Delete {await format_channels(condemned_IDs)}?",
+				'This will delete the channel, the paths, and data for the place itself.')
 			await send_message(ctx.respond, embed, view, ephemeral = True)
 			return
 
