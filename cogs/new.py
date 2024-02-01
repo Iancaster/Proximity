@@ -313,7 +313,7 @@ class NewCommands(commands.Cog):
 		name = name[:24]
 		allowed_people = None
 
-		if result := await CM.identify_place_channel(ctx, presented_name = name) is None:
+		if result := await CM.identify_place_channel(ctx, presented_name = ctx.channel.name) is None:
 			return
 
 		place_name = result

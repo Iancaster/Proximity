@@ -49,7 +49,6 @@ class CharacterCommands(commands.Cog):
 				description = f"There's "
 
 				if other_occs := {ID for ID in place_data.occupants if ID != ctx.channel.id}:
-					print(other_occs)
 					char_names = {GD.characters[ID] for ID in other_occs}
 					description += await format_characters(char_names)
 				else:
