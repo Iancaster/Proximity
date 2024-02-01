@@ -132,10 +132,8 @@ class Autonomous(commands.Cog):
 
 		embed, _ = await mbd(
 			'Nice server.',
-			"Fair warning, I'll get rebooted a lot while updating to 3.0." + \
-				" Use the server link in `/help` to keep up with the changes" + \
-				" and you'll know when it's safe to start.",
-			"Or just call /help anyways to learn more about me.")
+			" Use the server link in `/help` to get your bearings.",
+			"I look forward to seeing what we can do together.")
 
 		for channel in await guild.fetch_channels():
 
@@ -165,8 +163,7 @@ class Autonomous(commands.Cog):
 			"Just call `/help` if you want to learn more.",
 			('avatar.png', 'thumb'))
 
-		dm_channel = await member.create_dm()
-		await dm_channel.send(embed = embed, file = file)
+		await member.send(embed = embed, file = file)
 		return
 
 	@commands.Cog.listener()
