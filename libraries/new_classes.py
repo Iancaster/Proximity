@@ -40,7 +40,7 @@ async def tester_func(ctx):
 	di = int(di)
 	return di
 
-#Graph
+# Graph
 @s(auto_attribs = True)
 class Component:
 	allowed_roles: set = Factory(set)
@@ -1263,8 +1263,8 @@ class ChannelManager:
 
 		elif presented_name:  # Character given (text)
 
-			if found_character := next({ID : name for ID, name in self.GD.characters.items() if \
-					name == presented_name}, None):
+			if found_character := {ID : name for ID, name in self.GD.characters.items() if \
+					name == presented_name}:
 				return found_character
 
 			embed, _ = await mbd(

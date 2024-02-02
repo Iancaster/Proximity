@@ -54,27 +54,17 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'Getting Off the Hook.',
-			"The webhook, specifically. It's the technology that Tupper and Proximity" + \
-				" both use in order to make characters talk. That's done, plus `/delete character`. :)",
-			"Break it, I dare ya.")
+			'Bug Fixes 3.0.1',
+			"These won't be altogether uncommon.",
+			"I would hope they would be, but.")
 
-		embed.add_field(name = 'Webhook, Line, and Sinker.', inline = False, value =
+		embed.add_field(name = 'Dumb stuff, lol.', inline = False, value =
 """
-1. Webhooks have been fixed and optimized.
-  - Deleting a webhook does not break the bot!
-  - It recreates it for both character channels as well as places.
-  - This technically *was* a feature back before, but it was bugged.
-  - It's now much faster as well, only deletes excess webhooks.
-  - And only reproduces the webhook if needed.
-2. `/delete character` is \*finished!-
-  - \*Just needs to be tested...
-  - Delete a character by deleting their channel.
-  - Or by using the command, like with `/delete place`.
-  - Guide to follow, once we burn through some of the others.
-  - Now onto `/review character`...
-""")
-		#file = File('ghost.png', filename = 'image.png')
+  - Fixed a problem where you couldn't make a `/new character` from outside a Place Channel.
+  - Fixed an error where you couldn't specify a name in `/review character`.
+"""
+)
+		#file = File('3.png', filename = 'image.png')
 		#embed.set_image(url = 'attachment://image.png')
 
 		await ctx.respond(embed = embed)#, file = file)
