@@ -200,7 +200,7 @@ class CharacterCommands(commands.Cog):
 			start_occ, _ = await mbd(
 				'Departing.',
 				f"You notice *{char_data.name}* leave, heading" +
-					f"towards **#{path[1]}**.",
+					f" towards **#{path[1]}**.",
 				'Maybe you can follow them?')
 			await inform_segment(path[0], start_adj, start_occ)
 
