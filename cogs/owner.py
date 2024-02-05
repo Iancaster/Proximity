@@ -5,7 +5,6 @@ from discord import ApplicationContext, Bot, Option, File
 from discord.ext import commands
 from libraries.universal import *
 from timeit import timeit
-from libraries.new_classes import test_func, tester_func
 
 #Classes
 class OwnerCommands(commands.Cog):
@@ -21,12 +20,6 @@ class OwnerCommands(commands.Cog):
 		description = 'Reloads all the cogs.',
 		guild_ids = [1111152704279035954])
 	async def refresh(self, ctx: ApplicationContext):
-
-
-		print(f'Finished in {timeit(test_func(ctx.author.id), number=10000)}')
-		print(f'Finished in {timeit(tester_func(ctx), number=10000)}')
-
-		return
 
 		await ctx.defer(ephemeral = True)
 
@@ -54,14 +47,15 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'Bug Fixes 3.0.1',
-			"These won't be altogether uncommon.",
+			'Update 3.0.1',
+			"These patches won't be altogether uncommon.",
 			"I would hope they would be, but.")
 
-		embed.add_field(name = 'Dumb stuff, lol.', inline = False, value =
+		embed.add_field(name = 'Bug Fixes.', inline = False, value =
 """
-  - Fixed a problem where you couldn't make a `/new character` from outside a Place Channel.
-  - Fixed an error where you couldn't specify a name in `/review character`.
+- Resolved a problem where you couldn't make a `/new character` from outside a Place Channel.
+- Fixed an error where you couldn't specify a name in `/review character`.
+- Corrected a typo when doing `/move` where two words were smooshed together.
 """
 )
 		#file = File('3.png', filename = 'image.png')

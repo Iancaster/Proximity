@@ -73,7 +73,8 @@ class ReviewCommands(commands.Cog):
 				if view.name():
 					new_name = await discordify(view.name())
 					new_name = await unique_name(new_name, GD.places.keys())
-					full_description = f'• Renaming this place to {new_name}.\n{description}'
+					full_description = f'\n• Renaming this place to **#{new_name}**.' + \
+						description
 				else:
 					new_name = None
 
@@ -134,17 +135,25 @@ class ReviewCommands(commands.Cog):
 				if new_name:
 
 					old_name = list(reviewing_places.keys())[0]
-					place_data = GD.places.pop(old_name)
-					GD.places[new_name] = place_data
 
-					place_channel = get(interaction.guild.text_channels, id = place_data.channel_ID)
-					await place_channel.edit(name = new_name)
+					description += f"\n• Renamed **#{old_name}** to <#{reviewing_place.channel_ID}>."
 
-					description += f"\n• Renamed **#{old_name}** to <#{place_data.channel_ID}>."
+					await GD.rename_place(old_name, new_name)
+					GD.places.pop(new_name)
+					await GD.save()
+
+					if place_channel := await get_or_fetch(
+						interaction.guild,
+						'channel',
+						reviewing_place.channel_ID,
+						default = None):
+						await place_channel.edit(name = new_name)
+
+					GD.places[new_name] = reviewing_place
 
 				await GD.save()
 
-				await queue_refresh(interaction.guild)
+				#await queue_refresh(interaction.guild)
 
 				embed, _ = await mbd(
 					'Edited.',

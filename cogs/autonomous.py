@@ -118,7 +118,7 @@ class Autonomous(commands.Cog):
 		if message.webhook_id:
 			return
 
-		if message.author.id == 1114004384926421126: #1161017761888219228: #Self.
+		if message.author.id == 1114004384926421126 or message.author.id == 1161017761888219228: #Self.
 			return
 
 		if message.content and message.content[0] == '\\':
@@ -156,14 +156,66 @@ class Autonomous(commands.Cog):
 
 		embed, file = await mbd(
 			f'Welcome to the Proximity server, {member.display_name}.',
-			"Please maker yourself at home. " + \
-				"\n- Bot information, including the dev log and status, is in the **#information** category." + \
-				"\n- You can ask question, chat, find support, and make suggestions in the **#discussion** category." + \
+			"Please make yourself at home. " +
+				"\n- Bot information, including the dev log and status, is in the **#information** category." +
+				"\n- You can ask question, chat, find support, and make suggestions in the **#discussion** category." +
 				"\n- And just ask **David Lancaster** for a tour of the bot's features if you want a test run. ",
 			"Just call `/help` if you want to learn more.",
 			('avatar.png', 'thumb'))
 
 		await member.send(embed = embed, file = file)
+		return
+
+	@commands.Cog.listener()
+	async def on_guild_channel_update(self, old_version, new_version):
+
+		if old_version.name == new_version.name:
+			return
+
+		GD = GuildData(
+			old_version.guild.id,
+			load_places = True,
+			load_characters = True)
+
+		place_name, place_data = next(((name, place) \
+			for name, place in GD.places.items() \
+			if place.channel_ID == old_version.id), (None, None))
+
+		if not place_data:
+			print(f'Channel updated but it was not a place channel (or was it?)')
+			return
+
+		print(f'Found a place named {place_name} with new name of {new_version.name}')
+
+		other_names = GD.places.keys()
+		other_names.discard(place_name)
+		new_name = await unique_name(new_version.name, other_names)
+		if new_name != new_version.name:
+			await new_version.edit(name = new_name)
+			return
+		elif old_version.name == new_name:
+			return
+
+		await GD.rename_place(place_name, new_name)
+		await GD.save()
+
+		embed, _ = await mbd(
+			'Strange.',
+			f'This place was once named **#{place_name}**,' +
+				f' but you now feel it should be called **#{new_name}**.',
+			'Better find your bearings.')
+		await to_direct_listeners(
+			embed,
+			new_version.guild,
+			new_version.id,
+			occupants_only = True)
+
+		embed, _ = await mbd(
+			'Edited.',
+			f'Renamed **#{place_name}** to {new_version.mention}.',
+			'Another successful revision.')
+		await new_version.send(embed = embed)
+
 		return
 
 	@commands.Cog.listener()

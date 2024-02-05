@@ -24,7 +24,7 @@ class DebugCommands(commands.Cog):
 		name = 'debug',
 		description = 'For testers only! Lets you peer behind the veil.',
 		guild_only = True,
-		guild_ids = [1114005940392439899])
+		guild_ids = [1111152704279035954])
 
 	@debug_group.command(name = 'listeners', description = 'See what channels proxy their messages to which others.')
 	async def listeners(self, ctx: ApplicationContext, listener_type: Option(str, description = 'Direct or indirect listeners?', name = 'type', choices = ['direct','indirect'], default = 'direct')):

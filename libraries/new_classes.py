@@ -29,17 +29,6 @@ from math import sqrt
 from matplotlib.pyplot import margins, gcf, tight_layout, axis, close
 from matplotlib.patches import ArrowStyle
 
-async def test_func(id: int):
-
-	di = str(id)
-	di = int(id)
-	return di
-
-async def tester_func(ctx):
-	di = str(ctx.author.id)
-	di = int(di)
-	return di
-
 # Graph
 @s(auto_attribs = True)
 class Component:
@@ -372,6 +361,20 @@ class GuildData:
 			graph.add_node(origin)
 
 		return graph
+
+	async def rename_place(self, old_name: str, new_name: str, characters_iter: iter = None):
+
+		print(f'Popping {old_name}, inserting {new_name}.')
+		place_data = self.places.pop(old_name)
+		self.places[new_name] = place_data
+
+		all_occ_data = characters_iter or [Character(ID) for ID in place_data.occupants]
+		for occ_data in all_occ_data:
+
+			occ_data.location = new_name
+			await occ_data.save()
+
+		return
 
 	# Paths
 	async def set_path(self, origin: str, destination: str, path: Path, overwrite: bool = False):
