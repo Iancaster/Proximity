@@ -364,7 +364,6 @@ class GuildData:
 
 	async def rename_place(self, old_name: str, new_name: str, characters_iter: iter = None):
 
-		print(f'Popping {old_name}, inserting {new_name}.')
 		place_data = self.places.pop(old_name)
 		self.places[new_name] = place_data
 

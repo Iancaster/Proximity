@@ -182,12 +182,9 @@ class Autonomous(commands.Cog):
 			if place.channel_ID == old_version.id), (None, None))
 
 		if not place_data:
-			print(f'Channel updated but it was not a place channel (or was it?)')
 			return
 
-		print(f'Found a place named {place_name} with new name of {new_version.name}')
-
-		other_names = GD.places.keys()
+		other_names = set(GD.places.keys())
 		other_names.discard(place_name)
 		new_name = await unique_name(new_version.name, other_names)
 		if new_name != new_version.name:

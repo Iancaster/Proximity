@@ -47,8 +47,10 @@ class OwnerCommands(commands.Cog):
 
 
 		embed, file = await mbd(
-			'Update 3.0.1',
-			"These patches won't be altogether uncommon.",
+			'Update 3.0.2',
+			"The `on_guild_channel_update()` function disappeared." +
+				" It *disappeared.* I had to recreate it from scratch." +
+				" How does that happen? Whatever, it's better than it",
 			"I would hope they would be, but.")
 
 		embed.add_field(name = 'Bug Fixes.', inline = False, value =
