@@ -519,7 +519,7 @@ class ReviewCommands(commands.Cog):
 
 					dest_name = view.places()[0]
 					destination_place = GD.places[dest_name]
-					description += f"• Relocated them to <#{destination_place.channel_ID}>."
+					description += f"\n• Relocated them to <#{destination_place.channel_ID}>."
 
 					informed_channels.add(await LM._load_channel(destination_place.channel_ID))
 
@@ -555,8 +555,9 @@ class ReviewCommands(commands.Cog):
 							f'Relocated {await format_channels(moving_people)} to' +
 								f' <#{place.channel_ID}>.',
 							'You can further relocate them with /review player.')
-						origin_channel = await LM._load_channel(place.channel_ID)
-						await origin_channel.send(embed = embed)
+						if view.clearing or view.roles():
+							origin_channel = await LM._load_channel(place.channel_ID)
+							await origin_channel.send(embed = embed)
 
 						informed_channels.add(origin_channel)
 

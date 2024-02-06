@@ -53,9 +53,11 @@ class OwnerCommands(commands.Cog):
 				" How does that happen?",
 			"Whatever, it's better than it ever used to be.")
 
-		embed.add_field(name = 'Bug Fixes.', inline = False, value =
+		embed.add_field(name = 'New Features and Fixes.', inline = False, value =
 """
-- Renaming
+- Renaming a channel renames the location in the bot.
+- Now it also informs the characters inside of the change.
+- Also, using /review character just to teleport characters now prints a custom message.
 """
 )
 		#file = File('3.png', filename = 'image.png')
