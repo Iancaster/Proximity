@@ -14,7 +14,7 @@ from libraries.universal import mbd, loading, no_redundancies, \
 	send_message, identify_place_channel, character_change, \
 	identify_character_channel, moving
 from libraries.formatting import format_channels, discordify, \
-	unique_name, format_whitelist, format_colors, format_roles, \
+	unique_name, format_whitelist, format_colors, \
 	format_avatar, format_places, format_characters
 from libraries.autocomplete import complete_places, complete_characters, \
 	complete_map, glossary

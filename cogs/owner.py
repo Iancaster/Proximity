@@ -57,7 +57,10 @@ class OwnerCommands(commands.Cog):
 """
 - Renaming a channel renames the location in the bot.
 - Now it also informs the characters inside of the change.
-- Also, using /review character just to teleport characters now prints a custom message.
+- Fixed a bug where you couldn't clear a char's roles.
+- Corrected a glitch with listing character's roles.
+- Changing a character's roles now informs them.
+- /review character, when teleporting chars, uses a new message.
 """
 )
 		#file = File('3.png', filename = 'image.png')

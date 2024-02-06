@@ -355,7 +355,6 @@ class NewCommands(commands.Cog):
 			avatar, valid_url, avatar_message = await format_avatar(view.url())
 			description += f'\n• Avatar: {avatar_message}'
 
-
 			embed, file = await mbd(
 				'New character?',
 				description,
@@ -425,7 +424,7 @@ class NewCommands(commands.Cog):
 			description = f"• Added <#{char_data.id}> as a character. " + \
 				f"\n• They're starting at <#{place.channel_ID}>."
 			if char_data.roles:
-				description += f"\n• They have the role(s) of {await format_roles(char_data.roles)}"
+				description += f"\n• They have the role(s) of {await format_roles({char_data.roles})}"
 			embed, _ = await mbd(
 				f'Hello, **{char_data.name}**.',
 				description,

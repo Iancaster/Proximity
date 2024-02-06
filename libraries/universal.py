@@ -95,8 +95,14 @@ async def character_change(channel: TextChannel, char_data):
 	webhook = (await channel.webhooks())[0]
 	character_message = "Good news! Your character details" + \
 		" just got updated. This is how you'll appear" + \
-		" to other characters. Also, you have the role(s)" + \
-		f' of {await format_roles(char_data.roles)}.'
+		" to other characters."
+
+	if char_data.roles:
+		character_message += " Also, you have the role(s)" + \
+			f' of {await format_roles({char_data.roles})}.'
+	else:
+		character_message += " You don't have any roles."
+
 	if char_data.avatar:
 		await webhook.send(
 			character_message,

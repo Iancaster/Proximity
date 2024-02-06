@@ -142,7 +142,7 @@ class Character:
 		self.avatar = char_data.get('avatar', None)
 		self.location = char_data.get('location', None)
 		self.eavesdropping = char_data.get('eavesdropping', None)
-		self.roles = {int(role_ID) for role_ID in char_data.get('roles', '').split()}
+		self.roles = set(int(role_ID) for role_ID in char_data.get('roles', '').split())
 
 		return
 
@@ -151,11 +151,11 @@ class Character:
 		character_con = connect(getcwd() + '/data/character.db')
 		cursor = character_con.cursor()
 
-		self.roles = ' '.join([str(role_ID) for role_ID in self.roles])
+		encoded_roles = ' '.join([str(role_ID) for role_ID in self.roles])
 
 		cursor.execute("INSERT or REPLACE INTO characters(character_ID, " +
 			"name, avatar, location, eavesdropping, roles) VALUES (?, ?, ?, ?, ?, ?)",
-			(self.id, self.name, self.avatar, self.location, self.eavesdropping, self.roles))
+			(self.id, self.name, self.avatar, self.location, self.eavesdropping, encoded_roles))
 
 		character_con.commit()
 		character_con.close()

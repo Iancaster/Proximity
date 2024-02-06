@@ -397,7 +397,7 @@ class ReviewCommands(commands.Cog):
 			valid_url = False
 			if len(reviewing_characters) == 1:
 				char_ID, char_name = list(reviewing_characters.items())[0]
-				char_data = Character(char_ID)
+				char_data = list(characters_dict.values())[0]
 			else:
 				existing_locations = {character.location for character in characters_dict.values()}
 				existing_roles = {role for character in characters_dict.values() for role in character.roles}
@@ -501,8 +501,8 @@ class ReviewCommands(commands.Cog):
 
 				if view.clearing:
 					description += "• Removed their role(s)."
-					for character in characters_dict.values():
-						character.roles = set()
+					for role_char in characters_dict.values():
+						role_char.roles = ''
 
 				elif view.roles():
 
@@ -511,21 +511,21 @@ class ReviewCommands(commands.Cog):
 						character.roles = view.roles()
 
 				informed_channels = set()
-
 				if view.places():
 
 					LM = ListenerManager(ctx.guild, GD)
 					await LM.load_channels()
 
 					dest_name = view.places()[0]
-					destination_place = GD.places[dest_name]
-					description += f"\n• Relocated them to <#{destination_place.channel_ID}>."
-
-					informed_channels.add(await LM._load_channel(destination_place.channel_ID))
 
 					vacating_places = {char_data.location : \
 						dict().setdefault(char_data.location, set()).union({char_ID}) \
 						for char_ID, char_data in characters_dict.items()}
+
+					destination_place = GD.places[dest_name]
+					description += f"\n• Relocated them to <#{destination_place.channel_ID}>."
+
+					informed_channels.add(await LM._load_channel(destination_place.channel_ID))
 
 					for location, moving_people in vacating_places.items():
 
@@ -555,11 +555,11 @@ class ReviewCommands(commands.Cog):
 							f'Relocated {await format_channels(moving_people)} to' +
 								f' <#{place.channel_ID}>.',
 							'You can further relocate them with /review player.')
-						if view.clearing or view.roles():
-							origin_channel = await LM._load_channel(place.channel_ID)
-							await origin_channel.send(embed = embed)
+						origin_channel = await LM._load_channel(place.channel_ID)
+						await origin_channel.send(embed = embed)
 
-						informed_channels.add(origin_channel)
+						if view.clearing or view.roles():
+							informed_channels.add(origin_channel)
 
 						# Put them back
 						for moving_ID in moving_people:
@@ -567,7 +567,7 @@ class ReviewCommands(commands.Cog):
 							moving_char = characters_dict[moving_ID]
 							await GD.insert_character(moving_char, dest_name)
 							await moving_char.save()
-							await LM.insert_character(char_data, skip_eaves = True)
+							await LM.insert_character(moving_char, skip_eaves = True)
 
 							embed, _ = await mbd(
 								'How...What?',
@@ -576,44 +576,50 @@ class ReviewCommands(commands.Cog):
 							moving_channel = await LM._load_channel(moving_ID)
 							await moving_channel.send(embed = embed)
 
-					await GD.save()
+						await GD.save()
 
-					embed, _ = await mbd(
-						'Whoosh.',
-						f'{await format_characters(moving_names)} just appeared here at **#{dest_name}**.',
-						"How strange.")
-					await to_direct_listeners(
-						embed,
-						interaction.guild,
-						destination_place.channel_ID)
+						embed, _ = await mbd(
+							'Whoosh.',
+							f'{await format_characters(moving_names)} just appeared here at **#{dest_name}**.',
+							"How strange.")
+						await to_direct_listeners(
+							embed,
+							interaction.guild,
+							destination_place.channel_ID)
 
-					embed, _ = await mbd(
-						'New arrival(s).',
-						f'{await format_characters(reviewing_characters.values())} got teleported here.',
-						"You can move them again using /review player.")
-					destination_channel = await LM._load_channel(destination_place.channel_ID)
-					await destination_channel.send(embed = embed)
+						embed, _ = await mbd(
+							'New arrival(s).',
+							f'{await format_channels(moving_people)} got teleported here.',
+							"You can move them again using /review player.")
+						destination_channel = await LM._load_channel(destination_place.channel_ID)
+						await destination_channel.send(embed = embed)
 
-				else:
-					(await char_data.save() for char_data in reviewing_characters.values())
 
 				for character in characters_dict.values():
 					their_place = GD.places[character.location]
 					informed_channels.add(await LM._load_channel(their_place.channel_ID))
+					await character.save()
+
+				embed, file = await mbd(
+					title,
+					description,
+					'You can always undo your changes by calling /review player again.',
+					image_view)
 
 				if view.clearing or view.roles():
-					embed, file = await mbd(
-						title,
-						description,
-						'You can always undo your changes by calling /review player again.',
-						image_view)
+
+					for channel in character_channels.values():
+						affected_char = characters_dict[channel.id]
+						await character_change(channel, affected_char)
+
 					for channel in informed_channels:
 						await channel.send(embed = embed, file = file)
 
 				return await no_redundancies(
 					(interaction.channel.id in reviewing_characters or interaction.channel in informed_channels),
 					embed,
-					interaction)
+					interaction,
+					file)
 
 
 			if len(reviewing_characters) == 1:
