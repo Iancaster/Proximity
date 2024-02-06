@@ -60,7 +60,7 @@ class OwnerCommands(commands.Cog):
 - Fixed a bug where you couldn't clear a char's roles.
 - Corrected a glitch with listing character's roles.
 - Changing a character's roles now informs them.
-- /review character, when teleporting chars, uses a new message.
+- `/review character`, when teleporting chars, uses a new message.
 """
 )
 		#file = File('3.png', filename = 'image.png')
