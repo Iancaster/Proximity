@@ -149,6 +149,17 @@ class ReviewCommands(commands.Cog):
 						default = None):
 						await place_channel.edit(name = new_name)
 
+					embed, _ = await mbd(
+						'Strange.',
+						f'This place was once named **#{old_name}**,' +
+							f' but you now feel it should be called **#{new_name}**.',
+						'Better find your bearings.')
+					await to_direct_listeners(
+						embed,
+						interaction.guild,
+						reviewing_place.channel_ID,
+						occupants_only = True)
+
 					GD.places[new_name] = reviewing_place
 
 				await GD.save()
@@ -589,13 +600,14 @@ class ReviewCommands(commands.Cog):
 					their_place = GD.places[character.location]
 					informed_channels.add(await LM._load_channel(their_place.channel_ID))
 
-				embed, file = await mbd(
-					title,
-					description,
-					'You can always undo your changes by calling /review player again.',
-					image_view)
-				for channel in informed_channels:
-					await channel.send(embed = embed, file = file)
+				if view.clearing or view.roles():
+					embed, file = await mbd(
+						title,
+						description,
+						'You can always undo your changes by calling /review player again.',
+						image_view)
+					for channel in informed_channels:
+						await channel.send(embed = embed, file = file)
 
 				return await no_redundancies(
 					(interaction.channel.id in reviewing_characters or interaction.channel in informed_channels),

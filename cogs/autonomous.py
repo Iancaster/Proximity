@@ -197,7 +197,7 @@ class Autonomous(commands.Cog):
 		await GD.save()
 
 		embed, _ = await mbd(
-			'Strange.',
+			'Strange (auto).',
 			f'This place was once named **#{place_name}**,' +
 				f' but you now feel it should be called **#{new_name}**.',
 			'Better find your bearings.')

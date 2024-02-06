@@ -50,14 +50,12 @@ class OwnerCommands(commands.Cog):
 			'Update 3.0.2',
 			"The `on_guild_channel_update()` function disappeared." +
 				" It *disappeared.* I had to recreate it from scratch." +
-				" How does that happen? Whatever, it's better than it",
-			"I would hope they would be, but.")
+				" How does that happen?",
+			"Whatever, it's better than it ever used to be.")
 
 		embed.add_field(name = 'Bug Fixes.', inline = False, value =
 """
-- Resolved a problem where you couldn't make a `/new character` from outside a Place Channel.
-- Fixed an error where you couldn't specify a name in `/review character`.
-- Corrected a typo when doing `/move` where two words were smooshed together.
+- Renaming
 """
 )
 		#file = File('3.png', filename = 'image.png')

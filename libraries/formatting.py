@@ -105,8 +105,9 @@ async def discordify(text: str):
 		(character.isalnum() or character.isspace() or character == '-'))
 	spaceless = '-'.join(sanitized.split())
 	trimmed = spaceless.strip()
+	result = '-'.join(part for part in trimmed.split('-') if part)
 
-	return trimmed[:24]
+	return result[:24]
 
 async def format_colors(graph: DiGraph, origin_name: str, colored_neighbors: list, color: str):
 
