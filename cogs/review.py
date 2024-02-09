@@ -164,7 +164,7 @@ class ReviewCommands(commands.Cog):
 
 				await GD.save()
 
-				#await queue_refresh(interaction.guild)
+				await queue_refresh(interaction.guild)
 
 				embed, _ = await mbd(
 					'Edited.',

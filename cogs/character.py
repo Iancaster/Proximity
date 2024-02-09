@@ -18,7 +18,7 @@ from libraries.formatting import format_channels, discordify, \
 	format_avatar, format_places, format_characters
 from libraries.autocomplete import complete_places, complete_characters, \
 	complete_map, glossary
-from data.listeners import to_direct_listeners, queue_refresh
+from data.listeners import to_direct_listeners
 
 from networkx import DiGraph, ego_graph, compose, shortest_path
 
@@ -572,11 +572,11 @@ class CharacterCommands(commands.Cog):
 		embed, _ = await mbd(
 			'Hello!',
 			"This command will help you learn what the bot does and how it" + \
-				" can be used. Head [here](https://discord.gg/VSNExYkvsA)" + \
+				" can be used. Head [here](https://discord.gg/2VEGcFvCZk)" + \
 				" for support, updates, and more info." + \
 				" Lastly, if you want to learn more about any" + \
-				" __underlined__ words I use, just say `/help (underlined word)`.",
-			"I'll be here if/when you need me.")
+				" __underlined__ words I use, just say `/help <underlined word>`.",
+			"I'll be here if and when you need me.")
 
 		buttons = {
 			'Help for Players' : player_tutorial,
