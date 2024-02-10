@@ -4,7 +4,7 @@
 from discord import Guild
 from discord.utils import get_or_fetch, get
 
-from libraries.classes import GuildData, ChannelMaker, Path, Character
+from libraries.new_classes import GuildData, ChannelManager, Path, Character
 from libraries.formatting import unique_name, format_words, \
 	format_whitelist
 from libraries.universal import mbd
@@ -20,9 +20,8 @@ async def create_location(guild: Guild, location_name: str = 'test-location'):
 
 	name = await unique_name(location_name, GD.places)
 
-	maker = ChannelMaker(guild, 'places')
-	await maker.initialize()
-	new_channel = await maker.create_channel(name)
+	CM = ChannelManager(guild)
+	new_channel = await CM.create_channel('places', name)
 
 	await GD.create_place(
 		name = name,
@@ -77,15 +76,13 @@ async def delete_location_channel(guild: Guild, location_name: str):
 		return flaws
 
 
-	place_channel = await get_or_fetch(guild, 'channel', place.channel_ID, default = None)
-	if place_channel:
+	if place_channel := await get_or_fetch(guild, 'channel', place.channel_ID, default = None):
 		await place_channel.delete()
 	else:
 		flaws.append('could not locate the location channel to delete')
 
 	if len(GD.places) == 1:
-		category = get(guild.categories, name = 'places')
-		if category:
+		if category := get(guild.categories, name = 'places'):
 			await category.delete()
 
 	sleep(.5)
@@ -118,9 +115,9 @@ async def create_character(guild: Guild, char_data: tuple[str, str]):
 		load_places = True,
 		load_characters = True)
 
-	maker = ChannelMaker(guild, 'characters')
-	await maker.initialize()
-	character_channel = await maker.create_channel(char_data[0])
+
+	CM = ChannelManager(guild)
+	character_channel = await CM.create_channel('characters', char_data[0])
 
 	char_data = Character(character_channel.id)
 	char_data.channel_ID = character_channel.id

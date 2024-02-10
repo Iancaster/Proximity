@@ -18,7 +18,7 @@ class OwnerCommands(commands.Cog):
 
 	@commands.slash_command(
 		description = 'Reloads all the cogs.',
-		guild_ids = [1111152704279035954])
+		guild_ids = [1114005940392439899])
 	async def refresh(self, ctx: ApplicationContext):
 
 		await ctx.defer(ephemeral = True)
@@ -41,26 +41,16 @@ class OwnerCommands(commands.Cog):
 		 guild_ids = [1114005940392439899])
 	async def say(self, ctx: ApplicationContext):
 
-		if ctx.author.id != 985699127742582846:
-			await ctx.respond('I do not believe you are the one who is supposed to be using this command.', ephemeral = True)
-			return
-
-
 		embed, file = await mbd(
-			'Update 3.0.2',
-			"The `on_guild_channel_update()` function disappeared." +
-				" It *disappeared.* I had to recreate it from scratch." +
-				" How does that happen?",
-			"Whatever, it's better than it ever used to be.")
+			'Update 3.0.3',
+			"From now on, testers are named when their bug is fixed." +
+				" Consider it a lil' credit for a job well done.",
+			"You guys are doing great, keep it up.")
 
-		embed.add_field(name = 'New Features and Fixes.', inline = False, value =
+		embed.add_field(name = 'Bug Fixes.', inline = False, value =
 """
-- Renaming a channel renames the location in the bot.
-- Now it also informs the characters inside of the change.
-- Fixed a bug where you couldn't clear a char's roles.
-- Corrected a glitch with listing character's roles.
-- Changing a character's roles now informs them.
-- `/review character`, when teleporting chars, uses a new message.
+- <@757315397463572570>: Making a new channel no longer requires that the bot have that permission in the category the channel is going in.
+- <@727901914401865829>: Moving is now un-broken! (Turns out it was a problem with the listeners getting mixed up).
 """
 )
 		#file = File('3.png', filename = 'image.png')

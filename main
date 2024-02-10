@@ -21,15 +21,17 @@ async def on_connect():
 
 	# tests_checklist = {
 	# 	'Location Tests' : [
-	# 		#('Delete Location', 'the-gardens'),
-	# 		('Create Location', 'the-courtyard'),
-	# 		('Create Character', ('lancaster', 'the-courtyard')),
-	# 		#('Create Location', 'the-gardens'),
-	# 		#('Create Location', 'the-village-outskirts'),
-	# 		#('Delete Location', 'the-courtyard'),
-	# 		#('Delete Location', 'the-village-outskirts'),
-	# 		#('Create Path', ('the-courtyard', 'the-gardens')),
-	# 		#('Create Path', ('the-courtyard', 'the-village-outskirts'))
+	# 			#('Delete Location', 'the-gardens'),
+	# 			('Create Location', 'the-courtyard'),
+	# 			('Create Character', ('Cylian', 'the-courtyard')),
+	# 			('Create Character', ('Theo', 'the-courtyard')),
+	# 			('Create Location', 'the-gardens'),
+	# 			('Create Location', 'the-village-outskirts'),
+	# 			#('Delete Location', 'the-courtyard'),
+	# 			#('Delete Location', 'the-village-outskirts'),
+	# 			('Create Path', ('the-courtyard', 'the-gardens')),
+	# 			('Create Path', ('the-courtyard', 'the-village-outskirts')
+	# 			)
 	# 		]
 	# 	}
 
@@ -37,6 +39,7 @@ async def on_connect():
 
 	#from libraries.classes import Character
 	#my_guy = Character(1196173831610564708)
+	#from helpers.tests import tests
 	#await tests(tests_checklist, test_guild)
 
 	#print('Exiting.')

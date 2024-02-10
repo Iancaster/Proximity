@@ -1159,15 +1159,15 @@ class ChannelManager:
 	async def _get_category(self, category_name: str):
 
 		existing_category = get(self.guild.categories, name = category_name)
-		if existing_category:
+		if existing_category and existing_category.permissions_for(self.guild.me).manage_channels:
 			self.category = existing_category
 			return
 
-		found_category = next(
+		if found_category := next(
 			(channel for channel in await self.guild.fetch_channels() if
-				channel.name == category_name and isinstance(channel, CategoryChannel)),
-				None)
-		if found_category:
+				channel.name == category_name and isinstance(channel, CategoryChannel)
+				and channel.permissions_for(self.guild.me).manage_channels),
+				None):
 			self.category = found_category
 			return
 
@@ -1348,7 +1348,7 @@ class ListenerManager:
 
 			for listener_channel, secondary in own_listeners:
 
-				their_listeners = listener_dict.get(listener_channel.id, dict())
+				their_listeners = listener_dict.get(listener_channel.id, set())
 
 				their_listeners.discard((condemned_channel, secondary))
 
