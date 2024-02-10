@@ -43,7 +43,7 @@ class OwnerCommands(commands.Cog):
 
 		embed, file = await mbd(
 			'Update 3.0.3',
-			"From now on, testers are named when their bug is fixed." +
+			"From now on, testers are named when the bugs they find are fixed." +
 				" Consider it a lil' credit for a job well done.",
 			"You guys are doing great, keep it up.")
 
