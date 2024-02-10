@@ -39,7 +39,7 @@ class OwnerCommands(commands.Cog):
 	@commands.slash_command(
 		 description = 'Custom embed.',
 		 guild_ids = [1114005940392439899])
-	async def say(self, ctx: ApplicationContext):
+	async def update(self, ctx: ApplicationContext):
 
 		embed, file = await mbd(
 			'Update 3.0.3',
