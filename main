@@ -51,4 +51,4 @@ async def on_connect():
 #Run
 bot.load_extensions('cogs')
 load_dotenv()
-bot.run(environ.get(("TOKEN"))
+bot.run(environ.get(("TOKEN")))
