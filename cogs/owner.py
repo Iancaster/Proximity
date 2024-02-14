@@ -67,7 +67,7 @@ class OwnerCommands(commands.Cog):
 3. You can make out parts of sentences you overhear!
   - Only a couple words.
   - Not all of it though, gonna have to listen closer...
-  - Unless they're shouting.
+  - Unless they're shouting in all caps.
 3. Fixed a few things.
   - `/move`ing into a new place wouldn't let others indirectly hear.
   - Optimized the way messages are sent when proxied.
