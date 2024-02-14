@@ -178,11 +178,11 @@ async def omit_segments(sentence: str):
 	for word_index in range(len(words)):
 
 		if word_index in heard_words_indexes:
-			pass
+			continue
 
 		word = words[word_index]
 		if word == word.upper():
-			pass
+			continue
 		else:
 			words[word_index] = '...'
 
