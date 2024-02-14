@@ -22,10 +22,10 @@ async def on_connect():
 	# tests_checklist = {
 	# 	'Location Tests' : [
 	# 			#('Delete Location', 'the-gardens'),
+	# 			('Create Location', 'the-gardens'),
 	# 			('Create Location', 'the-courtyard'),
 	# 			('Create Character', ('Cylian', 'the-courtyard')),
-	# 			('Create Character', ('Theo', 'the-courtyard')),
-	# 			('Create Location', 'the-gardens'),
+	# 			('Create Character', ('Theo', 'the-gardens')),
 	# 			('Create Location', 'the-village-outskirts'),
 	# 			#('Delete Location', 'the-courtyard'),
 	# 			#('Delete Location', 'the-village-outskirts'),

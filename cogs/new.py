@@ -109,6 +109,8 @@ class NewCommands(commands.Cog):
 			load_characters = True,
 			load_roles = True)
 		CM = ChannelManager(GD = GD)
+		LM = ListenerManager(ctx.guild, GD)
+		await LM.load_channels()
 
 		async def create_paths(origin_place_name: str):
 
@@ -157,14 +159,11 @@ class NewCommands(commands.Cog):
 				return embed, file
 
 			def checks():
-				#nonlocal destinations
 				return not destinations
 
 			async def submit(interaction: Interaction):
 
 				await loading(interaction)
-
-				#nonlocal origin_place_name, destinations
 
 				#Make paths
 				path = Path(
@@ -184,7 +183,6 @@ class NewCommands(commands.Cog):
 
 				await GD.save()
 				neighbors_dict = await GD.filter_places(destinations)
-				await queue_refresh(interaction.guild)
 
 				whitelist = await format_whitelist(view.roles(), view.characters())
 
@@ -208,6 +206,12 @@ class NewCommands(commands.Cog):
 					place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
 					await place_channel.send(embed = place_embed)
 
+					for occ_ID in place.occupants:
+						occ_channel = await LM._load_channel(occ_ID)
+						occ_data = Character(occ_ID)
+						await LM.remove_channel(occ_channel)
+						await LM.insert_character(occ_data, skip_eaves = False)
+
 				#Inform edited place occupants
 				bold_neighbors = await embolden(destinations)
 				player_embed, _ = await mbd(
@@ -219,6 +223,11 @@ class NewCommands(commands.Cog):
 					interaction.guild,
 					origin_place.channel_ID,
 					occupants_only = True)
+				for occ_ID in origin_place.occupants:
+					occ_channel = await LM._load_channel(occ_ID)
+					occ_data = Character(occ_ID)
+					await LM.remove_channel(occ_channel)
+					await LM.insert_character(occ_data, skip_eaves = False)
 
 				#Inform own place
 				description = f'\n• Connected <#{origin_place.channel_ID}>'
@@ -452,6 +461,100 @@ class NewCommands(commands.Cog):
 		await view.add_cancel()
 		embed, file = await refresh()
 		await send_message(ctx.respond, embed, view, file)
+		return
+
+	@new_group.command(name = 'server', description = 'Quickstart your RP world.')
+	async def server(self, ctx: ApplicationContext):
+
+		await ctx.defer(ephemeral = True)
+
+		GD = GuildData(
+			ctx.guild_id,
+			load_places = True,
+			load_characters = True)
+		CM = ChannelManager(interaction.guild)
+
+		for place_name in ['the-gardens', 'the-courtyard', 'the-village-outskirts']:
+
+			place_channel = await CM.create_channel('places', place_name)
+
+			await GD.create_place(
+				name = place_name,
+				channel_ID = place_channel.id)
+
+		for new_origin, new_dest in [('the-gardens', 'the-courtyard')]:
+			pass
+
+
+		for character_name in ['Theo', 'Cylia']:
+
+
+			character_channel = await CM.create_channel('characters', await discordify(name), allowed_people)
+
+			embed, _ = await mbd(
+				f'Welcome to your Character Channel, {name}.',
+				"Roleplay with others by talking here. Nearby characters will hear." + \
+				f"\n• Other people who can send messages here can also RP as {name}." + \
+				f"\n• Start the message with `\\` if you don't want it to leave this chat." + \
+				f"\n• You can `/look` around. {name} is at **#{place_name}** right now." + \
+				"\n• Do `/move` to go to other places you can reach." + \
+				"\n• You can `/eavesdrop` on nearby characters." + \
+				"\n• Other people can't see your `/commands` directly..." + \
+				"\n• ...Until you hit Submit, and start moving or eavesdropping.",
+				'You can always type /help to get more help.')
+			await character_channel.send(embed = embed)
+
+			char_data = Character(character_channel.id)
+			char_data.channel_ID = character_channel.id
+			char_data.location = place_name
+			char_data.roles = view.roles()
+			char_data.name = name
+
+			if view.url() and valid_url:
+				char_data.avatar = view.url()
+
+			await char_data.save()
+
+			#Inform the node occupants
+			place = GD.places[place_name]
+			player_embed, _ = await mbd(
+				'Someone new.',
+				f"*{char_data.name}* is here.",
+				'Perhaps you should greet them.',
+				(char_data.avatar, 'thumb'))
+			await to_direct_listeners(
+				player_embed,
+				interaction.guild,
+				place.channel_ID,
+				occupants_only = True)
+
+			#Add the players to the guild nodes as occupants
+			await GD.insert_character(char_data, place_name)
+			GD.characters[char_data.id] = char_data.name
+			await GD.save()
+
+			await character_change(character_channel, char_data)
+
+			#Inform admins node
+			description = f"• Added <#{char_data.id}> as a character. " + \
+				f"\n• They're starting at <#{place.channel_ID}>."
+			if char_data.roles:
+				description += f"\n• They have the role(s) of {await format_roles({char_data.roles})}"
+			embed, _ = await mbd(
+				f'Hello, **{char_data.name}**.',
+				description,
+				'You can view all characters and where they are with /review server.',
+				(char_data.avatar, 'thumb'))
+			place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
+			await place_channel.send(embed = embed)
+
+			LM = ListenerManager(interaction.guild, GD)
+			await LM.load_channels()
+			await LM.insert_character(char_data, skip_eaves = True)
+
+
+		await GD.save()
+
 		return
 
 def setup(prox):
