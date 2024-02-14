@@ -183,7 +183,7 @@ async def omit_segments(sentence: str):
 		word = words[word_index]
 		if word == word.upper():
 			continue
-
-		words[word_index] = '...'
+		else:
+			words[word_index] = '...'
 
 	return ' '.join(words)
