@@ -64,8 +64,10 @@ class OwnerCommands(commands.Cog):
   - ...Except that it says (Eavesdropping) at the end.
   - ...Which means you can see their images they send now. :D
   - Indirectly overheard messages now say (Overheard).
-  - ...And you actually catch parts of the sentence!
+3. You can make out parts of sentences you overhear!
+  - Only a couple words.
   - Not all of it though, gonna have to listen closer...
+  - Unless they're shouting.
 3. Fixed a few things.
   - `/move`ing into a new place wouldn't let others indirectly hear.
   - Optimized the way messages are sent when proxied.
