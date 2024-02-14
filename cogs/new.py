@@ -209,7 +209,7 @@ class NewCommands(commands.Cog):
 					for occ_ID in place.occupants:
 						occ_channel = await LM._load_channel(occ_ID)
 						occ_data = Character(occ_ID)
-						await LM.remove_channel(occ_channel)
+						await LM.remove_channel(channel = occ_channel)
 						await LM.insert_character(occ_data, skip_eaves = False)
 
 				#Inform edited place occupants
