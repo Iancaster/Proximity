@@ -22,10 +22,10 @@ async def on_connect():
 	# tests_checklist = {
 	# 	'Location Tests' : [
 	# 			#('Delete Location', 'the-gardens'),
+	# 			('Create Location', 'the-gardens'),
 	# 			('Create Location', 'the-courtyard'),
 	# 			('Create Character', ('Cylian', 'the-courtyard')),
-	# 			('Create Character', ('Theo', 'the-courtyard')),
-	# 			('Create Location', 'the-gardens'),
+	# 			('Create Character', ('Theo', 'the-gardens')),
 	# 			('Create Location', 'the-village-outskirts'),
 	# 			#('Delete Location', 'the-courtyard'),
 	# 			#('Delete Location', 'the-village-outskirts'),
@@ -51,4 +51,4 @@ async def on_connect():
 #Run
 bot.load_extensions('cogs')
 load_dotenv()
-bot.run(environ.get("TOKEN"))
+bot.run(environ.get(("TOKEN"))

@@ -277,8 +277,13 @@ class GuildData:
 		return {name : self.places[name] for name in place_names}
 
 	async def get_occupants(self, places: dict = None):
-		places = places or self.places
-		return {occ_ID for place in places for occ_ID in place.occupants}
+		if places:
+			return {occ_ID for place in places for occ_ID in place.occupants}
+		elif places is None:
+			places = self.places
+			return {occ_ID for place in places for occ_ID in place.occupants}
+		else:
+			return {}
 
 	async def _gate_guard(self, comp: Component, char_ID: int, role_IDs: iter):
 
@@ -1349,11 +1354,25 @@ class ListenerManager:
 			for listener_channel, secondary in own_listeners:
 
 				their_listeners = listener_dict.get(listener_channel.id, set())
-
 				their_listeners.discard((condemned_channel, secondary))
 
 				if not their_listeners:
 					listener_dict.pop(listener_channel.id)
+
+		return
+
+	async def _determine_listener_level(
+		self,
+		eaves_target: str,
+		char_channel: TextChannel,
+		place_name: str,
+		speaker_ID: int):
+
+		if self.GD.eavesdropping_allowed and place_name == eaves_target:
+			await self._add_direct(speaker_ID, char_channel, eavesdropping = True)
+
+		else:
+			await self._add_indirect(speaker_ID, char_channel, place_name)
 
 		return
 
@@ -1368,7 +1387,7 @@ class ListenerManager:
 		await self._add_direct(char_data.channel_ID, place_channel, eavesdropping = False)
 		await self._add_direct(place.channel_ID, char_channel, eavesdropping = False)
 
-		# Listen to other characters nearby
+		# Listen to other characters in same location
 		for occ_ID in place.occupants:
 
 			if occ_ID == char_data.channel_ID:
@@ -1381,29 +1400,43 @@ class ListenerManager:
 		# Listen to neighbors
 		for neighbor_name in place.neighbors.keys():
 
+			# Neighbor places
 			neighbor_place = self.GD.places[neighbor_name]
 
-			if skip_eaves:
+			if skip_eaves: # Char just arrived, so don't bother with eaves
 				await self._add_indirect(neighbor_place.channel_ID, char_channel, neighbor_name)
 
-			else:
-				if self.GD.eavesdropping_allowed and neighbor_name == char_data.eavesdropping:
-					await self._add_direct(neighbor_occ_ID, char_channel, eavesdropping = True)
+			else: # Char may be eavesdropping on neighbor place itself
+				await self._determine_listener_level(
+					eaves_target = char_data.eavesdropping,
+					char_channel = char_channel,
+					place_name = neighbor_name,
+					speaker_ID = neighbor_place.channel_ID)
 
-				else:
-					await self._add_indirect(neighbor_place.channel_ID, char_channel, neighbor_name)
-
+			# Neighbor occupants
 			for neighbor_occ_ID in neighbor_place.occupants:
 
-				if self.GD.eavesdropping_allowed:
+				neigh_occ_channel = await self._load_channel(neighbor_occ_ID)
 
-					occ_char = Character(neighbor_occ_ID)
+				# Listen to the other occs
+				if not self.GD.eavesdropping_allowed:
+					await self._add_indirect(neighbor_occ_ID, char_channel, neighbor_name)
+					await self._add_indirect(char_data.channel_ID, neigh_occ_channel, char_data.location)
 
-					if neighbor_name == occ_char.eavesdropping:
-						await self._add_direct(neighbor_occ_ID, char_channel, eavesdropping = True)
-						continue
+				else:
+					await self._determine_listener_level(
+						eaves_target = char_data.eavesdropping,
+						char_channel = char_channel,
+						place_name = neighbor_name,
+						speaker_ID = neighbor_occ_ID)
 
-				await self._add_indirect(neighbor_occ_ID, char_channel, neighbor_name)  # Neighbor only hears occ indirectly.
+					neighbor_data = Character(neighbor_occ_ID)
+
+					await self._determine_listener_level(
+						eaves_target = neighbor_data.eavesdropping,
+						char_channel = neigh_occ_channel,
+						place_name = char_data.location,
+						speaker_ID = char_data.channel_ID)
 
 		return
 
@@ -1413,7 +1446,9 @@ class ListenerManager:
 
 			for occ_ID in place.occupants:
 
-				await self.insert_character(Character(occ_ID), place)
+				await self.insert_character(
+					Character(occ_ID),
+					skip_eaves = False)
 
 		return
 

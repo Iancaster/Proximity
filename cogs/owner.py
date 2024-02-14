@@ -42,15 +42,36 @@ class OwnerCommands(commands.Cog):
 	async def update(self, ctx: ApplicationContext):
 
 		embed, file = await mbd(
-			'Update 3.0.3',
-			"From now on, testers are named when the bugs they find are fixed." +
-				" Consider it a lil' credit for a job well done.",
-			"You guys are doing great, keep it up.")
+			'Update 3.1: The Missing Update!',
+			"Okay, this one is all about things not being seen. First, I may or may not" +
+				" have forgotten to add `/eavesdrop` before releasing" +
+				" Version 3, where I (secondly) also forgot to dub the update" +
+				" with a nickname. ||So I guess, *technically,* 3.1" +
+				" should have been used on something like location" +
+				" descriptions or something, but *whatever,* dude," +
+				" it's coming, sheesh.||",
+			"At least it isn't ALL stuff I was supposed to do already.")
 
-		embed.add_field(name = 'Bug Fixes.', inline = False, value =
+		embed.add_field(name = 'Features and Fixes.', inline = False, value =
 """
-- <@757315397463572570>: Making a new channel no longer requires that the bot have that permission in the category the channel is going in.
-- <@727901914401865829>: Moving is now un-broken! (Turns out it was a problem with the listeners getting mixed up).
+1. Eavesdropping (again)!
+  - Revamped menu to choose where you want to listen.
+  - Just pick "Nowhere" in the dropdown to stop.
+  - Nearby characters will notice when you start or stop.
+  - New! Now characters see you snooping when they `/move`.
+2. Messages look better!
+  - When you eavesdrop, you see their messages look normal.
+  - ...Except that it says (Eavesdropping) at the end.
+  - ...Which means you can see their images they send now. :D
+  - Indirectly overheard messages now say (Overheard).
+3. You can make out parts of sentences you overhear!
+  - Only a couple words.
+  - Not all of it though, gonna have to listen closer...
+  - Unless they're shouting.
+3. Fixed a few things.
+  - `/move`ing into a new place wouldn't let others indirectly hear.
+  - Optimized the way messages are sent when proxied.
+  - As well as the way listeners are sorted into directness.
 """
 )
 		#file = File('3.png', filename = 'image.png')

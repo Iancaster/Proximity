@@ -15,7 +15,8 @@ from libraries.universal import mbd, loading, no_redundancies, \
 	identify_character_channel, moving
 from libraries.formatting import format_channels, discordify, \
 	unique_name, format_whitelist, format_colors, \
-	format_avatar, format_places, format_characters
+	format_avatar, format_places, format_characters, \
+	format_words
 from libraries.autocomplete import complete_places, complete_characters, \
 	complete_map, glossary
 from data.listeners import to_direct_listeners
@@ -25,7 +26,7 @@ from networkx import DiGraph, ego_graph, compose, shortest_path
 # Classes
 class CharacterCommands(commands.Cog):
 
-	@commands.slash_command(name = 'look', description = 'Look around your location.', guild_only = True)
+	@commands.slash_command(name = 'look', description = 'Look around.', guild_only = True)
 	async def look(self, ctx: ApplicationContext):
 
 		await ctx.defer(ephemeral = True)
@@ -245,9 +246,32 @@ class CharacterCommands(commands.Cog):
 			await char_data.save()
 
 			if seen_char_IDs:
-				char_names = {GD.characters[ID] for ID in seen_char_IDs}
-				seen_desc = "Along the way, you saw (and were seen" + \
-					f" by) {await format_characters(char_names)}."
+
+				not_eaves = set()
+				eaves_chars = dict()
+				for seen_ID in seen_char_IDs:
+
+					seen_char = Character(seen_ID)
+					if seen_char.eavesdropping:
+						other_eaves = eaves_chars.setdefault(seen_char.location, dict())
+						other_eaves[seen_char.name] = seen_char.eavesdropping
+					else:
+						not_eaves.add(seen_char.name)
+
+				seen_desc = "Along the way, you saw"
+				if not_eaves:
+					seen_desc += f" {await format_characters(not_eaves)} minding" + \
+						" their own business."
+				if not_eaves and eaves_chars:
+					seen_desc += " You also couldn't help but notice"
+				if eaves_chars:
+					sightings = set()
+					for location, seen_dict in eaves_chars.items():
+						sightings.add(await format_characters(seen_dict.keys()) +
+							f' in **#{location}** spying on ' +
+							await format_places(seen_dict.values()))
+					seen_desc += f' {await format_words(sightings)}.'
+
 			else:
 				seen_desc = "You didn't see anyone else along the way."
 
@@ -270,6 +294,153 @@ class CharacterCommands(commands.Cog):
 		embed, file = await refresh()
 
 		await send_message(ctx.respond, embed, view, file, ephemeral = True)
+		return
+
+	@commands.slash_command(name = 'eavesdrop', description = 'Listen in.', guild_only = True)
+	async def eavesdrop(self, ctx: ApplicationContext):
+
+		await ctx.defer(ephemeral = True)
+
+		GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
+
+		if not await GD.validate_membership(ctx.channel.id, ctx):
+			return
+
+		char_data = Character(ctx.channel.id)
+		place = GD.places[char_data.location]
+		eaves_targets = list(place.neighbors.keys())
+
+		if char_data.eavesdropping:
+			title = "Sneaky."
+			description = "You're currently listening in on " + \
+				f" **#{char_data.eavesdropping}**. You can select 'Nowhere'" + \
+				" in the dropdown if you want to stop eavesdropping."
+			eaves_targets.append('Nowhere.')
+		else:
+			title = "Hear something?"
+			description = "You're keeping your ears to yourself at the moment."
+
+		neighbor_occs = dict()
+		for neighbor_name in place.neighbors.keys():
+
+			occs = GD.places[neighbor_name].occupants
+			if not occs:
+				continue
+
+			occ_names = [GD.characters[occ_ID] for occ_ID in occs]
+			neighbor_occs[neighbor_name] = occ_names
+
+		if not place.neighbors:
+			description += " Listening close, you realize isn't any noise" + \
+				" around you...matter of fact, there isn't *anything* around" + \
+				" you. Oh dear, are you stuck here?"
+		elif not neighbor_occs:
+			description += f" You can eavesdrop on " + \
+				await format_places(place.neighbors.keys()) + \
+				" from here, but it doesn't sound like anyone's over there."
+		else:
+
+			description += f" Listening closely, you think you can hear " + \
+				await format_words({f"{await format_characters(occs)} in " +
+					f" **#{name}**" for name, occs in neighbor_occs.items()}) + \
+				"."
+			if empty_neighbors := {name for name in place.neighbors.keys() if \
+				name not in neighbor_occs}:
+				description += f" There's also {await format_places(empty_neighbors)}" + \
+					" nearby, but you think don't think anybody is there right now."
+
+		async def refresh():
+
+			nonlocal description
+
+			if not eaves_targets:
+				pass
+			elif view.places() and view.places()[0] == 'Nowhere.':
+				description = "Stop eavesdropping? You'll appear" + \
+					" a lot less suspicious to the people around you" + \
+					" as soon as you stop snooping around like this."
+			elif view.places():
+				description = f"Start eavesdropping on **#{view.places()[0]}**?" + \
+					" Take note that other people nearby will notice, even" + \
+					" if the people you're listening to won't necessarily" + \
+					" be able to tell."
+
+			embed, file = await mbd(
+				title,
+				description,
+				"Sticking your nose in other people's business, eh?")
+			return embed, file
+
+		def checks():
+			return not view.places()
+
+		async def submit_eavesdrop(interaction: Interaction):
+
+			await moving(interaction)
+
+			LM = ListenerManager(interaction.guild, GD)
+			await LM.load_channels()
+			char_channel = await LM._load_channel(char_data.channel_ID)
+
+			if view.places()[0] == 'Nowhere.':
+				player_title = "Enough of that."
+				player_desc = f"You decided to let anyone in" + \
+					f" **#{char_data.eavesdropping}** have some privacy."
+
+				occ_title = "Saw that."
+				occ_desc = f"You noticed *{char_data.name}*" + \
+					" try to play it off like they weren't" + \
+					f" just listening in on **#{char_data.eavesdropping}**."
+
+				char_data.eavesdropping = None
+				await char_data.save()
+
+				await LM.remove_channel(char_data.channel_ID)
+				await LM.insert_character(char_data, skip_eaves = True)
+
+			else:
+				player_title = "Hmm..."
+				player_desc = "No harm in being observant, right?" + \
+					f" Let's see what they're saying in **#{view.places()[0]}**."
+
+				occ_title = "What's this?"
+				occ_desc = "You can't help but notice" + \
+					f" *{char_data.name}* start to conspicuously" + \
+					f" eavesdrop on **#{view.places()[0]}**. Call" + \
+					" them out...or listen in like they are."
+
+				char_data.eavesdropping = view.places()[0]
+				await char_data.save()
+				await LM.remove_channel(char_data.channel_ID)
+				await LM.insert_character(char_data, skip_eaves = False)
+
+			await interaction.delete_original_response()
+			embed, _ = await mbd(
+				player_title,
+				player_desc,
+				'Just remember, other people can always do the same to you.')
+			await char_channel.send(embed = embed)
+
+			occ_embed, _ = await mbd(
+				occ_title,
+				occ_desc,
+				'Do with that what you will.')
+			await to_direct_listeners(
+				occ_embed,
+				interaction.guild,
+				place.channel_ID,
+				char_data.channel_ID,
+				occupants_only = True)
+			return
+
+		view = DialogueView(refresh, checks)
+		if eaves_targets:
+			await view.add_places(eaves_targets)
+			await view.add_submit(submit_eavesdrop)
+		await view.add_cancel()
+		embed, _ = await refresh()
+
+		await send_message(ctx.respond, embed, view, ephemeral = True)
 		return
 
 	@commands.slash_command(name = 'help', description = 'Get your footing with the bot.')

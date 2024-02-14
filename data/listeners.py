@@ -5,7 +5,7 @@ from discord import Guild, Message, Embed, TextChannel
 from discord.utils import get, get_or_fetch
 from asyncio import sleep
 
-from libraries.formatting import format_words
+from libraries.formatting import format_words, omit_segments
 from libraries.universal import mbd, NO_AVATAR_URL
 
 #Variables
@@ -33,60 +33,62 @@ async def relay(msg: Message, speaker):
 	if msg.guild.id not in updated_guild_IDs:
 		await wait_for_listeners(msg.guild)
 
-	speaker_name = speaker.name
-	speaker_avatar = speaker.avatar or NO_AVATAR_URL
+	files = [await attachment.to_file() for attachment in msg.attachments]
 
-	directs = direct_listeners.get(msg.channel.id, set())
-	for channel, eavesdropping in directs:
+	avatar = speaker.avatar or NO_AVATAR_URL
+	for channel, eavesdropping in direct_listeners.get(msg.channel.id, set()):
 
 		webhook = (await channel.webhooks())[0]
+		name = speaker.name + (' (Eavesdropped)' if eavesdropping else '')
 
-		if eavesdropping:
-			embed, _ = await mbd(
-				'From nearby...',
-				msg.content[:2000],
-				'You can hear it all from here.')
+		if len(msg.content) < 1999:
+
 			await webhook.send(
-				username = speaker_name,
-				avatar_url = speaker_avatar,
-				embed = embed)
-
-			if len(msg.content) > 1999:
-				embed, _ = await mbd(
-					'Continued.',
-					msg.content[2000:4000],
-					'What a lot to say.')
-				await webhook.send(
-					username = speaker_name,
-					avatar_url = speaker_avatar,
-					embed = embed)
+				msg.content[:1999],
+				username = name,
+				avatar_url = avatar,
+				files = files)
 
 		else:
-			files = [await attachment.to_file() for attachment in msg.attachments]
+
 			await webhook.send(
-				msg.content[:2000],
-				username = speaker_name,
-				avatar_url = speaker_avatar,
+				msg.content[:1999],
+				username = name,
+				avatar_url = avatar)
+
+			await webhook.send(
+				msg.content[2000:3999],
+				username = name,
+				avatar_url = avatar,
 				files = files)
-			if len(msg.content) > 1999:
-				await webhook.send(
-					msg.content[2000:4000],
-					username = speaker_name,
-					avatar_url = speaker_avatar)
 
-	indirects = indirect_listeners.get(msg.channel.id, set())
-	for channel, speaker_location in indirects:
+	#avatar = speaker.avatar or NO_AVATAR_URL
+	if indirects := indirect_listeners.get(msg.channel.id, set()):
 
-		last_message = await channel.history(limit = 1).flatten()
-
-		if last_message and last_message[0].embeds:
-			continue
+		speaker_name = speaker.name + ' (Overheard)'
 
 		embed, _ = await mbd(
-			'Hm?',
-			f"You think you hear *{speaker_name}* in **#{speaker_location}**.",
-			'Perhaps you can /move over to them.')
-		await channel.send(embed = embed)
+			f'From **#{speaker.location}**...',
+			await omit_segments(msg.content[:1999]),
+			'You can catch bits and pieces.')
+
+		for channel, speaker_location in indirects:
+
+			last_message = await channel.history(limit = 1).flatten()
+
+			try:
+				if last_message[0].embeds[0].title[:4] == 'From':
+					continue
+			except IndexError:
+				pass
+
+
+			webhook = (await channel.webhooks())[0]
+
+			await webhook.send(
+				username = speaker_name,
+				avatar_url = avatar,
+				embed = embed)
 
 	return
 
