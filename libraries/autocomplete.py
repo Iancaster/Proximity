@@ -8,12 +8,14 @@ from libraries.new_classes import GuildData, Character
 #Functions
 async def complete_places(ctx: AutocompleteContext):
 
-	GD = GuildData(ctx.interaction.guild_id, load_places = True)
+	guild_data = GuildData(
+		ctx.interaction.guild_id, 
+		load_places = True)
 
-	if not GD.places:
+	if not guild_data.places:
 		return ['No places!']
 
-	return GD.places.keys()
+	return guild_data.places.keys()
 
 async def exclusionary_places(ctx: AutocompleteContext):
 

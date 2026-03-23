@@ -174,7 +174,7 @@ class Character:
 # Data
 @s(auto_attribs = True)
 class GuildData:
-	guild_ID: int
+	guild_ID: int | None
 	load_places: bool = ib(default = False)
 	load_characters: bool = ib(default = False)
 	load_roles: bool = ib(default = False)
