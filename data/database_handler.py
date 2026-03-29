@@ -1,5 +1,5 @@
 
-from aiosqlite import Connection, connect, Row, IntegrityError
+from aiosqlite import Connection, connect, Row, IntegrityError, OperationalError
 from enum import StrEnum
 from pathlib import Path
 from sqlite3 import Row
@@ -35,7 +35,7 @@ async def initialize_db():
             guild_id       INT PRIMARY KEY,
             log_channel_id INT NOT NULL,
             name           TEXT NOT NULL,
-            description    TEXT NOT NULL,
+            description    TEXT,
             reference      TEXT);
                            
         CREATE TABLE IF NOT EXISTS locations (
@@ -54,7 +54,7 @@ async def initialize_db():
             character_id     INT PRIMARY KEY,
             guild_id       INT NOT NULL REFERENCES servers(guild_id) ON DELETE CASCADE,
             name           TEXT NOT NULL,
-            location_id    INT NOT NULL REFERENCES locations(character_id),
+            location_id    INT NOT NULL REFERENCES locations(location_id),
             reference      TEXT);
     
     """)
@@ -75,24 +75,40 @@ class CommitResult(StrEnum):
     UNKNOWN_ERR = "Unidentified error-- please report to owner!"
     SUCCESS = "Commit executed successfully."
     FOREIGN_KEY_FAIL = "Mismatch with one or more foreign keys."
+    ROW_EXISTS = "Row with this primary key already exists!"
+    ROW_MISSING = "No such row with this primary key exists!"
+    NO_UPDATE = "Row not found or no change needed."
 
 class DatabaseEntry(ABC):
     table_name: str
     primary_key_col_name: str
 
     @classmethod
-    async def get_entry(cls, id: int) -> Row | None:
+    async def fetch(cls, id: int) -> Row | None:
 
         db = await get_db()
         async with db.execute(
-            "SELECT * FROM ? WHERE ? = ?",
-            (cls.table_name, cls.primary_key_col_name, id)
-            ) as cursor:
+            f"SELECT * FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
+            (id, )) as cursor:
 
             return await cursor.fetchone()
         
     @classmethod
-    async def create(cls, id: int, *args: str | int, **kwargs: str | int) -> CommitResult:
+    async def exists(cls, id: int) -> bool:
+
+        db = await get_db()
+        async with db.execute(
+            f"SELECT 1 FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
+            (id, )) as cursor:
+
+            return await cursor.fetchone() is not None 
+        
+    @classmethod
+    async def create(cls, 
+        id: int, 
+        *args: str | int | None, 
+        **kwargs: str | int | None
+    ) -> CommitResult:
 
         db = await get_db()
         values = (id, *args, *kwargs.values())
@@ -100,38 +116,49 @@ class DatabaseEntry(ABC):
 
         try:
 
-            await db.execute(
+            async with db.execute(
                 f"INSERT INTO {cls.table_name} VALUES ({wildcards})",
-                values)
-            await db.commit()
-            result = CommitResult.SUCCESS
+                values) as cursor:
+                
+                await db.commit()
+                result = CommitResult.SUCCESS
 
         except IntegrityError as err:
 
-            if "FOREIGN KEY constraint failed" in str(err):
-                result = CommitResult.FOREIGN_KEY_FAIL
+            #if "FOREIGN KEY constraint failed" in str(err):
+                #result = CommitResult.FOREIGN_KEY_FAIL
+            if err.sqlite_errorname == 'SQLITE_CONSTRAINT_PRIMARYKEY':
+                result = CommitResult.ROW_EXISTS
             else:
                 result = CommitResult.UNKNOWN_ERR
 
         return result
 
     @classmethod
-    async def update_entry(cls, id: int, **kwargs) -> CommitResult:
+    async def update(cls, id: int, **kwargs) -> CommitResult:
 
         db = await get_db()
     
         set_clause = ", ".join(f"{col} = ?" for col in kwargs)
         values = (*kwargs.values(), id)
 
-        try:
-        
-            await db.execute(
-                f"UPDATE {cls.table_name} SET {set_clause} WHERE {cls.primary_key_col_name} = ?",
-                values)
-            await db.commit()
-            result = CommitResult.SUCCESS
+        if not kwargs:
+            return CommitResult.NO_UPDATE
 
-        except IntegrityError as err:
+        try:
+
+            async with db.execute(
+                f"UPDATE {cls.table_name} SET {set_clause} WHERE {cls.primary_key_col_name} = ?",
+                values) as cursor:
+                
+                await db.commit()
+                
+                if cursor.rowcount == 1:
+                    result = CommitResult.SUCCESS
+                else:
+                    result = CommitResult.NO_UPDATE
+
+        except (IntegrityError, OperationalError) as err:
 
             if "FOREIGN KEY constraint failed" in str(err):
                 result = CommitResult.FOREIGN_KEY_FAIL
@@ -141,16 +168,22 @@ class DatabaseEntry(ABC):
         return result
 
     @classmethod
-    async def delete_entry(cls, id: int) -> None:
+    async def delete(cls, id: int) -> CommitResult:
 
         db = await get_db()
-        
-        await db.execute(
-            f"DELETE FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
-            (id,))
-        await db.commit()
 
-        return
+        async with db.execute(
+            f"DELETE FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
+            (id,)) as cursor:
+            
+            await db.commit()
+            
+            if cursor.rowcount == 1:
+                result = CommitResult.SUCCESS
+            else:
+                result = CommitResult.NO_UPDATE
+        
+        return result
 
 class ServerEntry(DatabaseEntry):
 
@@ -162,8 +195,8 @@ class ServerEntry(DatabaseEntry):
         id: int, 
         log_channel_id: int,
         name: str, 
-        description: str = "", 
-        reference: str = "", 
+        description: str | None = None, 
+        reference: str | None = None, 
         *args, 
         **kwargs
     ) -> CommitResult:
@@ -176,6 +209,32 @@ class ServerEntry(DatabaseEntry):
             reference = reference,
             *args,
             **kwargs)  
+
+    @classmethod
+    async def update(cls, 
+        id: int, 
+        log_channel_id: int | None = None,
+        name: str | None = None, 
+        description: str | None = None, 
+        reference: str | None = None, 
+        **kwargs
+    ) -> CommitResult:
+        
+        updates = {}
+        
+        if log_channel_id is not None:
+            updates["log_channel_id"] = log_channel_id
+        
+        if name is not None:
+            updates["name"] = name
+        
+        if description is not None:
+            updates["description"] = description if description else None
+
+        if reference is not None:
+            updates["reference"] = reference if reference else None
+        
+        return await super().update(id, **updates)  
 
 class LocationEntry(DatabaseEntry):
 
@@ -200,7 +259,7 @@ class LocationEntry(DatabaseEntry):
             description = description, 
             reference = reference,
             *args,
-            **kwargs)  
+            **kwargs)    
 
 class CharacterEntry(DatabaseEntry):
 
@@ -213,7 +272,7 @@ class CharacterEntry(DatabaseEntry):
         guild_id: int, 
         name: str, 
         location_id: int, 
-        reference: str = "", 
+        reference: str | None = None, 
         *args, 
         **kwargs
     ) -> CommitResult:
@@ -227,7 +286,6 @@ class CharacterEntry(DatabaseEntry):
             *args,
             **kwargs)    
     
-
 # async def update_location(character_id: int, location_id: int):
 
 #     db = await get_db()
