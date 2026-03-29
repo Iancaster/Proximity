@@ -9,8 +9,7 @@ from discord.utils import get, get_or_fetch
 from libraries.new_classes import GuildData, DialogueView, Character, \
 	ChannelManager, ListenerManager
 from libraries.universal import mbd, loading, no_redundancies, \
-	send_message, identify_place_channel, character_change, \
-	identify_character_channel
+	send_message, character_change
 from libraries.formatting import format_channels, discordify, \
 	unique_name, format_whitelist, format_colors, format_roles, \
 	format_avatar, format_places, format_characters

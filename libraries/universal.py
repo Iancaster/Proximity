@@ -1,182 +1,229 @@
 
 #Import-ant Libraries
-from discord import Embed, File, Interaction, TextChannel
+from discord import Embed, File, Interaction, TextChannel, MISSING
 
-from requests import head
-from os import path, getcwd
+from aiohttp import ClientSession, ClientTimeout
+from typing import Callable
 from io import BytesIO
+from enum import IntEnum
+from pathlib import Path
 
 from libraries.formatting import *
 
 #"Constants"
-NO_AVATAR_URL = 'https://i.imgur.com/A6qTjRc.jpeg'
+NO_AVATAR_URL = "https://i.imgur.com/A6qTjRc.jpeg"
+ASSETS_DIR = Path().cwd() / "assets"
+VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
 
-#Dialogues
-async def mbd(title: str = 'No Title', description: str = 'No description.', footer: str = 'No footer.', image_details = None):
+class ImageSource(IntEnum):
+    ASSET = 0
+    URL = 1
+    BYTES = 2
 
-	embed = Embed(
-		title = title,
-		description = description,
-		color = 670869)
-	embed.set_footer(text = footer)
+def text_embed(
+    title: str = "No Title", 
+    description: str = "No description.", 
+    footer: str = "No footer.",
+    ) -> Embed:
 
-	file = None
+    embed = Embed(
+        title = title,
+        description = description,
+        color = 670869)
+    embed.set_footer(text = footer)
 
-	match image_details:
+    return embed
 
-		case _ if image_details is None:
-			pass
+async def _validate_url(url: str) -> bool:
+    # forgive me
+    try:
+        async with ClientSession() as session:
+            async with session.head(url, timeout=ClientTimeout(5)) as response:
+                content_type = response.headers.get("content-type", "") 
+                return content_type in VALID_IMAGE_TYPES
+            
+    except Exception:
+        return False
 
-		case _ if image_details[0] is None:
-			pass
+async def image_embed(
+    title: str = "No Title", 
+    description: str = "No description.", 
+    footer: str = "No footer.",
+    thumbnail: bool = True,
+    source: ImageSource = ImageSource.ASSET,
+    asset_str: str = "avatar.png",
+    asset_bytes: BytesIO | None = None,
+    ) -> tuple[Embed, File | None]:
 
-		case _ if image_details[1] == 'thumb':
+    embed = text_embed(title, description, footer)
+    file = None
+    place_image = embed.set_thumbnail if thumbnail else embed.set_footer
 
-			match image_details[0]:
+    if source == ImageSource.URL:
 
-				case _ if isinstance(image_details[0], BytesIO):
-					file = File(image_details[0], filename = 'image.png')
-					embed.set_thumbnail(url = 'attachment://image.png')
+        if not await _validate_url(asset_str):
+            asset_str = NO_AVATAR_URL
 
-				case _ if 'http' in image_details[0]:
+        file = None
+        place_image(asset_str)                # pyright: ignore[reportCallIssue]
 
-					try:
-						response = head(image_details[0])
-						if response.headers["content-type"] in {"image/png", "image/jpeg", "image/jpg"}:
-							embed.set_thumbnail(url = image_details[0])
-					except:
-						pass
+    elif source == ImageSource.BYTES:
 
-				case _ if path.isfile(path.join(getcwd(), 'assets', image_details[0])):
-					file = File(path.join(getcwd(), 'assets', image_details[0]), filename = 'image.png')
-					embed.set_thumbnail(url = 'attachment://image.png')
+        if asset_bytes is None:
+            raise ValueError("Forgot to pass in a byte image.")
+        
+        file = File(asset_bytes, filename = "image.png")
+        place_image("attachment://image.png")  # pyright: ignore[reportCallIssue]
+        
+    else:
+        asset_path = ASSETS_DIR / asset_str
 
-		case _ if image_details[1] == 'full':
-			file = File(image_details[0], filename = 'image.png')
-			embed.set_image(url = 'attachment://image.png')
+        if not asset_path.exists():
+            asset_str = "bad_link.png"
+        else:
+            asset_str = str(asset_path)
 
-	return embed, file
+        file = File(asset_str, filename = "image.png")
+        place_image("attachment://image.png")  # pyright: ignore[reportCallIssue]
+
+    return embed, file
 
 async def loading(interaction: Interaction):
 
-	embed, _ = await mbd(
-		'Loading...',
-		'Recalculating listeners.',
-		'Usually takes less than five seconds.')
-	await interaction.response.edit_message(
-		embed = embed,
-		view = None,
-		attachments = [])
-	return
+    embed = text_embed(
+        'Loading...',
+        'Recalculating listeners.',
+        'Usually takes less than five seconds.')
+    await interaction.response.edit_message(
+        embed = embed,
+        view = None,
+        attachments = [])
+    return
 
 async def moving(interaction: Interaction):
 
-	embed, _ = await mbd(
-		'Moving...',
-		'Getting into position.',
-		'Usually takes less than five seconds.')
-	await interaction.response.edit_message(
-		embed = embed,
-		view = None,
-		attachments = [])
-	return
+    embed = text_embed(
+        'Moving...',
+        'Getting into position.',
+        'Usually takes less than five seconds.')
+    await interaction.response.edit_message(
+        embed = embed,
+        view = None,
+        attachments = [])
+    return
 
-async def send_message(send_method: callable, embed: Embed, view = None, file = None, **options):
+async def send_message(
+    send_method: Callable, 
+    embed: Embed, 
+    view = None, 
+    file: File | None = None, 
+    **options):
+    
+    if file is not None: 
+        options["file"] = file
 
-	if view:
-		message = await send_method(embed = embed, view = view, file = file, **options)
-		view.message = message
-	else:
-		await send_method(embed = embed, file = file, **options)
-	return
+    if view is None:
+        await send_method(embed = embed, **options)
+        return
+    
+    message = await send_method(embed = embed, view = view, **options)
+    view.message = message        
+    return
 
 async def character_change(channel: TextChannel, char_data):
 
-	webhook = (await channel.webhooks())[0]
-	character_message = "Good news! Your character details" + \
-		" just got updated. This is how you'll appear" + \
-		" to other characters."
+    webhook = (await channel.webhooks())[0]
+    character_message = "Good news! Your character details" + \
+        " just got updated. This is how you'll appear" + \
+        " to other characters."
 
-	if char_data.roles:
-		character_message += " Also, you have the role(s)" + \
-			f' of {await format_roles({char_data.roles})}.'
-	else:
-		character_message += " You don't have any roles."
+    if char_data.roles:
+        character_message += " Also, you have the role(s)" + \
+            f' of {await format_roles({char_data.roles})}.'
+    else:
+        character_message += " You don't have any roles."
 
-	if char_data.avatar:
-		await webhook.send(
-			character_message,
-			username = char_data.name,
-			avatar_url = char_data.avatar)
-	else:
-		await webhook.send(
-			character_message,
-			username = char_data.name,
-			avatar_url = NO_AVATAR_URL)
+    if char_data.avatar:
+        await webhook.send(
+            character_message,
+            username = char_data.name,
+            avatar_url = char_data.avatar)
+    else:
+        await webhook.send(
+            character_message,
+            username = char_data.name,
+            avatar_url = NO_AVATAR_URL)
 
-	return
+    return
 
 
 # Guild
 async def identify_place_channel(**args):
-	return
+    return
 
-async def identify_character_channel(characters: dict, origin_channel_id: int = 0, presented_character_name: str = '', presented_character_id: int = 0):
+async def identify_character_channel(
+        characters: dict, 
+        origin_channel_id: int = 0, 
+        presented_character_name: str = '', 
+        presented_character_id: int = 0):
 
-	if not characters:  # No characters
+    if not characters:  # No characters
 
-		embed, _ = await mbd(
-			'Easy, bronco.',
-			"You've got no characters yet.",
-			'Make a /new place so you can add a /new character.')
+        embed = text_embed(
+            'Easy, bronco.',
+            "You've got no characters yet.",
+            'Make a /new place so you can add a /new character.')
 
-		return embed
+        return embed
 
-	elif presented_character_id:  # Character given (channel)
+    elif presented_character_id:  # Character given (channel)
 
-		if presented_character_id in characters:
-			return {presented_character_id : characters[presented_character_id]}
+        if presented_character_id in characters:
+            return {presented_character_id : characters[presented_character_id]}
 
-		embed, _ = await mbd(
-			'What?',
-			f"<#{presented_character_id}> isn't a character channel. Did" + \
-				" you select the wrong one?",
-			'Try calling the command again.')
+        embed = text_embed(
+            'What?',
+            f"<#{presented_character_id}> isn't a character channel. Did" + \
+                " you select the wrong one?",
+            'Try calling the command again.')
 
-		return embed
+        return embed
 
-	elif presented_character_name:  # Character given (text)
+    elif presented_character_name:  # Character given (text)
 
-		if presented_character_name in characters:
+        if presented_character_name in characters:
 
-			return next({ID : name for ID, name in characters.items() if \
-				name == presented_character_name}, None)
+            return {ID : name for ID, name in characters.items() if \
+                name == presented_character_name}.items()
 
-		embed, _ = await mbd(
-			'What?',
-			f"*{presented_character_name}* isn't a character. Did" + \
-				" you select the wrong one?",
-			'Try calling the command again.')
+        embed = text_embed(
+            'What?',
+            f"*{presented_character_name}* isn't a character. Did" + \
+                " you select the wrong one?",
+            'Try calling the command again.')
 
-		return embed
+        return embed
 
-	elif origin_channel_id in characters:  # Character channel
-		return {origin_channel_id : characters[origin_channel_id]}
+    elif origin_channel_id in characters:  # Character channel
+        return {origin_channel_id : characters[origin_channel_id]}
 
-	return None
+    return None
 
 # Checks
-async def no_redundancies(test, embed: Embed, interaction: Interaction, file = None):
+async def no_redundancies(test, embed: Embed, interaction: Interaction, file: File = MISSING):
 
-	if test:
-		await interaction.delete_original_response()
+    if test:
+        await interaction.delete_original_response()
 
-	else:
-		await interaction.followup.edit_message(
-			message_id = interaction.message.id,
-			embed = embed,
-			file = file,
-			view = None)
+    elif interaction.message is None:
+        pass
 
-	return
+    else:
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embed,
+            file = file,
+            view = None)
+
+    return
 
