@@ -3,6 +3,7 @@
 from libraries.logger import get_logger
 from data.database_handler import DatabaseMixin, ServerEntry, CommitResult
 
+
 class RPServer(DatabaseMixin):
     """Represents one server in the roleplay."""
 

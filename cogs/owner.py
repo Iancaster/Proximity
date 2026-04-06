@@ -4,7 +4,7 @@ Commands entrusted only to the owner.
 
 from discord import ApplicationContext, Bot
 from discord.ext import commands
-from libraries.universal import text_embed, send_message
+from libraries.user_interface import text_embed, send_message
 
 class OwnerCommands(commands.Cog):
 
@@ -29,7 +29,7 @@ class OwnerCommands(commands.Cog):
             'Refreshed cogs.',
             'Hopefully this is faster than just restarting.',
             'Or at least provides better continuity.')
-        await send_message(ctx.respond, embed, ephemeral = True)
+        await send_message(ctx.interaction, embed, ephemeral = True)
         return
 
     @commands.is_owner()
@@ -60,7 +60,7 @@ class OwnerCommands(commands.Cog):
                 "Only the bot owner can use this command.",
                 "Permision denied.")
             
-            await send_message(ctx.respond, embed = embed, ephemeral = True)
+            await send_message(ctx.interaction, embed = embed, ephemeral = True)
         else:
             raise error
         

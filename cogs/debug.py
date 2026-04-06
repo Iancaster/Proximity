@@ -6,7 +6,7 @@ from discord import ApplicationContext, Option, \
 from discord.ext import commands
 
 from libraries.classes import RPServer
-from libraries.universal import send_message, image_embed, ImageSource
+from libraries.user_interface import send_message, image_embed, ImageSource
 
 #Classes
 class DebugCommands(commands.Cog):
@@ -128,7 +128,7 @@ class DebugCommands(commands.Cog):
             source = source,
             asset_str =  asset_str)
 
-        await send_message(ctx.respond, embed, file = file, ephemeral = True)
+        await send_message(ctx.interaction, embed, file = file, ephemeral = True)
         return
 
 def setup(prox):

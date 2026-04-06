@@ -28,6 +28,7 @@ from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
 from math import sqrt
 from matplotlib.pyplot import margins, gcf, tight_layout, axis, close
 from matplotlib.patches import ArrowStyle
+from collections.abc import Callable
 
 # Graph
 @s(auto_attribs = True)
@@ -714,8 +715,8 @@ class GuildData:
 # Server
 @s(auto_attribs = True)
 class DialogueView(View):
-	refresh: callable = ib(default = None)
-	should_disable_submit: callable = ib(default = lambda: False)
+	refresh: Callable = ib(default = None)
+	should_disable_submit: Callable = ib(default = lambda: False)
 
 	# Interior
 	def __attrs_pre_init__(self):
@@ -782,7 +783,7 @@ class DialogueView(View):
 		return
 
 	# Selects
-	async def add_people(self, singular: bool = False, callback: callable = None):
+	async def add_people(self, singular: bool = False, callback: Callable = None):
 
 		plurality = 'person' if singular else 'people'
 
@@ -800,7 +801,7 @@ class DialogueView(View):
 	def people(self):
 		return self.people_select.values
 
-	async def add_characters(self, characters: dict, singular: bool = False, callback: callable = None):
+	async def add_characters(self, characters: dict, singular: bool = False, callback: Callable = None):
 
 		self._characters_dict = characters
 
@@ -850,7 +851,7 @@ class DialogueView(View):
 
 		return {channel.id : self._characters_dict[channel.id] for channel in self.character_select.values if channel.id in self._characters_dict}
 
-	async def add_roles(self, singular: bool = False, callback: callable = None):
+	async def add_roles(self, singular: bool = False, callback: Callable = None):
 
 		self.role_select = Select(
 			placeholder = f"Which role{'' if singular else 's'}?",
@@ -866,7 +867,7 @@ class DialogueView(View):
 	def roles(self):
 		return {role.id for role in self.role_select.values}
 
-	async def add_places(self, place_names: iter,  singular: bool = True, callback: callable = None):
+	async def add_places(self, place_names: iter,  singular: bool = True, callback: Callable = None):
 
 		self.place_names = place_names
 
@@ -916,7 +917,7 @@ class DialogueView(View):
 
 		return {channel.name for channel in self.place_select.values if channel.name in self.place_names}
 
-	async def add_paths(self, neighbors: dict, callback: callable = None):
+	async def add_paths(self, neighbors: dict, callback: Callable = None):
 
 		self.path_select = Select(
 			placeholder = 'Which path(s)?',
@@ -948,7 +949,7 @@ class DialogueView(View):
 		return self.path_select.values
 
 	# Modals
-	async def add_rename(self, existing: str = '', callback: callable = None):
+	async def add_rename(self, existing: str = '', callback: Callable = None):
 
 		modal = Modal(title = 'Choose a new name?')
 
@@ -987,7 +988,7 @@ class DialogueView(View):
 
 		return self.name_select.value
 
-	async def add_URL(self, callback: callable = None):
+	async def add_URL(self, callback: Callable = None):
 
 		modal = Modal(title = 'Choose a new avatar?')
 
@@ -1039,7 +1040,7 @@ class DialogueView(View):
 		self.created_components.add('confirm')
 		return
 
-	async def add_clear(self, callback: callable = None):
+	async def add_clear(self, callback: Callable = None):
 		clear = Button(
 			label = 'Clear Whitelist',
 			style = ButtonStyle.secondary)
@@ -1210,7 +1211,7 @@ class ChannelManager:
 		await send_message(embed, file)
 
 	# Validate Channels
-	async def identify_place_channel(self, ctx: ApplicationContext, submission: callable = None,  presented_name: str = ''):
+	async def identify_place_channel(self, ctx: ApplicationContext, submission: Callable = None,  presented_name: str = ''):
 
 		if not self.GD.places:
 
@@ -1244,7 +1245,7 @@ class ChannelManager:
 
 		return ''
 
-	async def identify_character_channel(self, ctx: ApplicationContext, submission: callable = None, presented_name: str = '', presented_id: int = 0):
+	async def identify_character_channel(self, ctx: ApplicationContext, submission: Callable = None, presented_name: str = '', presented_id: int = 0):
 
 		if not self.GD.characters:
 

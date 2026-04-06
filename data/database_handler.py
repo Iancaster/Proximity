@@ -37,7 +37,11 @@ async def initialize_db():
             log_channel_id INT NOT NULL,
             name           TEXT NOT NULL,
             description    TEXT,
-            reference      TEXT);
+            reference      TEXT,
+            max_characters INT DEFAULT 10,
+            max_locations  INT DEFAULT 10,
+            creation_time   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            subscription_end  TIMESTAMP DEFAULT (DATETIME('now', '+7 day')));
                            
         CREATE TABLE IF NOT EXISTS locations (
             location_id     INT PRIMARY KEY,

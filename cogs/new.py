@@ -2,12 +2,14 @@
 
 
 from libraries.classes import RPServer
-from libraries.universal import send_message
+from libraries.user_interface import Dialogue, Popup, text_embed, send_message
 
-from discord import ApplicationContext, TextChannel, InteractionContextType
+from discord import ApplicationContext, TextChannel, \
+    InteractionContextType, ButtonStyle, InputTextStyle, \
+    Interaction
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get_or_fetch
+from types import MethodType
 
 
 # from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
@@ -482,11 +484,88 @@ class NewCommands(commands.Cog):
     # 	await send_message(ctx.respond, embed, view, file)
     # 	return
 
-    @new_group.command(name = "roleplay", description = "Make a new Proximity roleplay!")
+    @new_group.command(name = "roleplay", description = "Make this a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
         server = RPServer(ctx.guild_id)
-        await ctx.respond(f"Server exists: {await server.exists}", ephemeral = True)
+
+        if await server.exists:
+
+            embed = text_embed(
+                "Way ahead of you.",
+                "This server already has a roleplay. If you want to start over," \
+                " delete the old one with `/delete roleplay` and then call this" \
+                " command again.",
+                "But if you just want a /new place or a /new character, call those instead.")
+            
+            await send_message(ctx.interaction, embed, ephemeral = True)
+            return
+            
+        embed = text_embed(
+            "Let's do this.",
+            "First things first: some basic setup.",
+            "You can change these things later with /review roleplay.")
+        
+        dialogue = Dialogue()
+
+        details_popup = Popup(title = "Roleplay details")
+
+        details_popup.add_text(
+            label = "Title", 
+            placeholder = "What should we call this roleplay?", 
+            min_length = 1, 
+            max_length = 64)
+        
+        details_popup.add_text(
+            label = "Description", 
+            placeholder = "Share something interesting about your setting!", 
+            min_length = 0, 
+            max_length = 300,
+            required = False,
+            style = InputTextStyle.paragraph)
+        
+        details_popup.add_text(
+            label = "Reference photo URL",
+            placeholder = "You can paste an Imgur link for your reference art or advert.",
+            min_length = 1,
+            max_length = 300,
+            required = False,
+            style = InputTextStyle.paragraph)
+        
+        details_popup.add_text(
+            label = "Maximum player count",
+            placeholder = "10 - Subscribe to increase this limit!",
+            required = False)
+
+        details_popup.add_text(
+            label = "Maximum location count",
+            placeholder = "10 - Subscribe to increase this limit!",
+            required = False)
+
+        details_button = dialogue.add_button(label = "Set roleplay details", style = ButtonStyle.blurple)
+        dialogue.add_modal(details_popup, details_button)
+
+        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
+        submit_button.should_disable = lambda : not dialogue.is_valid
+
+        async def submit(interaction: Interaction):
+
+            field_data = [(field.label, field.get_value()) for field in dialogue.fields]
+            print(f"Submitted! {field_data}")
+            await dialogue.refresh(interaction)
+
+            return
+
+        submit_button.callback = submit
+
+        # def button_refresh(self):
+        #     self.style = ButtonStyle.secondary if self.disabled else ButtonStyle.primary
+        # submit_button.refresh = MethodType(button_refresh, submit_button)
+
+        # submit_button.should_disable = lambda : True
+
+        #await dialogue.view.refresh_children()
+        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
         return
     
