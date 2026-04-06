@@ -4,6 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from sqlite3 import Row
 from abc import ABC
+from libraries.logger import get_logger
 
 DB_PATH = Path(__file__).parent.resolve() / "bot_data.db"
 
@@ -80,6 +81,8 @@ class CommitResult(StrEnum):
     NO_UPDATE = "Row not found or no change needed."
 
 class DatabaseEntry(ABC):
+    """Base class which handles all database queries/operations."""
+
     table_name: str
     primary_key_col_name: str
 
@@ -285,7 +288,57 @@ class CharacterEntry(DatabaseEntry):
             reference = reference,
             *args,
             **kwargs)    
+
+class DatabaseMixin:
+    """Inheritable class for objects which intend to store attributes equivalent to the fields in their table."""
+
+    def __init__(self, 
+        entry_class: type[DatabaseEntry], 
+        id: int,
+        console_level: int | None):
+
+        self.id = id
+        self.entry = entry_class
+        self._logger = get_logger("DB Mixin", console_level = console_level)
+        
+        return
+
+    async def fetch(self) -> CommitResult:
+
+        result = await self.entry.fetch(self.id)
+
+        if result is None:
+            self._logger.warning(f"Tried to fetch {self.entry.table_name} data with ID #{self.id}, none exists.")
+            return CommitResult.ROW_MISSING
+        
+        self.__dict__.update(dict(result))
+        return CommitResult.SUCCESS
+
+    async def delete(self) -> CommitResult:
+        self._logger.info(f"Deleting record in {self.entry.table_name} with ID: {self.id}.")
+        return await self.entry.delete(self.id)
+     
+    async def create(self, *_, **kwargs) -> CommitResult:
+        """Registers this server as an RP one."""
+
+        self._logger.info(f"New record made in {self.entry.table_name} table, ID: {self.id}.")
+        self.__dict__.update(kwargs)
+
+        return await self.entry.create(self.id, **kwargs)
+       
+    async def update(self, **kwargs) -> CommitResult:
+
+        passed_kwargs = {k: v for k, v in kwargs if v is not None}
+        self.__dict__.update(passed_kwargs)
+        
+        return await self.entry.update(self.id, **passed_kwargs)
     
+    @property
+    async def exists(self) -> bool:
+        f"""True if the record is in the respective database."""
+        return await self.entry.exists(self.id)  
+    
+
 # async def update_location(character_id: int, location_id: int):
 
 #     db = await get_db()

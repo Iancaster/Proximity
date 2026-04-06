@@ -60,7 +60,6 @@ class Lumberjack(Logger):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
-
         self.setLevel(DEBUG)
 
         return

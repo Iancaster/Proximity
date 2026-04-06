@@ -41,7 +41,7 @@ async def main():
     async def on_close():
         await close_db()
         
-    bot.load_extensions("cogs.owner")
+    bot.load_extensions("cogs.owner", "cogs.debug", "cogs.new")
     await bot.start(token)
     return
 

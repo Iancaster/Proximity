@@ -57,7 +57,7 @@ async def image_embed(
 
     embed = text_embed(title, description, footer)
     file = None
-    place_image = embed.set_thumbnail if thumbnail else embed.set_footer
+    place_image = embed.set_thumbnail if thumbnail else embed.set_image
 
     if source == ImageSource.URL:
 
@@ -65,7 +65,7 @@ async def image_embed(
             asset_str = NO_AVATAR_URL
 
         file = None
-        place_image(asset_str)                # pyright: ignore[reportCallIssue]
+        place_image(url = asset_str)                # pyright: ignore[reportCallIssue]
 
     elif source == ImageSource.BYTES:
 
@@ -73,7 +73,7 @@ async def image_embed(
             raise ValueError("Forgot to pass in a byte image.")
         
         file = File(asset_bytes, filename = "image.png")
-        place_image("attachment://image.png")  # pyright: ignore[reportCallIssue]
+        place_image(url = "attachment://image.png")  # pyright: ignore[reportCallIssue]
         
     else:
         asset_path = ASSETS_DIR / asset_str
@@ -84,7 +84,7 @@ async def image_embed(
             asset_str = str(asset_path)
 
         file = File(asset_str, filename = "image.png")
-        place_image("attachment://image.png")  # pyright: ignore[reportCallIssue]
+        place_image(url = "attachment://image.png")  # pyright: ignore[reportCallIssue]
 
     return embed, file
 

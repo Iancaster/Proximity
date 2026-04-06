@@ -119,3 +119,297 @@
 03/29/26 | 11:07:28 [DEBUG] pb: Logger set up.
 03/29/26 | 11:07:28 [INFO] pb: Running program.
 03/29/26 | 11:07:28 [INFO] pb: Execution concluded.
+03/29/26 | 13:47:05 [DEBUG] pb: Logger set up.
+03/29/26 | 13:47:05 [INFO] pb: Running program.
+03/29/26 | 13:47:05 [INFO] pb: Execution concluded.
+03/29/26 | 13:48:10 [DEBUG] pb: Logger set up.
+03/29/26 | 13:48:10 [INFO] pb: Running program.
+03/29/26 | 13:48:10 [INFO] pb: Execution concluded.
+03/29/26 | 13:48:53 [DEBUG] pb: Logger set up.
+03/29/26 | 13:48:53 [INFO] pb: Running program.
+03/29/26 | 13:50:31 [DEBUG] pb: Logger set up.
+03/29/26 | 13:50:31 [INFO] pb: Running program.
+03/29/26 | 13:51:05 [DEBUG] pb: Logger set up.
+03/29/26 | 13:51:05 [INFO] pb: Running program.
+03/29/26 | 13:55:19 [DEBUG] pb: Logger set up.
+03/29/26 | 13:55:19 [INFO] pb: Running program.
+03/29/26 | 13:58:02 [DEBUG] pb: Logger set up.
+03/29/26 | 13:58:02 [INFO] pb: Running program.
+03/29/26 | 13:58:13 [DEBUG] pb: Logger set up.
+03/29/26 | 13:58:13 [INFO] pb: Running program.
+03/29/26 | 14:13:11 [DEBUG] pb: Logger set up.
+03/29/26 | 14:13:11 [INFO] pb: Running program.
+03/29/26 | 14:13:11 [DEBUG] RPServer: Logger set up.
+03/29/26 | 14:13:16 [INFO] RPServer: Deleting server ID: 1111152704279035954.
+03/29/26 | 14:15:53 [DEBUG] pb: Logger set up.
+03/29/26 | 14:15:53 [INFO] pb: Running program.
+03/29/26 | 14:15:53 [DEBUG] RPServer: Logger set up.
+03/29/26 | 14:16:00 [INFO] RPServer: Registering new roleplay server with ID: 1111152704279035954.
+03/29/26 | 14:16:15 [DEBUG] pb: Logger set up.
+03/29/26 | 14:16:15 [INFO] pb: Running program.
+03/29/26 | 14:16:15 [DEBUG] RPServer: Logger set up.
+03/29/26 | 14:16:21 [INFO] RPServer: Registering new roleplay server with ID: 1111152704279035954.
+03/29/26 | 17:35:15 [DEBUG] pb: Logger set up.
+03/29/26 | 17:35:15 [INFO] pb: Running program.
+03/29/26 | 17:35:19 [INFO] pb: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:35:27 [DEBUG] pb: Logger set up.
+03/29/26 | 17:35:27 [INFO] pb: Running program.
+03/29/26 | 17:35:55 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:36:28 [DEBUG] pb: Logger set up.
+03/29/26 | 17:36:28 [INFO] pb: Running program.
+03/29/26 | 17:37:25 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:37:52 [DEBUG] pb: Logger set up.
+03/29/26 | 17:37:52 [INFO] pb: Running program.
+03/29/26 | 17:37:55 [INFO] pb: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:38:00 [DEBUG] pb: Logger set up.
+03/29/26 | 17:38:00 [INFO] pb: Running program.
+03/29/26 | 17:38:25 [DEBUG] pb: Logger set up.
+03/29/26 | 17:38:25 [INFO] pb: Running program.
+03/29/26 | 17:38:32 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:38:37 [DEBUG] pb: Logger set up.
+03/29/26 | 17:38:37 [INFO] pb: Running program.
+03/29/26 | 17:39:09 [DEBUG] pb: Logger set up.
+03/29/26 | 17:39:09 [INFO] pb: Running program.
+03/29/26 | 17:41:04 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:41:34 [DEBUG] pb: Logger set up.
+03/29/26 | 17:41:34 [INFO] pb: Running program.
+03/29/26 | 17:41:50 [INFO] pb: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:42:11 [DEBUG] pb: Logger set up.
+03/29/26 | 17:42:11 [INFO] pb: Running program.
+03/29/26 | 17:42:11 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:42:19 [INFO] pb: Execution concluded.
+03/29/26 | 17:42:27 [DEBUG] pb: Logger set up.
+03/29/26 | 17:42:27 [INFO] pb: Running program.
+03/29/26 | 17:42:27 [INFO] pb: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:42:27 [INFO] pb: Execution concluded.
+03/29/26 | 17:43:23 [DEBUG] pb: Logger set up.
+03/29/26 | 17:43:23 [INFO] pb: Running program.
+03/29/26 | 17:43:23 [INFO] pb: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:43:23 [INFO] pb: Execution concluded.
+03/29/26 | 17:44:24 [DEBUG] pb: Logger set up.
+03/29/26 | 17:44:24 [INFO] pb: Running program.
+03/29/26 | 17:44:24 [INFO] pb: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:44:24 [INFO] pb: Execution concluded.
+03/29/26 | 17:51:36 [DEBUG] pb: Logger set up.
+03/29/26 | 17:51:36 [INFO] pb: Running program.
+03/29/26 | 17:51:36 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:51:36 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:51:36 [INFO] pb: Execution concluded.
+03/29/26 | 17:51:49 [DEBUG] pb: Logger set up.
+03/29/26 | 17:51:49 [INFO] pb: Running program.
+03/29/26 | 17:51:49 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:51:49 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:51:49 [INFO] pb: Execution concluded.
+03/29/26 | 17:51:58 [DEBUG] pb: Logger set up.
+03/29/26 | 17:51:58 [INFO] pb: Running program.
+03/29/26 | 17:51:58 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:51:58 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:51:58 [INFO] pb: Execution concluded.
+03/29/26 | 17:52:10 [DEBUG] pb: Logger set up.
+03/29/26 | 17:52:10 [INFO] pb: Running program.
+03/29/26 | 17:52:10 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:52:10 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:52:10 [INFO] pb: Execution concluded.
+03/29/26 | 17:52:16 [DEBUG] pb: Logger set up.
+03/29/26 | 17:52:16 [INFO] pb: Running program.
+03/29/26 | 17:52:16 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:52:16 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:52:16 [INFO] pb: Execution concluded.
+03/29/26 | 17:52:21 [DEBUG] pb: Logger set up.
+03/29/26 | 17:52:21 [INFO] pb: Running program.
+03/29/26 | 17:52:21 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:52:21 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:52:21 [INFO] pb: Execution concluded.
+03/29/26 | 17:52:25 [DEBUG] pb: Logger set up.
+03/29/26 | 17:52:25 [INFO] pb: Running program.
+03/29/26 | 17:52:25 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:52:25 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:52:25 [INFO] pb: Execution concluded.
+03/29/26 | 17:52:32 [DEBUG] pb: Logger set up.
+03/29/26 | 17:52:32 [INFO] pb: Running program.
+03/29/26 | 17:52:32 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:52:32 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:52:32 [INFO] pb: Execution concluded.
+03/29/26 | 17:56:30 [DEBUG] pb: Logger set up.
+03/29/26 | 17:56:30 [INFO] pb: Running program.
+03/29/26 | 17:56:30 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:56:30 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:56:30 [INFO] pb: Execution concluded.
+03/29/26 | 17:56:57 [DEBUG] pb: Logger set up.
+03/29/26 | 17:56:57 [INFO] pb: Running program.
+03/29/26 | 17:56:57 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:56:57 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:56:57 [INFO] pb: Execution concluded.
+03/29/26 | 17:57:08 [DEBUG] pb: Logger set up.
+03/29/26 | 17:57:08 [INFO] pb: Running program.
+03/29/26 | 17:57:08 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:57:08 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 17:57:08 [INFO] pb: Execution concluded.
+03/29/26 | 17:58:39 [DEBUG] pb: Logger set up.
+03/29/26 | 17:58:39 [INFO] pb: Running program.
+03/29/26 | 17:58:49 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:58:56 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 17:59:20 [DEBUG] pb: Logger set up.
+03/29/26 | 17:59:20 [INFO] pb: Running program.
+03/29/26 | 17:59:29 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 17:59:42 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:03:03 [DEBUG] pb: Logger set up.
+03/29/26 | 18:03:03 [INFO] pb: Running program.
+03/29/26 | 18:03:40 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:03:40 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:03:40 [INFO] pb: Execution concluded.
+03/29/26 | 18:04:38 [DEBUG] pb: Logger set up.
+03/29/26 | 18:04:38 [INFO] pb: Running program.
+03/29/26 | 18:04:38 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:04:38 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:04:38 [INFO] pb: Execution concluded.
+03/29/26 | 18:04:50 [DEBUG] pb: Logger set up.
+03/29/26 | 18:04:50 [INFO] pb: Running program.
+03/29/26 | 18:04:50 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:04:50 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:04:50 [INFO] pb: Execution concluded.
+03/29/26 | 18:05:17 [DEBUG] pb: Logger set up.
+03/29/26 | 18:05:17 [INFO] pb: Running program.
+03/29/26 | 18:05:17 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:05:17 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:05:17 [INFO] pb: Execution concluded.
+03/29/26 | 18:05:27 [DEBUG] pb: Logger set up.
+03/29/26 | 18:05:27 [INFO] pb: Running program.
+03/29/26 | 18:05:27 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:05:27 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:05:27 [INFO] pb: Execution concluded.
+03/29/26 | 18:05:41 [DEBUG] pb: Logger set up.
+03/29/26 | 18:05:41 [INFO] pb: Running program.
+03/29/26 | 18:05:41 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:05:41 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:05:41 [INFO] pb: Execution concluded.
+03/29/26 | 18:05:53 [DEBUG] pb: Logger set up.
+03/29/26 | 18:05:53 [INFO] pb: Running program.
+03/29/26 | 18:05:53 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:05:53 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:05:53 [INFO] pb: Execution concluded.
+03/29/26 | 18:06:05 [DEBUG] pb: Logger set up.
+03/29/26 | 18:06:05 [INFO] pb: Running program.
+03/29/26 | 18:06:05 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:06:05 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:06:05 [INFO] pb: Execution concluded.
+03/29/26 | 18:06:16 [DEBUG] pb: Logger set up.
+03/29/26 | 18:06:16 [INFO] pb: Running program.
+03/29/26 | 18:06:16 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:06:16 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:06:16 [INFO] pb: Execution concluded.
+03/29/26 | 18:06:28 [DEBUG] pb: Logger set up.
+03/29/26 | 18:06:28 [INFO] pb: Running program.
+03/29/26 | 18:06:28 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:06:28 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:06:28 [INFO] pb: Execution concluded.
+03/29/26 | 18:06:40 [DEBUG] pb: Logger set up.
+03/29/26 | 18:06:40 [INFO] pb: Running program.
+03/29/26 | 18:06:40 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:06:40 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:06:40 [INFO] pb: Execution concluded.
+03/29/26 | 18:07:03 [DEBUG] pb: Logger set up.
+03/29/26 | 18:07:03 [INFO] pb: Running program.
+03/29/26 | 18:07:50 [DEBUG] pb: Logger set up.
+03/29/26 | 18:07:50 [INFO] pb: Running program.
+03/29/26 | 18:07:53 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:07:53 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:07:53 [INFO] pb: Execution concluded.
+03/29/26 | 18:08:20 [DEBUG] pb: Logger set up.
+03/29/26 | 18:08:20 [INFO] pb: Running program.
+03/29/26 | 18:08:20 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:08:20 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:08:20 [INFO] pb: Execution concluded.
+03/29/26 | 18:08:47 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:08:47 [INFO] Main Logger: Running program.
+03/29/26 | 18:08:47 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:08:47 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:08:47 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:36:08 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:36:08 [INFO] Main Logger: Running program.
+03/29/26 | 18:36:08 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:36:08 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:36:08 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:36:52 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:36:52 [INFO] Main Logger: Running program.
+03/29/26 | 18:36:52 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:36:52 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:36:52 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:44:47 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:44:47 [INFO] Main Logger: Running program.
+03/29/26 | 18:44:47 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:44:47 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:44:47 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:45:14 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:45:14 [INFO] Main Logger: Running program.
+03/29/26 | 18:45:14 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:45:14 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:45:14 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:57:56 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:57:56 [INFO] Main Logger: Running program.
+03/29/26 | 18:57:56 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:57:56 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 18:57:56 [INFO] Main Logger: Execution concluded.
+03/29/26 | 18:59:29 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 18:59:29 [INFO] Main Logger: Running program.
+03/29/26 | 18:59:29 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 18:59:29 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 18:59:29 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:02:54 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:04:23 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:04:43 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:05:24 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:07:44 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:12:08 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:13:16 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:14:46 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:15:57 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:16:35 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:21:18 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 19:21:18 [INFO] Main Logger: Running program.
+03/29/26 | 19:21:18 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:21:18 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 19:21:18 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:21:37 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 19:21:37 [INFO] Main Logger: Running program.
+03/29/26 | 19:21:37 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:21:37 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 19:21:37 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:21:41 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 19:21:41 [INFO] Main Logger: Running program.
+03/29/26 | 19:21:41 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:21:41 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 19:21:41 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:21:45 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 19:21:45 [INFO] Main Logger: Running program.
+03/29/26 | 19:21:45 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:21:45 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 19:21:45 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:22:05 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:22:14 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 19:22:14 [INFO] Main Logger: Running program.
+03/29/26 | 19:22:14 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 19:22:14 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 19:22:14 [INFO] Main Logger: Execution concluded.
+03/29/26 | 19:22:30 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:43:33 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 20:43:33 [INFO] Main Logger: Running program.
+03/29/26 | 20:43:33 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:43:33 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 20:43:33 [INFO] Main Logger: Execution concluded.
+03/29/26 | 20:43:43 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 20:43:43 [INFO] Main Logger: Running program.
+03/29/26 | 20:43:43 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:43:43 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+03/29/26 | 20:43:43 [INFO] Main Logger: Execution concluded.
+03/29/26 | 20:44:20 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:44:37 [DEBUG] Main Logger: Logger set up.
+03/29/26 | 20:44:37 [INFO] Main Logger: Running program.
+03/29/26 | 20:44:37 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:44:37 [INFO] DB Mixin: Registering new servers record with ID: 1111152704279035954.
+03/29/26 | 20:44:37 [INFO] Main Logger: Execution concluded.
+03/29/26 | 20:45:57 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:46:37 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:49:10 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:51:29 [DEBUG] DB Mixin: Logger set up.
+03/29/26 | 20:52:11 [DEBUG] DB Mixin: Logger set up.
