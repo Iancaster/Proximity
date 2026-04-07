@@ -503,11 +503,15 @@ class NewCommands(commands.Cog):
             
         embed = text_embed(
             "Let's do this.",
-            "First things first: some basic setup.",
-            "You can change these things later with /review roleplay.")
+            "First things first, your roleplay needs a name. Plus,"
+                " you need to designate a channel for admin logs (like" \
+                " character creation, place creation, and so on)." \
+                " And if you're feeling fancy, you can also set a" \
+                " description and reference photo for your roleplay. ", 
+            "You can change all these things later with /review roleplay.")
         
         dialogue = Dialogue(embed)
-        dialogue.add_channel_select(label = "logging",purpose = " for admin logs")
+        dialogue.add_channel_select(label = "logging", purpose = " for admin logs")
 
         details_popup = Popup(title = "Roleplay details")
 
@@ -563,17 +567,11 @@ class NewCommands(commands.Cog):
                 "And if you ever change your mind about the deets, you can do /review roleplay.")
             dialogue.view.clear_items()
             dialogue.add_close()
-
             await dialogue.refresh(interaction)
+
             return
 
         submit_button.callback = submit
-
-        # def button_refresh(self):
-        #     self.style = ButtonStyle.secondary if self.disabled else ButtonStyle.primary
-        # submit_button.refresh = MethodType(button_refresh, submit_button)
-
-        # submit_button.should_disable = lambda : True
 
         await dialogue.view.refresh_children()
         await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
