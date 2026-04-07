@@ -487,7 +487,7 @@ class NewCommands(commands.Cog):
     @new_group.command(name = "roleplay", description = "Make this a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
-        server = RPServer(1) #ctx.guild_id)
+        server = RPServer(ctx.guild_id)
 
         if await server.exists:
 
