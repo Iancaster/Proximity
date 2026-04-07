@@ -1,7 +1,7 @@
 """Used for sending through Discord."""
 
 from discord import ComponentType, Interaction
-from discord.ui import View, Select, Item, Button as ButtonInput, Modal, InputText
+from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
 from discord import File, Embed, ButtonStyle, InputTextStyle
 from aiohttp import ClientSession, ClientTimeout
 from typing import Callable, Any
@@ -99,7 +99,6 @@ class DialogueMixin(ABC):
         if callback_override is not None:
             self.callback = callback_override
 
-
         return
 
     @abstractmethod
@@ -163,6 +162,27 @@ class Button(ButtonInput, DialogueMixin):
     
     def get_value(self) -> Any:
         return None
+    
+class ChannelSelect(Select, DialogueMixin):
+
+    def __init__(self, *, 
+        label: str,
+        purpose: str = "",
+        dialogue_callback: Callable):
+
+        Select.__init__(self, custom_id = purpose, select_type = ComponentType.channel_select)
+        DialogueMixin.__init__(self, field_name = label, callback_override = dialogue_callback)
+        return
+    
+    def get_value(self) -> Any:
+        return self.values[0] if self.values else None
+    
+    def is_valid(self) -> bool:
+
+        if self.values is None:
+            return False
+        
+        return len(self.values) == 1
 
 class TextField(InputText, DialogueMixin):
 
@@ -190,6 +210,13 @@ class TextField(InputText, DialogueMixin):
     
     def get_value(self) -> Any:
         return self.value
+    
+    def is_valid(self) -> bool:
+
+        if not self.required:
+            return True
+        
+        return bool(self.value)
     
 class Popup(Modal):
 
@@ -270,17 +297,18 @@ class DialogueView(View):
 
 class Dialogue:
 
-    def __init__(self):
+    def __init__(self, starting_embed: Embed):
 
         self.view: DialogueView = DialogueView()
-        self.fields: list[DialogueMixin] = []
+        self.fields: dict[str, DialogueMixin] = {}
+        self.current_embed: Embed = starting_embed
 
         return
 
     async def refresh(self, interaction: Interaction) -> None:
 
         await self.view.refresh_children()
-        await interaction.response.edit_message(view = self.view)
+        await interaction.response.edit_message(embed = self.current_embed, view = self.view)
 
         return
 
@@ -292,7 +320,7 @@ class Dialogue:
             dialogue_callback = self.refresh)
         
         self.view.add_item(button)
-        self.fields.append(button)
+        self.fields[button.field_name] = button
 
         return button
 
@@ -312,13 +340,50 @@ class Dialogue:
                 print(f"Warning: child {child} does not implement DialogueMixin. Skipping insert.")
                 continue
 
-            self.fields.append(child)
+            self.fields[child.field_name] = child
 
+        return
+
+    def add_channel_select(self, label: str, purpose: str = "") -> ChannelSelect:
+
+        channel_select = ChannelSelect(
+            label = label,
+            purpose = purpose,
+            dialogue_callback = self.refresh)
+        
+        self.view.add_item(channel_select)
+        self.fields[channel_select.field_name] = channel_select
+
+        return channel_select
+
+    def add_close(self) -> Button:
+
+        button = Button(
+            label = "Close",
+            preferred_style = ButtonStyle.secondary,
+            dialogue_callback = self.close)
+        self.view.add_item(button)
+
+        return button
+    
+    async def close(self, interaction: Interaction):
+
+        closed_embed = text_embed(
+            title = "Closed.",
+            description = "This will now delete itself. Feel free to call the command again.",
+            footer = "Or don't, your call.")
+        self.view.clear_items()
+        
+        await interaction.response.edit_message(
+            embed = closed_embed, 
+            view = self.view, 
+            delete_after = 3)
+        
         return
 
     @property
     def is_valid(self) -> bool:
-        return all(isinstance(item, DialogueMixin) and item.is_valid() for item in self.fields)
+        return all(item.is_valid() for item in self.fields.values())
 
 async def send_message(
     interaction: Interaction, 

@@ -123,12 +123,12 @@ class DatabaseEntry(ABC):
 
         try:
 
-            async with db.execute(
-                f"INSERT INTO {cls.table_name} VALUES ({wildcards})",
-                values) as cursor:
+            await db.execute(
+                f"INSERT INTO {cls.table_name} ({cls.primary_key_col_name}, {', '.join(kwargs.keys())}) VALUES ({wildcards})",
+                values)
                 
-                await db.commit()
-                result = CommitResult.SUCCESS
+            await db.commit()
+            result = CommitResult.SUCCESS
 
         except IntegrityError as err:
 

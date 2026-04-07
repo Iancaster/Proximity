@@ -487,14 +487,14 @@ class NewCommands(commands.Cog):
     @new_group.command(name = "roleplay", description = "Make this a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
+        server = RPServer(1) #ctx.guild_id)
 
         if await server.exists:
 
             embed = text_embed(
                 "Way ahead of you.",
-                "This server already has a roleplay. If you want to start over," \
-                " delete the old one with `/delete roleplay` and then call this" \
+                "This server is already registered for roleplay. If you want to start over," \
+                " delete the existing data with `/delete roleplay` and then call this" \
                 " command again.",
                 "But if you just want a /new place or a /new character, call those instead.")
             
@@ -506,7 +506,8 @@ class NewCommands(commands.Cog):
             "First things first: some basic setup.",
             "You can change these things later with /review roleplay.")
         
-        dialogue = Dialogue()
+        dialogue = Dialogue(embed)
+        dialogue.add_channel_select(label = "logging",purpose = " for admin logs")
 
         details_popup = Popup(title = "Roleplay details")
 
@@ -550,10 +551,20 @@ class NewCommands(commands.Cog):
 
         async def submit(interaction: Interaction):
 
-            field_data = [(field.label, field.get_value()) for field in dialogue.fields]
-            print(f"Submitted! {field_data}")
-            await dialogue.refresh(interaction)
+            await server.create(
+                log_channel_id = dialogue.fields["logging"].get_value().id,
+                name = dialogue.fields["Title"].get_value(),
+                description = dialogue.fields["Description"].get_value(),
+                reference = dialogue.fields["Reference photo URL"].get_value())
+            
+            dialogue.current_embed = text_embed(
+                "All set!",
+                "This server is now registered. First things first: set up a `/new place`.",
+                "And if you ever change your mind about the deets, you can do /review roleplay.")
+            dialogue.view.clear_items()
+            dialogue.add_close()
 
+            await dialogue.refresh(interaction)
             return
 
         submit_button.callback = submit
@@ -564,7 +575,7 @@ class NewCommands(commands.Cog):
 
         # submit_button.should_disable = lambda : True
 
-        #await dialogue.view.refresh_children()
+        await dialogue.view.refresh_children()
         await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
         return
