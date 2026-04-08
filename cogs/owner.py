@@ -4,7 +4,7 @@ Commands entrusted only to the owner.
 
 from discord import ApplicationContext, Bot
 from discord.ext import commands
-from libraries.user_interface import text_embed, send_message
+from libraries.user_interface import text_embed, send_message, Dialogue
 
 class OwnerCommands(commands.Cog):
 
@@ -17,8 +17,6 @@ class OwnerCommands(commands.Cog):
         guild_ids = [1111152704279035954])
     async def refresh(self, ctx: ApplicationContext):
 
-        await ctx.defer(ephemeral = True)
-
         loaded_cogs = list(self.prox.extensions.keys())
 
         for cog in loaded_cogs:
@@ -29,7 +27,8 @@ class OwnerCommands(commands.Cog):
             'Refreshed cogs.',
             'Hopefully this is faster than just restarting.',
             'Or at least provides better continuity.')
-        await send_message(ctx.interaction, embed, ephemeral = True)
+        dialogue = Dialogue(embed)
+        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
         return
 
     @commands.is_owner()
@@ -38,18 +37,55 @@ class OwnerCommands(commands.Cog):
         guild_ids = [1111152704279035954])
     async def update(self, ctx: ApplicationContext):
 
-        embed = text_embed()
-        await ctx.respond(embed = embed)
+        from libraries.classes import RPServer
+        from discord import Interaction, ButtonStyle
+        
 
-        from data.database_handler import ServerEntry
+        server = RPServer(ctx.guild_id)
 
-        await ServerEntry.create(
-            ctx.guild_id, 
-            1160774705737896086, 
-            "place", 
-            "it's so good bro", 
-            "https://www.google.com")
+        if not await server.exists:
 
+            embed = text_embed(
+                "Nothing to delete!",
+                "Data is only made when you create new places or characters.",
+                "So, wish granted? This is as deleted as it gets.")
+            dialogue = Dialogue(embed)
+            dialogue.add_close()
+            await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
+            return
+
+        async def delete_data(interaction: Interaction):
+
+            await server.delete()
+
+            embed = text_embed(
+                "See you around, then.",
+                "The following has been deleted: " 
+                    "\n• All server data (name, description, reference, etc)."
+                    "\n• All Locations, and Routes between them."
+                    "\n• All Characters."
+                    "\n• All Character Channels and Location Channels.",
+                "Sorry to see you go.")
+            dialogue.current_embed = embed
+            dialogue.view.clear_items()
+            await dialogue.refresh(interaction)
+            
+            return
+
+        embed = text_embed(
+            "Delete all data?",
+            "You're about to delete all server data, including"
+                " all Locations and Characters. Any associated" 
+                " channels will also be deleted, except for the"
+                " log channel you set when you registered the server.",
+            "This is irreversible, so make sure you really want to do this.")
+
+        dialogue = Dialogue(embed)
+        delete_button = dialogue.add_button("Delete all data", ButtonStyle.danger)
+        delete_button.callback = delete_data
+        dialogue.add_close()
+    
+        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
         return
     
     async def cog_command_error(self, ctx: ApplicationContext, error: Exception):

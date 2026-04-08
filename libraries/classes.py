@@ -1,8 +1,23 @@
 """Where most core functionality resides."""
 
-from libraries.logger import get_logger
+from discord import ApplicationContext, TextChannel
 from data.database_handler import DatabaseMixin, ServerEntry, CommitResult
 
+async def in_text_channel(ctx: ApplicationContext) -> bool:
+
+    if not isinstance(ctx.channel, TextChannel):
+        await ctx.respond("Please call this command only from a standard text channel.", ephemeral = True)
+        return False
+    
+    return True
+
+async def is_administrator(ctx: ApplicationContext) -> bool:
+    
+    if not ctx.channel.permissions_for(ctx.author).administrator:
+        await ctx.respond("To prevent abuse, only server administrators may use this command.", ephemeral = True)
+        return False
+
+    return True
 
 class RPServer(DatabaseMixin):
     """Represents one server in the roleplay."""

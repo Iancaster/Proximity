@@ -1,14 +1,14 @@
 """Used for sending through Discord."""
 
-from discord import ComponentType, Interaction
+from discord import ComponentType, Interaction, ChannelType
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
+from discord.errors import NotFound
 from discord import File, Embed, ButtonStyle, InputTextStyle
 from aiohttp import ClientSession, ClientTimeout
 from typing import Callable, Any
 from io import BytesIO
 from enum import IntEnum
 from pathlib import Path
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 #"Constants"
@@ -170,7 +170,10 @@ class ChannelSelect(Select, DialogueMixin):
         purpose: str = "",
         dialogue_callback: Callable):
 
-        Select.__init__(self, custom_id = purpose, select_type = ComponentType.channel_select)
+        Select.__init__(self, 
+            custom_id = purpose, 
+            select_type = ComponentType.channel_select,
+            channel_types = [ChannelType.text])
         DialogueMixin.__init__(self, field_name = label, callback_override = dialogue_callback)
         return
     
@@ -274,12 +277,16 @@ class DialogueView(View):
     async def on_timeout(self):
         
         if self.original_interaction:
-            await self.original_interaction.edit_original_response(
-                content = "This dialogue has timed out. Feel free to call the command again.",
-                embed = None,
-                attachments= [],
-                view = None,
-                delete_after = 5)
+
+            try:
+                await self.original_interaction.edit_original_response(
+                    content = "This dialogue has timed out. Feel free to call the command again.",
+                    embed = None,
+                    attachments= [],
+                    view = None,
+                    delete_after = 5)
+            except NotFound:
+                pass
         
         return
 

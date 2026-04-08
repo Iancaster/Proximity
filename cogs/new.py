@@ -4,13 +4,14 @@
 from libraries.classes import RPServer
 from libraries.user_interface import Dialogue, Popup, text_embed, send_message
 
-from discord import ApplicationContext, TextChannel, \
+from discord import ApplicationContext, \
     InteractionContextType, ButtonStyle, InputTextStyle, \
     Interaction
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from types import MethodType
+#from types import MethodType
 
+from libraries.classes import in_text_channel, is_administrator, RPServer
 
 # from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
 # 	DialogueView, Character, ListenerManager
@@ -23,27 +24,13 @@ from types import MethodType
 # from data.listeners import direct_listeners, queue_refresh, \
 # 	to_direct_listeners
 
-async def in_text_channel(ctx: ApplicationContext) -> bool:
 
-    if not isinstance(ctx.channel, TextChannel):
-        await ctx.respond("Please call this command only from a standard text channel.", ephemeral = True)
-        return False
-    
-    return True
-
-async def is_administrator(ctx: ApplicationContext) -> bool:
-    
-    if not ctx.channel.permissions_for(ctx.author).administrator:
-        await ctx.respond("To prevent abuse, only server administrators may use this command.", ephemeral = True)
-        return False
-
-    return True
 
 class NewCommands(commands.Cog):
 
     new_group = SlashCommandGroup(
-        name = 'new',
-        description = 'Create new Roleplays, Locations, Paths, and Characters-- in that order.',
+        name = "new",
+        description = "Create new Roleplays, Locations, Paths, and Characters-- in that order.",
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator])
 
@@ -484,7 +471,7 @@ class NewCommands(commands.Cog):
     # 	await send_message(ctx.respond, embed, view, file)
     # 	return
 
-    @new_group.command(name = "roleplay", description = "Make this a new Proximity roleplay!")
+    @new_group.command(name = "roleplay", description = "Make this server a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
         server = RPServer(ctx.guild_id)
@@ -507,7 +494,7 @@ class NewCommands(commands.Cog):
                 " you need to designate a channel for admin logs (like" \
                 " character creation, place creation, and so on)." \
                 " And if you're feeling fancy, you can also set a" \
-                " description and reference photo for your roleplay. ", 
+                " description and/or reference photo. ", 
             "You can change all these things later with /review roleplay.")
         
         dialogue = Dialogue(embed)
@@ -552,6 +539,7 @@ class NewCommands(commands.Cog):
 
         submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
         submit_button.should_disable = lambda : not dialogue.is_valid
+        dialogue.add_close()
 
         async def submit(interaction: Interaction):
 
@@ -566,7 +554,6 @@ class NewCommands(commands.Cog):
                 "This server is now registered. First things first: set up a `/new place`.",
                 "And if you ever change your mind about the deets, you can do /review roleplay.")
             dialogue.view.clear_items()
-            dialogue.add_close()
             await dialogue.refresh(interaction)
 
             return

@@ -482,3 +482,19 @@
 04/06/26 | 22:16:24 [DEBUG] DB Mixin: Logger set up.
 04/06/26 | 22:18:40 [DEBUG] DB Mixin: Logger set up.
 04/06/26 | 22:18:56 [INFO] DB Mixin: New record made in servers table, ID: 1.
+04/07/26 | 22:21:26 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:22:24 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:25:34 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:25:47 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/07/26 | 22:27:20 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:29:26 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:32:01 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:32:18 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/07/26 | 22:33:46 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:33:50 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/07/26 | 22:34:32 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:35:19 [DEBUG] Main Logger: Logger set up.
+04/07/26 | 22:35:19 [INFO] Main Logger: Running program.
+04/07/26 | 22:35:19 [DEBUG] DB Mixin: Logger set up.
+04/07/26 | 22:35:19 [INFO] DB Mixin: Deleting record in servers with ID: 1.
+04/07/26 | 22:35:19 [INFO] Main Logger: Execution concluded.
