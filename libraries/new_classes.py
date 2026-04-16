@@ -1193,7 +1193,9 @@ class ChannelManager:
 				send_messages = True,
 				read_messages = True)
 
-		new_channel = await self.guild.create_text_channel(channel_name, category = self.category, overwrites = self.permissions)
+		new_channel = await self.guild.create_text_channel(
+			channel_name, 
+			category = self.category, overwrites = self.permissions)
 
 		await self.create_webhook(new_channel)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from data.database_handler import initialize_db, close_db
-from discord import Bot, Game, Intents
+from discord import Bot, Game, Intents, ApplicationContext, CheckFailure
 from asyncio import run
 from time import time
 from dotenv import load_dotenv
@@ -19,10 +19,10 @@ intents.webhooks = True
 
 load_dotenv()
 
+
 async def main():
 
-    token = environ.get("TOKEN")
-    if not token:
+    if not (token := environ.get("TOKEN")):
         raise RuntimeError("Have you forgotten the .env?")
     
     bot = Bot(intents = intents, owner_id = cfg("account", "owner_id"))
@@ -40,36 +40,23 @@ async def main():
     @bot.listen()
     async def on_close():
         await close_db()
+
+    @bot.event
+    async def on_application_command_error(ctx: ApplicationContext, error: Exception):
+        if isinstance(error, CheckFailure):
+            pass # Handled by the check.
+        else:
+            raise error
         
-    bot.load_extensions("cogs.owner", "cogs.debug", "cogs.new", "cogs.delete")
+    bot.load_extensions(
+        "cogs.owner", 
+        "cogs.debug", 
+        "cogs.new", 
+        "cogs.delete", 
+        "cogs.review",
+        "cogs.autonomous")
     await bot.start(token)
     return
 
 if __name__ == "__main__":
     run(main())
-
-    # tests_checklist = {
-    # 	'Location Tests' : [
-    # 			#('Delete Location', 'the-gardens'),
-    # 			('Create Location', 'the-gardens'),
-    # 			('Create Location', 'the-courtyard'),
-    # 			('Create Character', ('Cylian', 'the-courtyard')),
-    # 			('Create Character', ('Theo', 'the-gardens')),
-    # 			('Create Location', 'the-village-outskirts'),
-    # 			#('Delete Location', 'the-courtyard'),
-    # 			#('Delete Location', 'the-village-outskirts'),
-    # 			('Create Path', ('the-courtyard', 'the-gardens')),
-    # 			('Create Path', ('the-courtyard', 'the-village-outskirts')
-    # 			)
-    # 		]
-    # 	}
-
-    #test_guild = await bot.fetch_guild(1114005940392439899)
-
-    #from libraries.classes import Character
-    #my_guy = Character(1196173831610564708)
-    #from helpers.tests import tests
-    #await tests(tests_checklist, test_guild)
-
-    #print('Exiting.')
-    #exit()

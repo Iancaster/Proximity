@@ -1,5 +1,6 @@
 
 from aiosqlite import Connection, connect, Row, IntegrityError, OperationalError
+from typing import Iterable, Any
 from enum import StrEnum
 from pathlib import Path
 from sqlite3 import Row
@@ -33,36 +34,41 @@ async def initialize_db():
     await db.executescript("""
 
         CREATE TABLE IF NOT EXISTS servers (
-            guild_id       INT PRIMARY KEY,
-            log_channel_id INT NOT NULL,
-            name           TEXT NOT NULL,
-            description    TEXT,
-            reference      TEXT,
-            max_characters INT DEFAULT 10,
-            max_locations  INT DEFAULT 10,
-            creation_time   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            subscription_end  TIMESTAMP DEFAULT (DATETIME('now', '+7 day')));
+            guild_id           INT NOT NULL PRIMARY KEY,
+            log_channel_id     INT,
+            locations_cat      INT,
+            characters_cat     INT,
+            name               TEXT NOT NULL,
+            description        TEXT,
+            reference          TEXT,
+            character_limit    INT NOT NULL DEFAULT 10,
+            location_limit     INT NOT NULL DEFAULT 10,
+            creation_time      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            subscription_end   TIMESTAMP DEFAULT (DATETIME('now', '+7 day')));
                            
         CREATE TABLE IF NOT EXISTS locations (
-            location_id     INT PRIMARY KEY,
-            guild_id       INT NOT NULL REFERENCES servers(guild_id) ON DELETE CASCADE,
+            location_id    INT NOT NULL PRIMARY KEY,
+            guild_id       INT REFERENCES servers(guild_id) ON DELETE CASCADE,
             name           TEXT NOT NULL,
             description    TEXT,
             reference      TEXT);
                            
         CREATE TABLE IF NOT EXISTS routes (
-            from_id        INT NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
-            to_id          INT NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
+            from_id        INT REFERENCES locations(location_id) ON DELETE CASCADE,
+            to_id          INT REFERENCES locations(location_id) ON DELETE CASCADE,
             PRIMARY KEY (from_id, to_id));
                            
         CREATE TABLE IF NOT EXISTS characters (
-            character_id     INT PRIMARY KEY,
-            guild_id       INT NOT NULL REFERENCES servers(guild_id) ON DELETE CASCADE,
+            character_id   INT NOT NULL PRIMARY KEY,
+            location_id    INT REFERENCES locations(location_id) ON DELETE RESTRICT,
+            guild_id       INT REFERENCES servers(guild_id) ON DELETE RESTRICT,
+            eaves_target   INT REFERENCES locations(location_id) ON DELETE SET NULL,
             name           TEXT NOT NULL,
-            location_id    INT NOT NULL REFERENCES locations(location_id),
+            description    TEXT,
             reference      TEXT);
     
     """)
+
     await db.commit()
     
     return
@@ -90,6 +96,9 @@ class DatabaseEntry(ABC):
     table_name: str
     primary_key_col_name: str
 
+    def __init__(self, **_):
+        return super().__init__()
+
     @classmethod
     async def fetch(cls, id: int) -> Row | None:
 
@@ -100,6 +109,18 @@ class DatabaseEntry(ABC):
 
             return await cursor.fetchone()
         
+    @classmethod
+    async def fetch_all(cls, col_name: str, value: int | str) -> Iterable[Row]:
+        
+        db = await get_db()
+        async with db.execute(
+            f"SELECT * FROM {cls.table_name} WHERE {col_name} = ?",
+            (value,)) as cursor:
+
+            rows = await cursor.fetchall()
+
+        return rows
+
     @classmethod
     async def exists(cls, id: int) -> bool:
 
@@ -192,6 +213,19 @@ class DatabaseEntry(ABC):
         
         return result
 
+    @classmethod
+    async def count(cls, col_name: str, value: int | str) -> int:
+        """Counts how many rows have such a value in col_name."""
+
+        db = await get_db()
+
+        async with db.execute(
+            f"SELECT COUNT(*) FROM {cls.table_name} WHERE {col_name} = ?",
+            (value,)) as cursor:
+
+            row = await cursor.fetchone()
+            return row[0] # pyright: ignore[reportOptionalSubscript]
+
 class ServerEntry(DatabaseEntry):
 
     table_name: str = "servers"
@@ -204,9 +238,15 @@ class ServerEntry(DatabaseEntry):
         name: str, 
         description: str | None = None, 
         reference: str | None = None, 
+        location_limit: int | None = None,
+        character_limit: int | None = None,
+        subscription_end: int | None = None,
         *args, 
         **kwargs
     ) -> CommitResult:
+        
+        if subscription_end is not None:
+            kwargs["subscription_end"] = subscription_end
         
         return await super().create(
             id, 
@@ -214,6 +254,8 @@ class ServerEntry(DatabaseEntry):
             name = name, 
             description = description, 
             reference = reference,
+            location_limit = location_limit,
+            character_limit = character_limit,
             *args,
             **kwargs)  
 
@@ -221,9 +263,14 @@ class ServerEntry(DatabaseEntry):
     async def update(cls, 
         id: int, 
         log_channel_id: int | None = None,
+        locations_cat: int | None = None,
+        characters_cat: int | None = None,
         name: str | None = None, 
         description: str | None = None, 
         reference: str | None = None, 
+        character_limit: int | None = None,
+        location_limit: int | None = None,
+        subscription_end: int | None = None,
         **kwargs
     ) -> CommitResult:
         
@@ -231,6 +278,12 @@ class ServerEntry(DatabaseEntry):
         
         if log_channel_id is not None:
             updates["log_channel_id"] = log_channel_id
+
+        if locations_cat is not None:
+            updates["locations_cat"] = locations_cat if locations_cat else None
+
+        if characters_cat is not None:
+            updates["characters_cat"] = characters_cat if characters_cat else None
         
         if name is not None:
             updates["name"] = name
@@ -240,6 +293,15 @@ class ServerEntry(DatabaseEntry):
 
         if reference is not None:
             updates["reference"] = reference if reference else None
+
+        if character_limit is not None:
+            updates["character_limit"] = character_limit
+
+        if location_limit is not None:
+            updates["location_limit"] = location_limit
+
+        if subscription_end is not None:
+            updates["subscription_end"] = subscription_end if subscription_end else None
         
         return await super().update(id, **updates)  
 
@@ -297,8 +359,8 @@ class DatabaseMixin:
     """Inheritable class for objects which intend to store attributes equivalent to the fields in their table."""
 
     def __init__(self, 
-        entry_class: type[DatabaseEntry], 
         id: int,
+        entry_class: type[DatabaseEntry], 
         console_level: int | None):
 
         self.id = id
@@ -315,10 +377,44 @@ class DatabaseMixin:
             self._logger.warning(f"Tried to fetch {self.entry.table_name} data with ID #{self.id}, none exists.")
             return CommitResult.ROW_MISSING
         
-        self.__dict__.update(dict(result))
+        result = dict(result)
+        for key, val in result.items():
+            if val == "":
+                result[key] = None
+        
+        self.__dict__.update(result)
         return CommitResult.SUCCESS
+    
+    @staticmethod
+    async def fetch_all(
+        col_name: str, 
+        value: int | str,
+        entry_class: type[DatabaseEntry],
+        final_class: Any,
+        *_,
+        **__
+    ) -> Iterable[Any]:
 
-    async def delete(self) -> CommitResult:
+        rows = await entry_class.fetch_all(col_name, value)
+                
+        entries = []
+        for row in rows:
+
+            curr_entry = final_class(
+                id = row[entry_class.primary_key_col_name], 
+                console_level = 20)
+
+            row = dict(row)
+            for key, val in row.items():
+                if val == "":
+                    row[key] = None
+        
+            curr_entry.__dict__.update(row) # pyright: ignore[reportAttributeAccessIssue]
+            entries.append(curr_entry)
+
+        return entries
+
+    async def delete(self, **_) -> CommitResult:
         self._logger.info(f"Deleting record in {self.entry.table_name} with ID: {self.id}.")
         return await self.entry.delete(self.id)
      
@@ -332,26 +428,15 @@ class DatabaseMixin:
        
     async def update(self, **kwargs) -> CommitResult:
 
-        passed_kwargs = {k: v for k, v in kwargs if v is not None}
+        passed_kwargs = {k: v for k, v in kwargs.items() if v is not None}
         self.__dict__.update(passed_kwargs)
         
         return await self.entry.update(self.id, **passed_kwargs)
     
     @property
     async def exists(self) -> bool:
-        f"""True if the record is in the respective database."""
+        f"""True if the record is in the respective database."""        
         return await self.entry.exists(self.id)  
     
-
-# async def update_location(character_id: int, location_id: int):
-
-#     db = await get_db()
-#     await db.execute(
-#         "UPDATE locations SET location_id = ? WHERE user_id = ?",
-#         (location_id, character_id))
-    
-#     await db.commit()
-
-#     return
 
 

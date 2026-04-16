@@ -498,3 +498,299 @@
 04/07/26 | 22:35:19 [DEBUG] DB Mixin: Logger set up.
 04/07/26 | 22:35:19 [INFO] DB Mixin: Deleting record in servers with ID: 1.
 04/07/26 | 22:35:19 [INFO] Main Logger: Execution concluded.
+04/08/26 | 23:07:14 [DEBUG] Main Logger: Logger set up.
+04/08/26 | 23:07:14 [INFO] Main Logger: Running program.
+04/08/26 | 23:07:14 [DEBUG] DB Mixin: Logger set up.
+04/08/26 | 23:07:14 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/08/26 | 23:07:14 [INFO] Main Logger: Execution concluded.
+04/08/26 | 23:09:00 [DEBUG] DB Mixin: Logger set up.
+04/08/26 | 23:13:27 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 17:16:44 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 17:16:50 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/10/26 | 20:08:28 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 20:48:56 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 20:49:12 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 20:51:05 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 20:53:46 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:02:06 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:03:08 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:04:12 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:07:55 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:08:36 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:09:08 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:12:37 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:12:59 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:14:30 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:15:31 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:15:50 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:16:47 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:16:54 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:17:43 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:18:28 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:18:38 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:19:01 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:19:37 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:20:23 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:20:51 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:22:45 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:24:28 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:25:36 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:26:48 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:29:31 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:30:52 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:31:14 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:31:49 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:31:55 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:33:13 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:33:20 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:33:41 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:34:01 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:34:07 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:38:26 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:38:39 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/10/26 | 21:39:35 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:40:06 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:41:51 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:44:08 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:45:03 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:45:42 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:53:26 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:55:05 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:56:15 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 21:58:16 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 22:00:36 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 22:04:14 [DEBUG] DB Mixin: Logger set up.
+04/10/26 | 22:04:53 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:19:38 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:21:06 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:21:38 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/11/26 | 09:22:53 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:28:12 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:30:48 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:32:20 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:33:44 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:35:24 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:40:28 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 09:44:52 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:45:17 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 09:46:25 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 09:46:54 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 09:52:00 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 09:52:12 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 10:10:20 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 10:12:13 [INFO] DB Mixin: Deleting record in servers with ID: 1114005940392439899.
+04/11/26 | 10:21:58 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 10:27:23 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 10:33:06 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 10:39:19 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 13:05:46 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 13:07:05 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:05:40 [DEBUG] Main Logger: Logger set up.
+04/11/26 | 18:05:40 [INFO] Main Logger: Running program.
+04/11/26 | 18:05:40 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:05:40 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/11/26 | 18:05:40 [INFO] Main Logger: Execution concluded.
+04/11/26 | 18:19:21 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:21:09 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:22:06 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:34:18 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:34:47 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:38:04 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:39:24 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:39:42 [INFO] DB Mixin: New record made in locations table, ID: 1492746010609582111.
+04/11/26 | 18:41:28 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:55:31 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 18:55:51 [INFO] DB Mixin: New record made in locations table, ID: 1492750075200278588.
+04/11/26 | 19:09:10 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:10:24 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:10:43 [INFO] DB Mixin: New record made in locations table, ID: 1492753817131941999.
+04/11/26 | 19:11:47 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/11/26 | 19:14:03 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:14:23 [INFO] DB Mixin: New record made in locations table, ID: 1492754737395798019.
+04/11/26 | 19:15:23 [INFO] DB Mixin: New record made in locations table, ID: 1492754985614839888.
+04/11/26 | 19:16:26 [INFO] DB Mixin: New record made in locations table, ID: 1492755254805266525.
+04/11/26 | 19:22:23 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:23:31 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:24:42 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:27:24 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:27:45 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:32:25 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:34:56 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 19:39:08 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 20:06:25 [INFO] DB Mixin: New record made in locations table, ID: 1492767834248450138.
+04/11/26 | 20:30:48 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 20:31:18 [INFO] DB Mixin: New record made in locations table, ID: 1492774094029062154.
+04/11/26 | 20:32:33 [INFO] DB Mixin: New record made in locations table, ID: 1492774411827286107.
+04/11/26 | 21:49:29 [INFO] DB Mixin: New record made in locations table, ID: 1492793773850099815.
+04/11/26 | 21:50:01 [INFO] DB Mixin: New record made in locations table, ID: 1492793906138583060.
+04/11/26 | 22:45:59 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:45:59 [WARNING] DB Mixin: Could not locate locations category for Test Test.
+04/11/26 | 22:47:19 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:47:56 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:48:35 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:50:51 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:52:28 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:52:28 [WARNING] DB Mixin: Could not locate locations category for Test Test.
+04/11/26 | 22:52:28 [WARNING] DB Mixin: Could not locate characters category for Test Test.
+04/11/26 | 22:53:50 [DEBUG] DB Mixin: Logger set up.
+04/11/26 | 22:54:06 [INFO] DB Mixin: New record made in locations table, ID: 1492810036030869685.
+04/11/26 | 22:54:46 [WARNING] DB Mixin: Could not locate characters category for Test Test.
+04/11/26 | 22:55:38 [WARNING] DB Mixin: Could not locate characters category for Test Test.
+04/12/26 | 12:39:20 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 12:40:29 [INFO] DB Mixin: New record made in servers table, ID: 1114005940392439899.
+04/12/26 | 12:40:35 [WARNING] DB Mixin: Could not locate locations category for Aruvia.
+04/12/26 | 12:40:35 [WARNING] DB Mixin: Could not locate characters category for Aruvia.
+04/12/26 | 12:44:59 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 12:44:59 [WARNING] DB Mixin: Could not locate locations category for Aruvia.
+04/12/26 | 12:44:59 [WARNING] DB Mixin: Could not locate characters category for Aruvia.
+04/12/26 | 12:45:21 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 12:45:21 [WARNING] DB Mixin: Could not locate locations category for Aruvia.
+04/12/26 | 12:45:21 [WARNING] DB Mixin: Could not locate characters category for Aruvia.
+04/12/26 | 15:32:17 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 15:32:27 [INFO] DB Mixin: New record made in locations table, ID: 1493061275922731080.
+04/12/26 | 16:47:22 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 16:47:22 [WARNING] DB Mixin: Could not locate characters category for Aruvia.
+04/12/26 | 16:47:42 [INFO] DB Mixin: New record made in locations table, ID: 1493080215054979203.
+04/12/26 | 17:09:28 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:23:50 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:24:44 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:26:14 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:30:50 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:30:50 [WARNING] DB Mixin: Could not locate characters category for Aruvia.
+04/12/26 | 17:32:27 [INFO] DB Mixin: New record made in locations table, ID: 1493091468368416839.
+04/12/26 | 17:36:59 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:37:08 [INFO] DB Mixin: New record made in locations table, ID: 1493092644170104893.
+04/12/26 | 17:42:01 [INFO] DB Mixin: New record made in locations table, ID: 1493093879451226143.
+04/12/26 | 17:43:16 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 17:43:39 [INFO] DB Mixin: New record made in locations table, ID: 1493094286906884188.
+04/12/26 | 17:49:27 [INFO] DB Mixin: Deleting record in locations with ID: 1493094286906884188.
+04/12/26 | 18:32:05 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 18:32:14 [INFO] DB Mixin: New record made in locations table, ID: 1493106514099961956.
+04/12/26 | 18:33:11 [INFO] DB Mixin: Deleting record in locations with ID: 1493106514099961956.
+04/12/26 | 18:38:12 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 19:35:47 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 19:35:50 [INFO] DB Mixin: Deleting record in servers with ID: 1114005940392439899.
+04/12/26 | 19:47:43 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:14:44 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:15:11 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 20:15:29 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:15:29 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:16:45 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:16:45 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:16:45 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:17:17 [INFO] DB Mixin: New record made in locations table, ID: 1493132953923096626.
+04/12/26 | 20:17:57 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:17:57 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:17:57 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:18:21 [INFO] DB Mixin: Deleting record in locations with ID: 1493132953923096626.
+04/12/26 | 20:20:52 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:20:52 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:20:52 [WARNING] DB Mixin: Server cannot locate category without Client or Guild reference.
+04/12/26 | 20:21:06 [INFO] DB Mixin: New record made in locations table, ID: 1493133912518557837.
+04/12/26 | 20:22:31 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:22:58 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 20:23:03 [WARNING] DB Mixin: Could not find locations category; non-Proximity RP server.
+04/12/26 | 20:23:50 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:24:18 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 20:24:34 [INFO] DB Mixin: New record made in locations table, ID: 1493134787974664294.
+04/12/26 | 20:25:05 [INFO] DB Mixin: Deleting record in locations with ID: 1493134787974664294.
+04/12/26 | 20:26:18 [INFO] DB Mixin: New record made in locations table, ID: 1493135222336786472.
+04/12/26 | 20:27:19 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:27:40 [INFO] DB Mixin: New record made in locations table, ID: 1493135564403380374.
+04/12/26 | 20:28:07 [INFO] DB Mixin: New record made in locations table, ID: 1493135680300126218.
+04/12/26 | 20:59:35 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 20:59:35 [WARNING] DB Mixin: Could not locate characters category for rp.
+04/12/26 | 20:59:43 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 21:00:08 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 21:11:53 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 21:12:00 [WARNING] DB Mixin: Could not locate locations category for mhm.
+04/12/26 | 21:12:00 [WARNING] DB Mixin: Could not locate characters category for mhm.
+04/12/26 | 21:12:19 [INFO] DB Mixin: New record made in locations table, ID: 1493146801547509861.
+04/12/26 | 22:02:47 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:02:50 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 22:03:12 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 22:04:54 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:04:56 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 22:05:37 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 22:05:50 [INFO] DB Mixin: New record made in locations table, ID: 1493160271378911333.
+04/12/26 | 22:09:42 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:14:52 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:15:05 [INFO] DB Mixin: Deleting record in locations with ID: 1493160271378911333.
+04/12/26 | 22:19:39 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:19:47 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 22:20:21 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:20:44 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 22:21:07 [INFO] DB Mixin: New record made in locations table, ID: 1493164119077945344.
+04/12/26 | 22:21:14 [INFO] DB Mixin: Deleting record in locations with ID: 1493164119077945344.
+04/12/26 | 22:21:29 [INFO] DB Mixin: New record made in locations table, ID: 1493164206890156102.
+04/12/26 | 22:23:29 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:29:04 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:29:40 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:31:00 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:31:48 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:31:50 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 22:32:13 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:32:15 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 22:34:07 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:34:09 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 22:47:40 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:47:43 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 22:50:09 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 22:50:11 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 23:15:26 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:17:36 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 23:22:24 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:22:25 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 23:23:21 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:23:23 [WARNING] DB Mixin: Could not locate locations category for ooooooooo.
+04/12/26 | 23:23:23 [INFO] DB Mixin: Deleting record in locations with ID: 1493164206890156102.
+04/12/26 | 23:23:23 [WARNING] DB Mixin: Could not locate characters category for ooooooooo.
+04/12/26 | 23:23:23 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:26:56 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:27:04 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:27:19 [INFO] DB Mixin: New record made in locations table, ID: 1493180776576061520.
+04/12/26 | 23:27:30 [INFO] DB Mixin: Deleting record in locations with ID: 1493180776576061520.
+04/12/26 | 23:27:30 [WARNING] DB Mixin: Could not locate characters category for uouou.
+04/12/26 | 23:27:30 [INFO] DB Mixin: Deleting record in locations with ID: 1493180776576061520.
+04/12/26 | 23:27:30 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:28:00 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:28:11 [INFO] DB Mixin: New record made in locations table, ID: 1493180996785537065.
+04/12/26 | 23:28:15 [INFO] DB Mixin: Deleting record in locations with ID: 1493180996785537065.
+04/12/26 | 23:28:27 [INFO] DB Mixin: New record made in locations table, ID: 1493181063290159176.
+04/12/26 | 23:28:31 [INFO] DB Mixin: Deleting record in locations with ID: 1493181063290159176.
+04/12/26 | 23:28:31 [WARNING] DB Mixin: Could not locate characters category for huh.
+04/12/26 | 23:28:31 [INFO] DB Mixin: Deleting record in locations with ID: 1493181063290159176.
+04/12/26 | 23:28:33 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:29:52 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:30:04 [INFO] DB Mixin: New record made in locations table, ID: 1493181468925497385.
+04/12/26 | 23:33:05 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:33:18 [INFO] DB Mixin: Deleting record in locations with ID: 1493181468925497385.
+04/12/26 | 23:33:19 [WARNING] DB Mixin: Could not locate characters category for test.
+04/12/26 | 23:33:19 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:33:46 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:34:01 [INFO] DB Mixin: New record made in locations table, ID: 1493182463495635105.
+04/12/26 | 23:34:11 [INFO] DB Mixin: Deleting record in locations with ID: 1493182463495635105.
+04/12/26 | 23:34:11 [WARNING] DB Mixin: Tried to fetch locations data with ID #1493182463495635105, none exists.
+04/12/26 | 23:35:21 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:35:33 [INFO] DB Mixin: New record made in locations table, ID: 1493182852731371540.
+04/12/26 | 23:35:37 [INFO] DB Mixin: Deleting record in locations with ID: 1493182852731371540.
+04/12/26 | 23:36:01 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:36:13 [INFO] DB Mixin: New record made in locations table, ID: 1493183014795088022.
+04/12/26 | 23:36:17 [INFO] DB Mixin: Deleting record in locations with ID: 1493183014795088022.
+04/12/26 | 23:37:10 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:37:19 [INFO] DB Mixin: New record made in locations table, ID: 1493183293586407494.
+04/12/26 | 23:37:23 [INFO] DB Mixin: Deleting record in locations with ID: 1493183293586407494.
+04/12/26 | 23:38:00 [INFO] DB Mixin: New record made in locations table, ID: 1493183466853105713.
+04/12/26 | 23:38:14 [INFO] DB Mixin: Deleting record in locations with ID: 1493183466853105713.
+04/12/26 | 23:38:14 [WARNING] DB Mixin: Could not locate characters category for noice.
+04/12/26 | 23:38:15 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:39:39 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:41:10 [INFO] DB Mixin: New record made in locations table, ID: 1493184258066354268.
+04/12/26 | 23:42:35 [DEBUG] DB Mixin: Logger set up.
+04/12/26 | 23:42:35 [WARNING] DB Mixin: Could not locate characters category for ououo.
+04/12/26 | 23:42:47 [INFO] DB Mixin: Deleting record in locations with ID: 1493184258066354268.
+04/12/26 | 23:42:47 [WARNING] DB Mixin: Could not locate characters category for ououo.
+04/12/26 | 23:42:47 [INFO] DB Mixin: Deleting record in servers with ID: 1111152704279035954.
+04/12/26 | 23:43:18 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
+04/12/26 | 23:43:38 [INFO] DB Mixin: New record made in locations table, ID: 1493184885358071908.
+04/12/26 | 23:43:44 [INFO] DB Mixin: Deleting record in locations with ID: 1493184885358071908.

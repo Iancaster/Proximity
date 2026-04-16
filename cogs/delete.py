@@ -4,9 +4,10 @@
 from discord import ApplicationContext, Interaction, InteractionContextType, ButtonStyle
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
+from discord.utils import get_or_fetch
 
-from libraries.classes import in_text_channel, is_administrator, RPServer
-from libraries.user_interface import Dialogue, text_embed, send_message
+from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer
+from libraries.user_interface import Dialogue, ImageSource, text_embed, image_embed, send_message
 
 class DeleteCommands(commands.Cog):
 
@@ -14,7 +15,7 @@ class DeleteCommands(commands.Cog):
         name = "delete",
         description = "Get rid of Locations, Routes, or Characters. Or the RP itself.",
         contexts = [InteractionContextType.guild],
-        checks = [in_text_channel, is_administrator])
+        checks = [in_text_channel, is_administrator, in_prox_rp])
 
     # @delete_group.command(name = 'place', description = 'Delete a place.')
     # async def place(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place?', name = 'place', autocomplete = complete_places, required = False)):
@@ -396,29 +397,24 @@ class DeleteCommands(commands.Cog):
     async def roleplay(self, ctx: ApplicationContext):
 
         server = RPServer(ctx.guild_id)
-
-        if not await server.exists:
-
-            embed = text_embed(
-                "Nothing to delete!",
-                "But if you did `/new roleplay`, you would.",
-                "So, wish granted, for now? This is as deleted as it gets.")
-            dialogue = Dialogue(embed)
-            await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-            return
-
         async def delete_data(interaction: Interaction):
 
-            await server.delete()
+            await server.fetch()
+            logging_channel = await server.get_logging_channel(interaction.guild)
+            await server.delete(logging_channel)
 
-            embed = text_embed(
-                "See you around, then.",
+            embed, file = await image_embed(
+                f"Roleplay Deleted: {server.name}",
                 "The following has been deleted: " 
-                    "\n• All server data (name, description, reference, etc)."
-                    "\n• All Locations, their channels, and all Routes between them."
-                    "\n• All Characters and their location channels.",
-                "Sorry to see you go.")
-            dialogue.current_embed = embed
+                    "\n - All server data (name, description, reference, etc)."
+                    "\n - All Locations, their channels, and all Routes between them."
+                    "\n - All Characters and their location channels.",
+                "Sorry to see you go.",
+                thumbnail = True,
+                source = ImageSource.URL if server.reference else ImageSource.ASSET,
+                asset_str = server.reference or "")
+
+            dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()
             await dialogue.refresh(interaction)
             
@@ -435,6 +431,7 @@ class DeleteCommands(commands.Cog):
         dialogue = Dialogue(embed)
         delete_button = dialogue.add_button("Delete all data", ButtonStyle.danger)
         delete_button.callback = delete_data
+        dialogue.add_close()
     
         await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
         return

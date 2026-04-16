@@ -1,6 +1,6 @@
 """Used for sending through Discord."""
 
-from discord import ComponentType, Interaction, ChannelType
+from discord import ComponentType, Interaction, ChannelType, MISSING, HTTPException
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
 from discord.errors import NotFound
 from discord import File, Embed, ButtonStyle, InputTextStyle
@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 #"Constants"
 NO_AVATAR_URL = "https://i.imgur.com/A6qTjRc.jpeg"
 ASSETS_DIR = Path().cwd() / "assets"
-VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
+VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"]
 
 class ImageSource(IntEnum):
     ASSET = 0
@@ -35,12 +35,12 @@ def text_embed(
 
     return embed
 
-async def _validate_url(url: str) -> bool:
+async def validate_url(url: str) -> bool:
     # forgive me
     try:
         async with ClientSession() as session:
-            async with session.head(url, timeout=ClientTimeout(5)) as response:
-                content_type = response.headers.get("content-type", "") 
+            async with session.head(url, timeout = ClientTimeout(5)) as response:
+                content_type = response.headers.get("content-type") 
                 return content_type in VALID_IMAGE_TYPES
             
     except Exception:
@@ -58,11 +58,15 @@ async def image_embed(
 
     embed = text_embed(title, description, footer)
     file = None
+
+    if source == ImageSource.ASSET and asset_str == "":
+        return embed, file
+
     place_image = embed.set_thumbnail if thumbnail else embed.set_image
 
     if source == ImageSource.URL:
 
-        if not await _validate_url(asset_str):
+        if not await validate_url(asset_str):
             asset_str = NO_AVATAR_URL
 
         file = None
@@ -77,6 +81,7 @@ async def image_embed(
         place_image(url = "attachment://image.png")  # pyright: ignore[reportCallIssue]
         
     else:
+
         asset_path = ASSETS_DIR / asset_str
 
         if not asset_path.exists():
@@ -88,6 +93,23 @@ async def image_embed(
         place_image(url = "attachment://image.png")  # pyright: ignore[reportCallIssue]
 
     return embed, file
+
+async def reference_validator(description: str, proposed_URL: str) -> tuple[str, str]:
+
+    if proposed_URL == "":
+        return description, ""
+
+    description += "\n\nP.S. Took a look at the new reference URL, and it "
+    valid_url = await validate_url(proposed_URL)
+
+    if valid_url:
+        description += "looks great."
+
+    else:
+        description += "doesn't seem to be a valid image. Try again maybe?"
+        proposed_URL = ""
+
+    return description, proposed_URL
 
 class DialogueMixin(ABC):
 
@@ -168,24 +190,25 @@ class ChannelSelect(Select, DialogueMixin):
     def __init__(self, *, 
         label: str,
         purpose: str = "",
-        dialogue_callback: Callable):
+        dialogue_callback: Callable,
+        placeholder: str | None = None,
+        min_values: int = 0):
 
         Select.__init__(self, 
             custom_id = purpose, 
             select_type = ComponentType.channel_select,
-            channel_types = [ChannelType.text])
+            channel_types = [ChannelType.text],
+            placeholder = placeholder,
+            min_values = min_values)
         DialogueMixin.__init__(self, field_name = label, callback_override = dialogue_callback)
         return
     
     def get_value(self) -> Any:
-        return self.values[0] if self.values else None
+        return self.values[0].id if self.values is not None else None # pyright: ignore[reportAttributeAccessIssue]
     
     def is_valid(self) -> bool:
-
-        if self.values is None:
-            return False
-        
-        return len(self.values) == 1
+        selected_count = len(self.values) if self.values is not None else 0
+        return self.min_values <= selected_count <= self.max_values
 
 class TextField(InputText, DialogueMixin):
 
@@ -285,7 +308,7 @@ class DialogueView(View):
                     attachments= [],
                     view = None,
                     delete_after = 5)
-            except NotFound:
+            except NotFound, HTTPException:
                 pass
         
         return
@@ -304,18 +327,49 @@ class DialogueView(View):
 
 class Dialogue:
 
-    def __init__(self, starting_embed: Embed):
+    def __init__(self, 
+        starting_embed: Embed, 
+        starting_file: File | None = None,
+        disable_timeout: bool = False):
 
         self.view: DialogueView = DialogueView()
+
+        if disable_timeout:
+            self.view.timeout = None
+
         self.fields: dict[str, DialogueMixin] = {}
-        self.current_embed: Embed = starting_embed
+
+        self.current_embed = starting_embed
+        self.previous_embed: Embed | None = starting_embed
+
+        self.current_file = starting_file
+        self.previous_file: File | None = starting_file
 
         return
 
     async def refresh(self, interaction: Interaction) -> None:
 
+        kwargs = {}
+        kwargs["view"] = self.view
+
+        if self.current_embed != self.previous_embed:
+            self.previous_embed = self.current_embed
+            kwargs["embed"] = self.current_embed
+        
+        if self.current_file != self.previous_file:
+            self.previous_file = self.current_file
+            kwargs["file"] = self.current_file
+
+            if self.current_file is MISSING:
+                kwargs["attachments"] = []
+
         await self.view.refresh_children()
-        await interaction.response.edit_message(embed = self.current_embed, view = self.view)
+        try:
+            await interaction.response.edit_message(**kwargs)
+        except NotFound:
+            await interaction.respond(
+                "The original message has been deleted-- perhaps it timed out?"
+                    " Please call the command again.", ephemeral = True)
 
         return
 
@@ -351,12 +405,19 @@ class Dialogue:
 
         return
 
-    def add_channel_select(self, label: str, purpose: str = "") -> ChannelSelect:
+    def add_channel_select(self, 
+        label: str, 
+        purpose: str = "", 
+        placeholder: str | None = None,
+        min_values: int = 0
+    ) -> ChannelSelect:
 
         channel_select = ChannelSelect(
             label = label,
             purpose = purpose,
-            dialogue_callback = self.refresh)
+            placeholder = placeholder,
+            dialogue_callback = self.refresh,
+            min_values = min_values)
         
         self.view.add_item(channel_select)
         self.fields[channel_select.field_name] = channel_select
