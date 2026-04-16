@@ -6,7 +6,7 @@ from discord import Client, ApplicationContext, TextChannel, \
     CategoryChannel, Guild, PermissionOverwrite, Forbidden, \
     HTTPException, Webhook, NotFound, Interaction, MISSING
 from discord.utils import get_or_fetch, find
-from libraries.user_interface import text_embed, image_embed, ImageSource
+from libraries.user_interface import text_embed, image_embed, ImageSource, safe_log, safe_del_channels
 from data.database_handler import DatabaseMixin, CommitResult, \
     ServerEntry, LocationEntry, CharacterEntry
 from os import environ
@@ -200,8 +200,7 @@ class RPServer(DatabaseMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await log_channel.send(embed = embed, file = file) # pyright: ignore[reportArgumentType]
-        
+        await safe_log(embed, [log_channel], silent = True, file = file)        
         return result
 
     async def update(self, 
@@ -317,7 +316,9 @@ class RPServer(DatabaseMixin):
         
         return found_category
 
-    async def delete(self, log_channel: TextChannel | None = None, **_) -> CommitResult:
+    async def delete(self, # delete character channels here too
+        log_channel: TextChannel | None = None, **_
+    ) -> CommitResult:
 
         if log_channel is None:
             return await super().delete()
@@ -327,13 +328,7 @@ class RPServer(DatabaseMixin):
             category_id = self.locations_cat,
             guild = log_channel.guild,
             make_if_needed = False)
-        
-        if loc_category is not None:
-        
-            try:
-                await loc_category.delete(reason = "Roleplay is being deleted.")
-            except:
-                pass
+        await safe_del_channels([loc_category], "Roleplay is being deleted.")
 
         for location in await self.locations:
 
@@ -343,20 +338,14 @@ class RPServer(DatabaseMixin):
                 location.id,
                 default = None)
             
-            await location.delete(location_channel = loc_channel)
+            await safe_del_channels([loc_channel], "Roleplay is being deleted.")
 
         char_category = await self.get_category(
             "characters",
             category_id = self.characters_cat,
             guild = log_channel.guild,
             make_if_needed = False)
-        
-        if char_category is not None:
-        
-            try:
-                await char_category.delete(reason = "Roleplay is being deleted.")
-            except:
-                pass
+        await safe_del_channels([char_category], "Roleplay is being deleted.")
 
         embed, file = await image_embed(
             f"Roleplay Deleted: {self.name}",
@@ -369,8 +358,7 @@ class RPServer(DatabaseMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await log_channel.send(embed = embed, file = file) # pyright: ignore[reportArgumentType]
-
+        await safe_log(embed, [log_channel], silent = True, file = file)        
         return await super().delete()
 
     @property
@@ -462,19 +450,9 @@ class Location(DatabaseMixin, RelayableMixin):
             source = ImageSource.URL if reference else ImageSource.ASSET,
             asset_str = reference or "")
         
-        try:
-            await new_loc_channel.send(embed = embed, file = file, silent = True) # pyright: ignore[reportArgumentType]
-        except HTTPException, Forbidden:
-            pass
-
         logging_channel = await RPServer(guild_id).get_logging_channel(guild = new_loc_channel.guild)
-
-        if logging_channel is not None:
-            try:
-                await logging_channel.send(embed = embed, file = file, silent = True) # pyright: ignore
-            except HTTPException, Forbidden:
-                pass
-
+        await safe_log(embed, [new_loc_channel, logging_channel], silent = True, file = file)
+        
         return result
 
     async def delete(self, 

@@ -1,6 +1,7 @@
 """Used for sending through Discord."""
 
-from discord import ComponentType, Interaction, ChannelType, MISSING, HTTPException
+from discord import ComponentType, Interaction, ChannelType, MISSING, \
+    HTTPException, TextChannel, Forbidden, CategoryChannel
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
 from discord.errors import NotFound
 from discord import File, Embed, ButtonStyle, InputTextStyle
@@ -475,6 +476,42 @@ async def send_message(
     if view is not None:
         view.set_interaction(interaction)
 
+    return
+
+async def safe_log(
+    embed: Embed, 
+    channels: list[TextChannel | None], 
+    silent: bool = True, **kwargs
+) -> None:
+
+    for chan in channels:
+
+        if chan is None:
+            continue
+
+        try: 
+            await chan.send(embed = embed, silent = silent, **kwargs)
+
+        except HTTPException, Forbidden:
+            pass
+
+    return
+
+async def safe_del_channels(
+    channels: list[TextChannel | CategoryChannel | None],
+    reason: str
+) -> None:
+    
+    for chan in channels:
+
+        if chan is None:
+            continue
+            
+        try:
+            await chan.delete(reason = reason)
+        except Forbidden, HTTPException, NotFound:
+            pass
+    
     return
 
 # class DialogueView(View):
