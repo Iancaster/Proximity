@@ -3,6 +3,7 @@
 from discord import ComponentType, Interaction, ChannelType, MISSING, \
     HTTPException, TextChannel, Forbidden, CategoryChannel
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
+from discord.abc import GuildChannel
 from discord.errors import NotFound
 from discord import File, Embed, ButtonStyle, InputTextStyle
 from aiohttp import ClientSession, ClientTimeout
@@ -211,6 +212,10 @@ class ChannelSelect(Select, DialogueMixin):
         selected_count = len(self.values) if self.values is not None else 0
         return self.min_values <= selected_count <= self.max_values
 
+    @property
+    def values(self) -> list[GuildChannel]: # pyright: ignore[reportIncompatibleMethodOverride]
+        return super().values # pyright: ignore[reportReturnType]
+
 class TextField(InputText, DialogueMixin):
 
     def __init__(self, *, 
@@ -365,9 +370,10 @@ class Dialogue:
                 kwargs["attachments"] = []
 
         await self.view.refresh_children()
+
         try:
             await interaction.response.edit_message(**kwargs)
-        except NotFound:
+        except NotFound, HTTPException:
             await interaction.respond(
                 "The original message has been deleted-- perhaps it timed out?"
                     " Please call the command again.", ephemeral = True)

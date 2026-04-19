@@ -55,36 +55,33 @@ class RelayableMixin:
 
     default_avatar_asset: str = "logo.png"
 
+    def __init__(self):
+        self.id: int = 0
+        return
+
     @staticmethod
     async def make_channel(
         category_name: str,
         channel_name: str, 
-        interaction: Interaction,
-        respond_if_unable: bool = False
+        guild: Guild
     ) -> TextChannel | None:
 
-        if interaction.guild is None:
-            return None
-
-        server = RPServer(interaction.guild.id)
+        server = RPServer(guild.id)
         await server.fetch()
 
         loc_category = await server.get_category(
             category_name,
-            guild = interaction.guild,
+            guild = guild,
             category_id = server.locations_cat if \
                 category_name == "locations" else server.characters_cat,
             make_if_needed = True)
-        
-        requestor = interaction.user.display_name if \
-            interaction.user is not None else "someone"
 
         try:
 
-            new_rp_channel = await interaction.guild.create_text_channel( 
+            new_rp_channel = await guild.create_text_channel( 
                 name = channel_name,
                 category = loc_category,
-                reason = f"Requested by {requestor}.")
+                reason = f"Requested by user for roleplay purposes.")
 
         except HTTPException, Forbidden:
             new_rp_channel = None
@@ -92,16 +89,15 @@ class RelayableMixin:
         if new_rp_channel is not None:
             await RelayableMixin.create_webhook(new_rp_channel)
 
-        elif respond_if_unable:
-
-            await interaction.delete_original_message()
-            embed = text_embed(
-                "Uh oh.",
-                f"I couldn't make the `#{channel_name}` channel.",
-                "Can you try again after ensuring I can Manage Channels and Manage Webhooks?")
-            await interaction.respond(embed = embed, ephemeral = True)
-        
         return new_rp_channel
+
+    async def get_channel(self, guild: Guild | None) -> TextChannel | None:
+
+        return await get_or_fetch(
+            guild, 
+            "channel", 
+            self.id, 
+            default = None)
 
     @staticmethod
     async def ensure_webhook(channel: TextChannel) -> Webhook:
@@ -228,35 +224,16 @@ class RPServer(DatabaseMixin):
             location_limit = location_limit,
             subscription_end = subscription_end)
 
-    async def get_logging_channel(self,              
-        guild: Guild | None = None,
-        client: Client | None = None
-    ) -> TextChannel | None:
+    async def get_logging_channel(self, guild: Guild | None) -> TextChannel | None:
 
         if self.log_channel_id is None:
             return None
 
-        if guild is None and client is None:
-            return None
-        
-        if guild is None:
-
-            guild = await get_or_fetch(
-                client, 
-                "guild", 
-                self.id, 
-                default = None)
-            
-            if guild is None:
-                return None
-
-        logging_channel = await get_or_fetch(
+        return await get_or_fetch(
             guild, 
             "channel",
             self.log_channel_id,
             default = None)
-        
-        return logging_channel
 
     async def get_category(self, 
         category_name: str,
@@ -332,13 +309,8 @@ class RPServer(DatabaseMixin):
 
         for location in await self.locations:
 
-            loc_channel = await get_or_fetch(
-                log_channel.guild, 
-                "channel", 
-                location.id,
-                default = None)
-            
-            await safe_del_channels([loc_channel], "Roleplay is being deleted.")
+            loc_channel = await location.get_channel(log_channel.guild)
+            await location.delete(location_channel = loc_channel)
 
         char_category = await self.get_category(
             "characters",
@@ -346,6 +318,11 @@ class RPServer(DatabaseMixin):
             guild = log_channel.guild,
             make_if_needed = False)
         await safe_del_channels([char_category], "Roleplay is being deleted.")
+
+        for character in await self.characters:
+
+            char_channel = await character.get_channel(log_channel.guild)
+            await character.delete(guild = log_channel.guild)
 
         embed, file = await image_embed(
             f"Roleplay Deleted: {self.name}",
@@ -373,6 +350,10 @@ class RPServer(DatabaseMixin):
     async def locations(self) -> list[Location]:
         return await Location.fetch_all("guild_id", self.id) # pyright: ignore[reportReturnType]
 
+    @property
+    async def characters(self) -> list[Character]:
+        return await Character.fetch_all("guild_id", self.id) # pyright: ignore[reportReturnType]
+
 class Location(DatabaseMixin, RelayableMixin):
 
     def __init__(self, id: int, console_level: int | None = None):
@@ -392,6 +373,7 @@ class Location(DatabaseMixin, RelayableMixin):
     
     @staticmethod
     async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Location]:
+
         return await DatabaseMixin.fetch_all(
             col_name = col_name, 
             value = value,
@@ -423,8 +405,7 @@ class Location(DatabaseMixin, RelayableMixin):
         new_loc_channel = await RelayableMixin.make_channel(
             category_name = "locations",
             channel_name = name,
-            interaction = interaction,
-            respond_if_unable = True)
+            guild = interaction.guild)
         
         if new_loc_channel is None:
             return await finalize()
@@ -450,25 +431,35 @@ class Location(DatabaseMixin, RelayableMixin):
             source = ImageSource.URL if reference else ImageSource.ASSET,
             asset_str = reference or "")
         
-        logging_channel = await RPServer(guild_id).get_logging_channel(guild = new_loc_channel.guild)
+        server = RPServer(guild_id)
+        await server.fetch()
+        logging_channel = await server.get_logging_channel(guild = new_loc_channel.guild)
         await safe_log(embed, [new_loc_channel, logging_channel], silent = True, file = file)
         
         return result
 
     async def delete(self, 
         log_channel: TextChannel | None = None, 
-        location_channel: TextChannel | None = None, **_
+        guild: Guild | None = None, **_
     ) -> CommitResult:
         
         result = await super().delete()
-        
-        if location_channel is not None:
 
-            try:
-                await location_channel.delete(reason = "No longer needed.")
-            
-            except NotFound, Forbidden, HTTPException:
-                pass
+        await safe_del_channels([await self.get_channel(guild)], "Location deleted by user.")
+
+        if guild is not None:
+
+            server = RPServer(guild.id)
+            await server.fetch()
+            if await server.location_count == 0:
+
+                loc_category = await server.get_category(
+                    "locations",
+                    guild = guild,
+                    category_id = server.locations_cat,
+                    make_if_needed = False)
+                
+                await safe_del_channels([loc_category], "No more locations remain in this RP.")
         
         if log_channel is None:
             return result
@@ -487,8 +478,7 @@ class Location(DatabaseMixin, RelayableMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await log_channel.send(embed = embed, file = file) # pyright: ignore[reportArgumentType]
-
+        await safe_log(embed, [log_channel], silent = True, file = file)
         return result
 
     @property
@@ -515,7 +505,15 @@ class Character(DatabaseMixin, RelayableMixin):
 
         return
     
-
+    @staticmethod
+    async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Character]:
+        
+        return await DatabaseMixin.fetch_all(
+            col_name = col_name, 
+            value = value,
+            entry_class = CharacterEntry,
+            final_class = Character)
+    
 # @dataclass(slots = True)
 # class Character:
 #     name: str

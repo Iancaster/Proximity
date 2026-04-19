@@ -129,8 +129,7 @@ class Autonomous(commands.Cog):
         character = Character(channel.id)
 
         if await character.exists:
-            await character.delete()
-            return
+            return await character.delete()
 
         location = Location(channel.id)
 
@@ -150,7 +149,7 @@ class Autonomous(commands.Cog):
             await location.delete(
                 log_channel = log_channel,
                 location_channel = None)
-             
+ 
             return
 
         # make a way to detect and prevent character deletion

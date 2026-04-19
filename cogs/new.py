@@ -118,16 +118,12 @@ class NewCommands(commands.Cog):
                 source = ImageSource.URL if ref_url else ImageSource.ASSET,
                 asset_str = ref_url if ref_url else "logo.png")
             dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
-
-            return
+            return await dialogue.refresh(interaction)
 
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
-        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-
-        return
+        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
     # 	await ctx.defer(ephemeral = True)
 
@@ -582,8 +578,7 @@ class NewCommands(commands.Cog):
                 " command again.",
                 "But if you just want a /new place or a /new character, call those instead.")
             
-            await send_message(ctx.interaction, embed, ephemeral = True)
-            return
+            return await send_message(ctx.interaction, embed, ephemeral = True)
             
         embed = text_embed(
             "Let's do this.",
@@ -672,9 +667,7 @@ class NewCommands(commands.Cog):
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
-        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-
-        return
+        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
     
 def setup(prox):
     prox.add_cog(NewCommands(prox), override = True)

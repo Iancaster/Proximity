@@ -794,3 +794,80 @@
 04/12/26 | 23:43:18 [INFO] DB Mixin: New record made in servers table, ID: 1111152704279035954.
 04/12/26 | 23:43:38 [INFO] DB Mixin: New record made in locations table, ID: 1493184885358071908.
 04/12/26 | 23:43:44 [INFO] DB Mixin: Deleting record in locations with ID: 1493184885358071908.
+04/17/26 | 21:25:10 [DEBUG] DB Mixin: Logger set up.
+04/17/26 | 21:25:10 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/17/26 | 21:25:44 [INFO] DB Mixin: New record made in locations table, ID: 1494962120176177193.
+04/17/26 | 21:29:07 [DEBUG] DB Mixin: Logger set up.
+04/17/26 | 21:29:18 [INFO] DB Mixin: New record made in locations table, ID: 1494963015169212466.
+04/17/26 | 21:30:30 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/17/26 | 21:30:46 [INFO] DB Mixin: New record made in locations table, ID: 1494963383668314122.
+04/17/26 | 21:31:17 [INFO] DB Mixin: New record made in locations table, ID: 1494963514245255219.
+04/17/26 | 21:32:26 [DEBUG] DB Mixin: Logger set up.
+04/17/26 | 21:32:34 [INFO] DB Mixin: New record made in locations table, ID: 1494963839479840879.
+04/17/26 | 21:32:49 [INFO] DB Mixin: New record made in locations table, ID: 1494963903187390525.
+04/17/26 | 21:32:58 [INFO] DB Mixin: Deleting record in locations with ID: 1494963903187390525.
+04/17/26 | 21:33:05 [INFO] DB Mixin: Deleting record in locations with ID: 1494963839479840879.
+04/17/26 | 21:33:21 [INFO] DB Mixin: Deleting record in locations with ID: 1494963514245255219.
+04/17/26 | 21:33:29 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:28:45 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 17:28:45 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:38:30 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 17:38:30 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:38:52 [INFO] DB Mixin: Deleting record in locations with ID: 1181767217638014996.
+04/18/26 | 17:44:18 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 17:44:24 [INFO] DB Mixin: Deleting record in locations with ID: 1160774705737896086.
+04/18/26 | 17:46:02 [INFO] DB Mixin: Deleting record in locations with ID: 1494963383668314122.
+04/18/26 | 17:47:02 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:47:05 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:47:28 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:47:41 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:50:06 [INFO] DB Mixin: Deleting record in locations with ID: 1494963015169212466.
+04/18/26 | 17:56:41 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 17:56:41 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 17:59:54 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 18:00:03 [INFO] DB Mixin: New record made in locations table, ID: 1495272740108632225.
+04/18/26 | 18:00:14 [INFO] DB Mixin: Deleting record in locations with ID: 1494962120176177193.
+04/18/26 | 18:01:26 [INFO] DB Mixin: Deleting record in locations with ID: 1495272740108632225.
+04/18/26 | 18:38:34 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 18:38:44 [INFO] DB Mixin: New record made in locations table, ID: 1495282475092541491.
+04/18/26 | 18:59:13 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 18:59:15 [INFO] DB Mixin: Deleting record in locations with ID: 1495282475092541491.
+04/18/26 | 19:20:21 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 19:20:28 [INFO] DB Mixin: New record made in locations table, ID: 1495292980804976731.
+04/18/26 | 19:20:39 [INFO] DB Mixin: Deleting record in locations with ID: 1495292980804976731.
+04/18/26 | 19:21:14 [INFO] DB Mixin: New record made in locations table, ID: 1495293173554217211.
+04/18/26 | 19:24:11 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 19:24:17 [WARNING] DB Mixin: Tried to fetch locations data with ID #1111152704954314841, none exists.
+04/18/26 | 19:24:17 [INFO] DB Mixin: Deleting record in locations with ID: 1111152704954314841.
+04/18/26 | 19:30:32 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 19:39:47 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:10:59 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:13:36 [INFO] DB Mixin: New record made in locations table, ID: 1495321451694133461.
+04/18/26 | 21:16:06 [INFO] DB Mixin: Deleting record in locations with ID: 1495321451694133461.
+04/18/26 | 21:26:54 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:38:17 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:39:30 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:42:50 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:45:14 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:47:44 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:55:10 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:56:44 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:57:32 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:58:29 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 21:58:39 [INFO] DB Mixin: Deleting record in locations with ID: 1495293173554217211.
+04/18/26 | 22:00:15 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 22:00:25 [INFO] DB Mixin: New record made in locations table, ID: 1495333236337807390.
+04/18/26 | 22:00:33 [INFO] DB Mixin: Deleting record in locations with ID: 1495333236337807390.
+04/18/26 | 22:00:56 [INFO] DB Mixin: New record made in locations table, ID: 1495333363811221585.
+04/18/26 | 22:01:08 [INFO] DB Mixin: Deleting record in locations with ID: 1495333363811221585.
+04/18/26 | 22:02:11 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 22:02:18 [INFO] DB Mixin: New record made in locations table, ID: 1495333710063472752.
+04/18/26 | 22:02:36 [WARNING] DB Mixin: Could not locate characters category for Dude yes.
+04/18/26 | 22:02:53 [INFO] DB Mixin: Deleting record in locations with ID: 1495333710063472752.
+04/18/26 | 22:12:29 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 22:12:38 [INFO] DB Mixin: New record made in locations table, ID: 1495336309869379675.
+04/18/26 | 22:18:33 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 22:18:35 [INFO] DB Mixin: Deleting record in locations with ID: 1495336309869379675.
+04/18/26 | 22:21:52 [DEBUG] DB Mixin: Logger set up.
+04/18/26 | 22:21:59 [INFO] DB Mixin: New record made in locations table, ID: 1495338664010580081.
+04/18/26 | 22:22:05 [INFO] DB Mixin: Deleting record in locations with ID: 1495338664010580081.

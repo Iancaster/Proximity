@@ -6,8 +6,10 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 from discord.utils import get_or_fetch
 
-from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer
+from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer, Location
 from libraries.user_interface import Dialogue, ImageSource, text_embed, image_embed, send_message
+
+from asyncio import create_task
 
 class DeleteCommands(commands.Cog):
 
@@ -17,118 +19,96 @@ class DeleteCommands(commands.Cog):
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator, in_prox_rp])
 
-    # @delete_group.command(name = 'place', description = 'Delete a place.')
-    # async def place(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place?', name = 'place', autocomplete = complete_places, required = False)):
+    @delete_group.command(name = "location", description = "Delete a location.")
+    async def location(self, ctx: ApplicationContext):
+ 
+        async def delete_location(interaction: Interaction):
 
-    # 	await ctx.defer(ephemeral = True)
+            if await location.character_count != 0:
 
-    # 	GD = GuildData(ctx.guild_id, load_places = True)
-    # 	CM = ChannelManager(GD = GD)
+                embed = text_embed(
+                    "Can't delete this location.",
+                    f"<#{location.id}> still has characters in it. Please move"
+                        " them somewhere else first with `/review character`.",
+                    "This is to prevent characters from being stranded in a nonexistant location.")
+                dialogue.current_embed = embed
+                dialogue.view.clear_items()
+                return await dialogue.refresh(interaction)
+                
+            if calling_from_location_channel:
+                await interaction.respond("Sure thing!", ephemeral = True)
 
-    # 	async def delete_locations(condemned_place_names: list):
+            log_channel = await server.get_logging_channel(interaction.guild)
+            await location.fetch()
+            await location.delete(log_channel = log_channel, guild = interaction.guild)
 
-    # 		condemned_places = await GD.filter_places(condemned_place_names)
+            if not calling_from_location_channel:
+                embed = text_embed(
+                    "Location deleted.",
+                    f"Deleted **{location.name}** and all routes connected to it.",
+                    "This can't be undone, but you can always make a new location.")
+                    
+                dialogue.current_embed = embed
+                dialogue.view.clear_items()
+                await dialogue.refresh(interaction)
+                
+            return
 
-    # 		async def confirm_delete(interaction: Interaction):
+        server = RPServer(ctx.guild_id)
+        await server.fetch()
+        location = Location(ctx.channel_id)   
+        calling_from_location_channel = await location.exists
 
-    # 			await loading(interaction)
+        if calling_from_location_channel:
 
-    # 			nonlocal condemned_places
-    # 			occupied_place_count = len(condemned_places)
-    # 			condemned_places = {name : place for name, place in condemned_places.items() if not place.occupants}
-    # 			occupied_place_count -= len(condemned_places)
+            embed = text_embed(
+                "Delete this location?",
+                f"You're about to delete <#{location.id}> and all routes to and from it.",
+                "This is irreversible, so make sure you really want to do this.")
+            
+        else:
+            
+            embed = text_embed(
+                "Which location?",
+                ("Please select a location channel from the dropdown below"
+                    " to delete the location. You can also call this command"
+                    " in a location channel to select it automatically."),
+                "This will delete the location, its channel, and all" + 
+                    " routes to and from it.")
+            
+        dialogue = Dialogue(embed) 
 
-    # 			if not condemned_places:
-    # 				embed, _ = await mbd(
-    # 					'And leave them stranded?',
-    # 					"You can't delete places that have people still inside." + \
-    # 						" Either use `/review character` to move them somewhere" + \
-    # 						" else, or just `/delete character` so it's not a problem.",
-    # 					'Then you can do /delete place.')
-    # 				await interaction.followup.edit_message(
-    # 					message_id = interaction.message.id,
-    # 					embed = embed,
-    # 					view = None)
-    # 				await interaction.message.delete(delay = 15)
-    # 				return
+        if calling_from_location_channel:
+            
+            submit_button = dialogue.add_button("Select for deletion", ButtonStyle.danger)
+            submit_button.callback = delete_location     
 
-    # 			#Delete places
-    # 			for name, place in condemned_places.items():
+        else:
 
-    # 				place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID, default = None)
-    # 				if place_channel:
-    # 					await place_channel.delete()
-    # 				else:
-    # 					await GD.delete_place(name)
-    # 					await GD.save()
-    # 					sleep(.5)
+            channel_select = dialogue.add_channel_select(
+                label = "Select a location to delete.",
+                purpose = "Location choice",
+                placeholder = "#the-castle",
+                min_values = 1)
+            
+            submit_button = dialogue.add_button("Select for deletion", ButtonStyle.danger)
 
-    # 			if not GD.places:
-    # 				category = get(interaction.guild.categories, name = 'places')
-    # 				if category:
-    # 					await category.delete()
+            async def select(interaction: Interaction):
+                nonlocal location
+                location = Location(channel_select.values[0].id) # pyright: ignore[reportPossiblyUnboundVariable]
+                await delete_location(interaction)
+                return
+            
+            submit_button.callback = select
 
-    # 			if interaction.channel.name not in condemned_places.keys():
+            location_ids = [loc.id for loc in await server.locations]
+            submit_button.should_disable = (lambda : not channel_select.is_valid() or # pyright: ignore[reportPossiblyUnboundVariable]
+                channel_select.values[0].id not in location_ids) # pyright: ignore[reportPossiblyUnboundVariable]
+            
+            await dialogue.view.refresh_children()
 
-    # 				bold_deleting = await embolden(condemned_places.keys())
-    # 				description = f'Successfully deleted the following things about {bold_deleting}:' + \
-    # 					"\n• The channel(s)." + \
-    # 					"\n• Any paths." + \
-    # 					"\n• The data, like location messages."
-
-    # 				if occupied_place_count:
-    # 					description += f"\n\nCouldn't delete {occupied_place_count}" + \
-    # 						" place(s) because there were still people inside."
-
-    # 				embed, _ = await mbd(
-    # 					'Cleared out.',
-    # 					description,
-    # 					'Making room for new places?')
-    # 				await interaction.followup.edit_message(
-    # 					message_id = interaction.message.id,
-    # 					embed = embed,
-    # 					view = None)
-    # 			return
-
-    # 		view = DialogueView()
-    # 		await view.add_confirm(confirm_delete)
-    # 		await view.add_cancel()
-
-    # 		condemned_IDs = {place.channel_ID for place in condemned_places.values()}
-    # 		embed, _ = await mbd(
-    # 			'Confirm deletion?',
-    # 			f"Delete {await format_channels(condemned_IDs)}?",
-    # 			'This will delete the channel, the paths, and data for the place itself.')
-    # 		await send_message(ctx.respond, embed, view, ephemeral = True)
-    # 		return
-
-    # 	async def select_menu():
-
-    # 		embed, _ = await mbd(
-    # 			'Delete place(s)?',
-    # 			"You can delete a location four ways:" + \
-    # 				"\n• Call this command inside of a place channel." + \
-    # 				"\n• Do `/delete place #place-channel`." + \
-    # 				"\n• Delete the #place-channel itself." + \
-    # 				"\n• Select one or more places from the dropdown below.",
-    # 			'This will delete the place, its paths, and its channel.')
-
-    # 		async def submit_locations(interaction: Interaction):
-    # 			await ctx.delete()
-    # 			await delete_locations(view.places())
-    # 			return
-
-    # 		view = DialogueView()
-    # 		await view.add_places(GD.places.keys(), singular = False, callback = submit_locations)
-    # 		await view.add_cancel()
-    # 		await send_message(ctx.respond, embed, view)
-
-    # 		return
-
-    # 	if result := await CM.identify_place_channel(ctx, select_menu, given_place):
-    # 		await delete_locations([result])
-
-    # 	return
+        dialogue.add_close()
+        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
     # @delete_group.command(name = 'path', description = 'Seperate two or more places.')
     # async def path(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place to start from?', name = 'place', autocomplete = complete_places, required = False)):
@@ -416,9 +396,7 @@ class DeleteCommands(commands.Cog):
 
             dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
-            
-            return
+            return await dialogue.refresh(interaction)
 
         embed = text_embed(
             "Delete all data?",
@@ -433,8 +411,7 @@ class DeleteCommands(commands.Cog):
         delete_button.callback = delete_data
         dialogue.add_close()
     
-        await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-        return
+        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
 def setup(prox):
     prox.add_cog(DeleteCommands(prox), override = True)

@@ -112,8 +112,8 @@ class DebugCommands(commands.Cog):
 
         else:
             description = \
-                ("This server is not in the database." + 
-                " You can use this dialogue to view information on" \
+                ("This server is not in the database." 
+                " You can use this dialogue to view information on" 
                 " servers registered as Proximity Roleplays.")  
             footer = "Check back after this server gets registered!"
             thumbnail = True
@@ -128,8 +128,7 @@ class DebugCommands(commands.Cog):
             source = source,
             asset_str =  asset_str)
 
-        await send_message(ctx.interaction, embed, file = file, ephemeral = True)
-        return
+        return await send_message(ctx.interaction, embed, file = file, ephemeral = True)
 
 def setup(prox):
     prox.add_cog(DebugCommands(prox), override = True)

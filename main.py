@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from data.database_handler import initialize_db, close_db
-from discord import Bot, Game, Intents, ApplicationContext, CheckFailure
+from discord import Bot, Game, Intents, ApplicationContext, CheckFailure, NotFound
 from asyncio import run
 from time import time
 from dotenv import load_dotenv
@@ -43,8 +43,13 @@ async def main():
 
     @bot.event
     async def on_application_command_error(ctx: ApplicationContext, error: Exception):
+
         if isinstance(error, CheckFailure):
             pass # Handled by the check.
+
+        elif isinstance(error, NotFound):
+            pass
+
         else:
             raise error
         
