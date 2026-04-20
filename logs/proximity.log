@@ -877,3 +877,5 @@
 04/18/26 | 22:25:25 [INFO] DB Mixin: Deleting record in locations with ID: 1495339088226816142.
 04/18/26 | 22:27:56 [INFO] DB Mixin: New record made in locations table, ID: 1495340158948474891.
 04/18/26 | 22:28:18 [DEBUG] DB Mixin: Logger set up.
+04/19/26 | 17:41:28 [DEBUG] DB Mixin: Logger set up.
+04/19/26 | 17:41:30 [INFO] DB Mixin: Deleting record in locations with ID: 1495340158948474891.
