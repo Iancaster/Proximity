@@ -51,7 +51,7 @@ class DeleteCommands(commands.Cog):
                 dialogue.current_embed = embed
                 dialogue.view.clear_items()
                 await dialogue.refresh(interaction)
-                
+
             return
 
         server = RPServer(ctx.guild_id)
@@ -80,7 +80,7 @@ class DeleteCommands(commands.Cog):
 
         if calling_from_location_channel:
             
-            submit_button = dialogue.add_button("Select for deletion", ButtonStyle.danger)
+            submit_button = dialogue.add_button("Delete this location", ButtonStyle.danger)
             submit_button.callback = delete_location     
 
         else:
@@ -91,7 +91,7 @@ class DeleteCommands(commands.Cog):
                 placeholder = "#the-castle",
                 min_values = 1)
             
-            submit_button = dialogue.add_button("Select for deletion", ButtonStyle.danger)
+            submit_button = dialogue.add_button("Delete selected location", ButtonStyle.danger)
 
             async def select(interaction: Interaction):
                 nonlocal location
