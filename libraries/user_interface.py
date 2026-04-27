@@ -374,9 +374,13 @@ class Dialogue:
         try:
             await interaction.response.edit_message(**kwargs)
         except NotFound, HTTPException:
-            await interaction.respond(
-                "The original message has been deleted-- perhaps it timed out?"
-                    " Please call the command again.", ephemeral = True)
+
+            try:
+                await interaction.respond(
+                    "The original message has been deleted-- perhaps it timed out?"
+                        " Please call the command again.", ephemeral = True)
+            except:
+                pass
 
         return
 
