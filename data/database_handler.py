@@ -95,18 +95,20 @@ class DatabaseEntry(ABC):
 
     table_name: str
     primary_key_col_name: str
-
-    def __init__(self, **_):
-        return super().__init__()
+    secondary_key_col_name: str | None = None
 
     @classmethod
-    async def fetch(cls, id: int) -> Row | None:
+    async def fetch(cls, id: int, sec: int | None = None) -> Row | None:
+
+        query = f"SELECT * FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?"
+        values = (id, )
+
+        if sec is not None:
+            query += f" AND {cls.secondary_key_col_name} = ?"
+            values = (id, sec)
 
         db = await get_db()
-        async with db.execute(
-            f"SELECT * FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
-            (id, )) as cursor:
-
+        async with db.execute(query, values) as cursor:
             return await cursor.fetchone()
         
     @classmethod
@@ -122,13 +124,17 @@ class DatabaseEntry(ABC):
         return rows
 
     @classmethod
-    async def exists(cls, id: int) -> bool:
+    async def exists(cls, id: int, sec: int | None = None) -> bool:
+
+        query = f"SELECT 1 FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?"
+        values = (id, )
+
+        if sec is not None:
+            query += f" AND {cls.secondary_key_col_name} = ?"
+            values = (id, sec)
 
         db = await get_db()
-        async with db.execute(
-            f"SELECT 1 FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
-            (id, )) as cursor:
-
+        async with db.execute(query, values) as cursor:
             return await cursor.fetchone() is not None 
         
     @classmethod
@@ -142,12 +148,12 @@ class DatabaseEntry(ABC):
         values = (id, *args, *kwargs.values())
         wildcards = ", ".join("?" * len(values))
 
+        query = f"INSERT INTO {cls.table_name} ({cls.primary_key_col_name}, \
+            {', '.join(kwargs.keys())}) VALUES ({wildcards})"
+
         try:
 
-            await db.execute(
-                f"INSERT INTO {cls.table_name} ({cls.primary_key_col_name}, {', '.join(kwargs.keys())}) VALUES ({wildcards})",
-                values)
-                
+            await db.execute( query, values)
             await db.commit()
             result = CommitResult.SUCCESS
 
@@ -165,13 +171,14 @@ class DatabaseEntry(ABC):
     @classmethod
     async def update(cls, id: int, **kwargs) -> CommitResult:
 
+        if not kwargs:
+            return CommitResult.NO_UPDATE
+            
         db = await get_db()
     
         set_clause = ", ".join(f"{col} = ?" for col in kwargs)
         values = (*kwargs.values(), id)
 
-        if not kwargs:
-            return CommitResult.NO_UPDATE
 
         try:
 
@@ -196,17 +203,23 @@ class DatabaseEntry(ABC):
         return result
 
     @classmethod
-    async def delete(cls, id: int) -> CommitResult:
+    async def delete(cls, id: int, **kwargs) -> CommitResult:
 
         db = await get_db()
 
-        async with db.execute(
-            f"DELETE FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?",
-            (id,)) as cursor:
+        query = f"DELETE FROM {cls.table_name} WHERE {cls.primary_key_col_name} = ?"
+        values = (id, )
+
+        if kwargs:
+            conditions = " AND ".join(f"{col} = ?" for col in kwargs)
+            query += f" AND {conditions}"
+            values = (id, *kwargs.values())
+
+        async with db.execute(query, values) as cursor:
             
             await db.commit()
             
-            if cursor.rowcount == 1:
+            if cursor.rowcount > 0:
                 result = CommitResult.SUCCESS
             else:
                 result = CommitResult.NO_UPDATE
@@ -330,6 +343,23 @@ class LocationEntry(DatabaseEntry):
             *args,
             **kwargs)    
 
+class RouteEntry(DatabaseEntry):
+
+    table_name: str = "routes"
+    primary_key_col_name: str = "from_id"
+
+    @classmethod
+    async def create(cls, 
+        from_id: int, 
+        to_id: int, 
+        *_, **__
+    ) -> CommitResult:
+        
+        return await super().create(
+            id = from_id,
+            to_id = to_id,
+            *_, **__)   
+
 class CharacterEntry(DatabaseEntry):
 
     table_name: str = "characters"
@@ -361,9 +391,11 @@ class DatabaseMixin:
     def __init__(self, 
         id: int,
         entry_class: type[DatabaseEntry], 
-        console_level: int | None):
+        sec: int | None = None,
+        console_level: int | None = None):
 
         self.id = id
+        self.sec = sec
         self.entry = entry_class
         self._logger = get_logger("DB Mixin", console_level = console_level)
         
@@ -414,13 +446,11 @@ class DatabaseMixin:
 
         return entries
 
-    async def delete(self, **_) -> CommitResult:
-        self._logger.info(f"Deleting record in {self.entry.table_name} with ID: {self.id}.")
-        return await self.entry.delete(self.id)
+    async def delete(self, **kwargs) -> CommitResult:
+        self._logger.info(f"Deleting record in {self.entry.table_name} with primary ID: {self.id}.")
+        return await self.entry.delete(self.id, **kwargs)
      
     async def create(self, *_, **kwargs) -> CommitResult:
-        """Registers this server as an RP one."""
-
         self._logger.info(f"New record made in {self.entry.table_name} table, ID: {self.id}.")
         self.__dict__.update(kwargs)
 
@@ -434,9 +464,8 @@ class DatabaseMixin:
         return await self.entry.update(self.id, **passed_kwargs)
     
     @property
-    async def exists(self) -> bool:
-        f"""True if the record is in the respective database."""        
-        return await self.entry.exists(self.id)  
+    async def exists(self) -> bool:      
+        return await self.entry.exists(self.id, self.sec)  
     
 
 

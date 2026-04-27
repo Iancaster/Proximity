@@ -6,7 +6,7 @@ from libraries.user_interface import Dialogue, Popup, ImageSource, \
     text_embed, image_embed, send_message, reference_validator
 
 from discord import ApplicationContext, InteractionContextType, \
-    ButtonStyle, InputTextStyle, Interaction, Option
+    ButtonStyle, InputTextStyle, Interaction
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 #from types import MethodType
@@ -24,13 +24,11 @@ from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPS
 # from data.listeners import direct_listeners, queue_refresh, \
 # 	to_direct_listeners
 
-
-
 class NewCommands(commands.Cog):
 
     new_group = SlashCommandGroup(
         name = "new",
-        description = "Create new Roleplays, Locations, Paths, and Characters-- in that order.",
+        description = "Create new Roleplays, Locations, Routes, and Characters-- in that order.",
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator])
 
@@ -134,185 +132,9 @@ class NewCommands(commands.Cog):
 
         server = RPServer(ctx.guild_id)
 
-        async def create_paths(origin_place_name: str):
-
-            origin_place_name = origin_place_name
-            origin_place = GD.places[origin_place_name]
-            destinations = set()
-
-            async def refresh(interaction: Interaction = None):
-
-                nonlocal destinations
-
-                description = f'• Origin: <#{origin_place.channel_ID}>'
-
-                destination_message, destinations = await format_new_neighbors(
-                    view.overwriting,
-                    origin_place,
-                    view.places(),
-                    GD)
-
-                description += destination_message
-
-                description += f"\n• Whitelist: {await format_whitelist(view.roles(), view.characters())}"
-
-                match view.directionality:
-                    case 0:
-                        description += "\n• Directionality: **One-way** (<-) from" + \
-                            f" the destination(s) to <#{origin_place.channel_ID}>."
-                    case 1:
-                        description += "\n• Directionality: **Two-way** (<->), people will be able to travel" + \
-                            f" back and forth between <#{origin_place.channel_ID}> and the destination(s)."
-                    case 2:
-                        description += "\n• Directionality: **One-way** (->) to" + \
-                            f" <#{origin_place.channel_ID}> to the destination(s)."
-
-                if origin_place.neighbors:
-                    if view.overwriting:
-                        description += "\n• **Overwriting** paths. Old paths will be erased where new one are laid."
-                    else:
-                        description += "\n• Will not overwrite paths. Click below to toggle."
-
-                embed, file = await mbd(
-                    'New path(s).',
-                    description,
-                    'Which places are we hooking up?')
-
-                return embed, file
-
-            def checks():
-                return not destinations
-
-            async def submit(interaction: Interaction):
-
-                await loading(interaction)
-
-                #Make paths
-                path = Path(
-                    directionality = view.directionality,
-                    allowed_roles = view.roles(),
-                    allowed_characters = view.characters())
-                existing_paths = 0
-                for destination in destinations:
-
-                    if await GD.set_path(
-                        origin_place_name,
-                        destination,
-                        path,
-                        view.overwriting):
-
-                        existing_paths += 1
-
-                await GD.save()
-                neighbors_dict = await GD.filter_places(destinations)
-
-                whitelist = await format_whitelist(view.roles(), view.characters())
-
-                #Inform neighbors occupants and neighbor places
-                player_embed, _ = await mbd(
-                    'Hm?',
-                    f"You notice a way to get between this place and **#{origin_place_name}**. Has that always been there?",
-                    'And if so, has it always been like that?')
-                place_embed, _ = await mbd(
-                    'Path created.',
-                    f'• Created a path between here and <#{origin_place.channel_ID}>.' + \
-                        f'\n• {whitelist}',
-                    'You can view its details with /review path.')
-                for place in neighbors_dict.values():
-
-                    await to_direct_listeners(
-                        player_embed,
-                        interaction.guild,
-                        place.channel_ID,
-                        occupants_only = True)
-                    place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
-                    await place_channel.send(embed = place_embed)
-
-                    for occ_ID in place.occupants:
-                        occ_channel = await LM._load_channel(occ_ID)
-                        occ_data = Character(occ_ID)
-                        await LM.remove_channel(channel = occ_channel)
-                        await LM.insert_character(occ_data, skip_eaves = False)
-
-                #Inform edited place occupants
-                bold_neighbors = await embolden(destinations)
-                player_embed, _ = await mbd(
-                    'Hm?',
-                    f"You notice that this place is connected to {bold_neighbors}. Something about that seems new.",
-                    "Perhaps you're only imagining it.")
-                await to_direct_listeners(
-                    player_embed,
-                    interaction.guild,
-                    origin_place.channel_ID,
-                    occupants_only = True)
-                for occ_ID in origin_place.occupants:
-                    occ_channel = await LM._load_channel(occ_ID)
-                    occ_data = Character(occ_ID)
-                    await LM.remove_channel(channel = occ_channel)
-                    await LM.insert_character(occ_data, skip_eaves = False)
-
-                #Inform own place
-                description = f'\n• Connected <#{origin_place.channel_ID}>'
-                match view.directionality:
-                    case 0:
-                        description += ' from <- '
-                    case 1:
-                        description += ' <-> back and forth to '
-                    case 2:
-                        description += ' to -> '
-                destination_mentions = await format_channels({place.channel_ID for place in neighbors_dict.values()})
-                description += f'{destination_mentions}.'
-
-                if view.roles() or view.characters():
-                    description += f'\n• Imposed the whitelist: {whitelist}'
-
-                if existing_paths:
-                    if view.overwriting:
-                        description += f'\n• Overwrote {existing_paths} path(s).'
-                    else:
-                        description += f"\n• Skipped {existing_paths} path(s) because" + \
-                            " the places were already connected. Enable overwriting to ignore."
-
-                #Produce map of new paths
-                neighbors_dict[origin_place_name] = origin_place
-                subgraph = await GD.to_graph(neighbors_dict)
-                graph_view = await GD.to_map(subgraph)
-                embed, file = await mbd(
-                    'New path results.',
-                    description,
-                    'You can view all the places and paths with /server view.',
-                    (graph_view, 'full'))
-                place_channel = await get_or_fetch(interaction.guild, 'channel', origin_place.channel_ID)
-                await place_channel.send(embed = embed, file = file)
-
-                return await no_redundancies(
-                    (interaction.channel.name in destinations \
-                    or interaction.channel.name == origin_place_name),
-                    embed,
-                    interaction)
-
-            view = DialogueView(refresh, checks)
-            await view.add_places(
-                {name for name, place in GD.places.items() if place is not origin_place},
-                singular = False)
-            await view.add_roles()
-            await view.add_characters(GD.characters)
-            await view.add_submit(submit)
-            await view.add_directionality()
-            if origin_place.neighbors:
-                await view.add_overwrite()
-            await view.add_cancel()
-
-            embed, _ = await refresh()
-            await send_message(ctx.respond, embed, view, ephemeral = True)
-            return
-
-
-        
         return
 
     @new_group.command(name = 'character', description = 'A new actor onstage.')
-    
     # async def character(self, ctx: ApplicationContext):
 
     #     server = RPServer(ctx.guild_id)

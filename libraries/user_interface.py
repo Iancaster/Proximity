@@ -488,7 +488,7 @@ async def send_message(
 
     return
 
-async def safe_log(
+async def safe_send(
     embed: Embed, 
     channels: list[TextChannel | None], 
     silent: bool = True, **kwargs

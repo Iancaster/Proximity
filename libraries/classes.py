@@ -1,14 +1,14 @@
 """Where most core functionality resides."""
 
-from typing import Iterable, Self
+from typing import Iterable
 
-from discord import Client, ApplicationContext, TextChannel, \
+from discord import ApplicationContext, TextChannel, \
     CategoryChannel, Guild, PermissionOverwrite, Forbidden, \
-    HTTPException, Webhook, NotFound, Interaction, MISSING
+    HTTPException, Webhook, NotFound, Interaction, Embed
 from discord.utils import get_or_fetch, find
-from libraries.user_interface import text_embed, image_embed, ImageSource, safe_log, safe_del_channels
+from libraries.user_interface import text_embed, image_embed, ImageSource, safe_send, safe_del_channels
 from data.database_handler import DatabaseMixin, CommitResult, \
-    ServerEntry, LocationEntry, CharacterEntry
+    ServerEntry, LocationEntry, RouteEntry, CharacterEntry
 from os import environ
 
 SELF_USER_ID: int = int(environ.get("USER_ID", default = 0))
@@ -196,7 +196,7 @@ class RPServer(DatabaseMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await safe_log(embed, [log_channel], silent = True, file = file)        
+        await safe_send(embed, [log_channel], silent = True, file = file)        
         return result
 
     async def update(self, 
@@ -335,7 +335,7 @@ class RPServer(DatabaseMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await safe_log(embed, [log_channel], silent = True, file = file)        
+        await safe_send(embed, [log_channel], silent = True, file = file)        
         return await super().delete()
 
     @property
@@ -370,7 +370,7 @@ class Location(DatabaseMixin, RelayableMixin):
             console_level = console_level)
 
         return
-    
+            
     @staticmethod
     async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Location]:
 
@@ -434,33 +434,34 @@ class Location(DatabaseMixin, RelayableMixin):
         server = RPServer(guild_id)
         await server.fetch()
         logging_channel = await server.get_logging_channel(guild = new_loc_channel.guild)
-        await safe_log(embed, [new_loc_channel, logging_channel], silent = True, file = file)
+        await safe_send(embed, [new_loc_channel, logging_channel], silent = True, file = file)
         
         return result
 
     async def delete(self, 
-        log_channel: TextChannel | None = None, 
         guild: Guild | None = None, **_
     ) -> CommitResult:
         
         result = await super().delete()
 
+        if guild is None:
+            return result
+
         await safe_del_channels([await self.get_channel(guild)], "Location deleted by user.")
 
-        if guild is not None:
+        server = RPServer(guild.id)
+        await server.fetch()
+        if await server.location_count == 0:
 
-            server = RPServer(guild.id)
-            await server.fetch()
-            if await server.location_count == 0:
-
-                loc_category = await server.get_category(
-                    "locations",
-                    guild = guild,
-                    category_id = server.locations_cat,
-                    make_if_needed = False)
-                
-                await safe_del_channels([loc_category], "No more locations remain in this RP.")
+            loc_category = await server.get_category(
+                "locations",
+                guild = guild,
+                category_id = server.locations_cat,
+                make_if_needed = False)
+            
+            await safe_del_channels([loc_category], "No more locations remain in this RP.")
         
+        log_channel = await server.get_logging_channel(guild)
         if log_channel is None:
             return result
         
@@ -478,12 +479,164 @@ class Location(DatabaseMixin, RelayableMixin):
             source = ImageSource.URL if self.reference else ImageSource.ASSET,
             asset_str = self.reference or "")
         
-        await safe_log(embed, [log_channel], silent = True, file = file)
+        await safe_send(embed, [log_channel], silent = True, file = file)
         return result
+
+    async def new_route(self, 
+        to_location: Location, 
+        guild: Guild,
+        server: RPServer | None = None
+    ) -> bool:
+    
+        if not await to_location.exists:
+            return False
+
+        self_channel = await self.get_channel(guild)
+        if self_channel is None:
+            return False
+        
+        log_embed = text_embed(
+            "New route.",
+            f"A new route has been created from <#{self.id}> to <#{to_location.id}>.",
+            "Note that this is one-way. If this is desired, no issue--otherwise, ensure an opposite route exists too.")
+        
+        if server is None:
+            server = RPServer(guild.id)
+            await server.fetch()
+
+        logging_channel = await server.get_logging_channel(guild = guild)
+        await safe_send(log_embed, [self_channel, logging_channel], silent = True)
+
+        character_embed = text_embed(
+            "New route.",
+            f"You notice a way to reach **{to_location.name}** from here-- is that new?",
+            "Perhaps  it was always there. Perhaps not.")
+
+        await self.send_to_inhabitants(guild, character_embed)        
+        return True
+    
+    async def remove_route(self, 
+        to_location: Location, 
+        guild: Guild,
+        server: RPServer | None = None
+    ) -> bool:
+
+        self_channel = await self.get_channel(guild)
+        if self_channel is None:
+            return False
+        
+        log_embed = text_embed(
+            "Route removed.",
+            f"The route from <#{self.id}> to <#{to_location.id}> has been removed.",
+            f"Note that there may still be a route from **{to_location.name}** to **{self.name}**.")
+        
+        if server is None:
+            server = RPServer(guild.id)
+            await server.fetch()
+
+        logging_channel = await server.get_logging_channel(guild = guild)
+        await safe_send(log_embed, [self_channel, logging_channel], silent = True)
+
+        character_embed = text_embed(
+            "Route disappeared.",
+            f"You can't seem to reach **{to_location.name}** from here-- I thought you used to be able?",
+            "Perhaps you never could. Perhaps something changed.") 
+
+        await self.send_to_inhabitants(guild, character_embed)        
+        return True
+    
+    async def send_to_inhabitants(self, guild: Guild, embed: Embed) -> None:
+        """Sends a message to all characters in this location."""
+
+        for character in await Character.fetch_all("location_id", self.id):
+            char_channel = await character.get_channel(guild)
+            await safe_send(embed = embed, channels = [char_channel])
+
+        return
 
     @property
     async def character_count(self) -> int:
         return await CharacterEntry.count("location_id", self.id)
+
+class Route(DatabaseMixin):
+
+    def __init__(self, 
+        origin_id: int, 
+        destination_id: int, 
+        console_level: int | None = None
+    ):
+
+        self.id: int = origin_id
+        self.to_id: int = destination_id
+
+        super().__init__(
+            entry_class = RouteEntry, 
+            id = origin_id, 
+            sec = destination_id,
+            console_level = console_level)
+
+        return
+    
+    @staticmethod
+    async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Location]:
+
+        return await DatabaseMixin.fetch_all(
+            col_name = col_name, 
+            value = value,
+            entry_class = RouteEntry,
+            final_class = Route)
+
+    async def create(self, 
+        guild: Guild | None = None, 
+        **_
+    ) -> CommitResult:
+        """Makes a routes between two locations."""
+
+        from_location = Location(self.id)
+
+        if not await from_location.exists:
+            return CommitResult.ROW_MISSING
+        
+        to_location = Location(self.to_id)
+
+        if not await to_location.exists:
+            return CommitResult.ROW_MISSING
+        
+        await from_location.fetch()
+        await to_location.fetch()
+        
+        result = await DatabaseMixin.create(self, to_id = self.to_id)
+
+        if guild is None:
+            return result
+
+        await from_location.new_route(to_location, guild = guild)
+
+        return result
+
+    async def delete(self, 
+        guild: Guild | None = None, **_
+    ) -> CommitResult:
+        
+        result = await DatabaseMixin.delete(self, to_id = self.to_id)
+
+        if guild is None:
+            return result
+        
+        from_location = Location(self.id)
+
+        if not await from_location.exists:
+            return CommitResult.NO_UPDATE # Deleting a location inherently deletets its routes
+
+        to_location = Location(self.to_id)
+        if not await to_location.exists:
+            return CommitResult.NO_UPDATE
+        
+        await from_location.fetch()
+        await to_location.fetch()
+
+        await from_location.remove_route(to_location, guild = guild)
+        return result
 
 class Character(DatabaseMixin, RelayableMixin):
     
