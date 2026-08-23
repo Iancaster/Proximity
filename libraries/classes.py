@@ -557,6 +557,10 @@ class Location(DatabaseMixin, RelayableMixin):
     @property
     async def character_count(self) -> int:
         return await CharacterEntry.count("location_id", self.id)
+    
+    @property
+    async def occupants(self) -> Iterable[Character]:
+        return await Character.fetch_all("location_id", self.id)
 
 class Route(DatabaseMixin):
 
@@ -626,7 +630,7 @@ class Route(DatabaseMixin):
         from_location = Location(self.id)
 
         if not await from_location.exists:
-            return CommitResult.NO_UPDATE # Deleting a location inherently deletets its routes
+            return CommitResult.NO_UPDATE # Deleting a location inherently deletes its routes
 
         to_location = Location(self.to_id)
         if not await to_location.exists:

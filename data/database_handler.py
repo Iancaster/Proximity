@@ -179,7 +179,6 @@ class DatabaseEntry(ABC):
         set_clause = ", ".join(f"{col} = ?" for col in kwargs)
         values = (*kwargs.values(), id)
 
-
         try:
 
             async with db.execute(

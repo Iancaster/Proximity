@@ -4,12 +4,11 @@
 from discord import ApplicationContext, Interaction, InteractionContextType, ButtonStyle
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from discord.utils import get_or_fetch
 
-from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer, Location
-from libraries.user_interface import Dialogue, ImageSource, text_embed, image_embed, send_message
-
-from asyncio import create_task
+from libraries.classes import RPServer, Location, \
+    in_text_channel, is_administrator, in_prox_rp
+from libraries.user_interface import Dialogue, ImageSource, \
+    text_embed, image_embed, send_message, LOGO
 
 class DeleteCommands(commands.Cog):
 
@@ -391,8 +390,8 @@ class DeleteCommands(commands.Cog):
                     "\n - All Characters and their location channels.",
                 "Sorry to see you go.",
                 thumbnail = True,
-                source = ImageSource.URL if server.reference else ImageSource.ASSET,
-                asset_str = server.reference or "")
+                source = ImageSource.URL,
+                asset_str = server.reference or LOGO)
 
             dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()

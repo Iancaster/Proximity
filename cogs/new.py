@@ -3,7 +3,7 @@
 
 from libraries.classes import RPServer, Location
 from libraries.user_interface import Dialogue, Popup, ImageSource, \
-    text_embed, image_embed, send_message, reference_validator
+    text_embed, image_embed, send_message, reference_validator, LOGO
 
 from discord import ApplicationContext, InteractionContextType, \
     ButtonStyle, InputTextStyle, Interaction
@@ -79,7 +79,7 @@ class NewCommands(commands.Cog):
         
         details_popup.add_text(
             label = "Reference photo URL",
-            placeholder = "You can paste an Imgur link for reference images or original art.",
+            placeholder = "Right click an Imgur image and select 'Copy Link'.",
             min_length = 1,
             max_length = 300,
             required = False,
@@ -98,13 +98,13 @@ class NewCommands(commands.Cog):
                 " forget to connect it to its neighbors!"
             description, ref_url = await reference_validator(
                 description, 
-                dialogue.fields["Reference photo URL"].get_value())
+                dialogue._fields["Reference photo URL"].get_value())
             
             location = Location(0) # Hacky deferred PK assignment, but what can you do.
             await location.create(
                 guild_id = server.id,
-                name = dialogue.fields["Name"].get_value(),
-                description = dialogue.fields["Description"].get_value(),
+                name = dialogue._fields["Name"].get_value(),
+                description = dialogue._fields["Description"].get_value(),
                 reference = ref_url,
                 interaction = interaction)            
             
@@ -114,8 +114,8 @@ class NewCommands(commands.Cog):
                 footer = "Use /new route. And like everything " \
                     " else, you can always /review this location later.",
                 thumbnail = True,
-                source = ImageSource.URL if ref_url else ImageSource.ASSET,
-                asset_str = ref_url if ref_url else "logo.png")
+                source = ImageSource.URL,
+                asset_str = ref_url or LOGO)
             dialogue.view.clear_items()
             return await dialogue.refresh(interaction)
 
@@ -124,17 +124,17 @@ class NewCommands(commands.Cog):
         await dialogue.view.refresh_children()
         return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
-    @new_group.command(
-        name = "route", 
-        description = "Lets characters travel (and be heard) between locations.", 
-        checks = [in_prox_rp])
-    async def route(self, ctx: ApplicationContext):
+    # @new_group.command(
+    #     name = "route", 
+    #     description = "Lets characters travel (and be heard) between locations.", 
+    #     checks = [in_prox_rp])
+    # async def route(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
+    #     server = RPServer(ctx.guild_id)
 
-        return
+    #     return
 
-    @new_group.command(name = 'character', description = 'A new actor onstage.')
+    #@new_group.command(name = 'character', description = 'A new actor onstage.')
     # async def character(self, ctx: ApplicationContext):
 
     #     server = RPServer(ctx.guild_id)
@@ -369,12 +369,12 @@ class NewCommands(commands.Cog):
 
             description, ref_url = await reference_validator(
                 description, 
-                dialogue.fields["Reference photo URL"].get_value())
+                dialogue._fields["Reference photo URL"].get_value())
 
             await server.create(
-                log_channel_id = dialogue.fields["logging"].get_value(),
-                name = dialogue.fields["Title"].get_value(),
-                description = dialogue.fields["Description"].get_value(),
+                log_channel_id = dialogue._fields["logging"].get_value(),
+                name = dialogue._fields["Title"].get_value(),
+                description = dialogue._fields["Description"].get_value(),
                 reference = ref_url,
                 character_limit = 10,
                 location_limit = 10,

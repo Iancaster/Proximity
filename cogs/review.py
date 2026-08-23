@@ -5,9 +5,10 @@ from discord import ApplicationContext, Interaction, MISSING, \
     InteractionContextType, InputTextStyle, ButtonStyle
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer
+from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer, Location
 from libraries.user_interface import text_embed, send_message, \
-    image_embed, validate_url, reference_validator, ImageSource, Dialogue, Popup
+    image_embed, reference_validator, ImageSource, Dialogue, Popup, \
+    LOGO
 
 # Classes
 class ReviewCommands(commands.Cog):
@@ -18,204 +19,151 @@ class ReviewCommands(commands.Cog):
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator, in_prox_rp])
 
-    # @review_group.command(name = "location", description = 'View or revise the places.')
-    # async def place(self, 
-    # 	ctx: ApplicationContext, 
-    # 	given_place: Option(
-    # 		str, 
-    # 		description = 'Which place?', 
-    # 		name = 'place', 
-    # 	autocomplete = complete_places, required = False)):
+    @review_group.command(name = "location", description = "Examine or change the details of a location.")
+    async def location(self, ctx: ApplicationContext):
 
-    # 	await ctx.defer(ephemeral = True)
+        async def add_components(location: Location, dialogue: Dialogue):
 
-    # 	GD = GuildData(ctx.guild_id, load_places = True, load_characters = True)
-    # 	CM = ChannelManager(GD = GD)
+            details_popup = Popup(title = "Edit location details")
 
-    # 	async def review_places(place_names: list):
+            details_popup.add_text(
+                label = "Name", 
+                placeholder = "What should the location be renamed?", 
+                value = location.name,
+                min_length = 1, 
+                max_length = 100)
+            
+            details_popup.add_text(
+                label = "Description", 
+                placeholder = "Share some lore, maybe, or the sounds or scents of a scene?", 
+                value = location.description,
+                min_length = 0, 
+                max_length = 300,
+                required = False,
+                style = InputTextStyle.paragraph)
+            
+            details_popup.add_text(
+                label = "Reference photo URL",
+                placeholder = "Right click an Imgur image and select 'Copy Link'.",
+                value = location.reference,
+                min_length = 1,
+                max_length = 300,
+                required = False,
+                style = InputTextStyle.paragraph)
 
-    # 		reviewing_places = await GD.filter_places(place_names)
+            details_button = dialogue.add_button(label = "Change location details", style = ButtonStyle.blurple)
+            dialogue.add_modal(details_popup, details_button)
 
-    # 		if len(reviewing_places) == 1:
-    # 			reviewing_place = list(reviewing_places.values())[0]
-    # 			title = f'Reviewing <#{reviewing_place.channel_ID}>'
-    # 			description = ''
-    # 		else:
-    # 			title = f'Reviewing {len(reviewing_places)} place(s).'
-    # 			description = f"• Selected places: {await format_channels({place.channel_ID for place in reviewing_places.values()})}"
+            submit_button = dialogue.add_button(label = "Submit edits", style = ButtonStyle.success)
+            submit_button.should_disable = lambda : not dialogue.is_valid
+            dialogue.add_close()   
 
-    # 		occupants = await GD.get_occupants(reviewing_places.values())
-    # 		description += f"\n• Occupants: {await format_channels(occupants) if occupants else 'No people here.'}"
+            async def submit(interaction: Interaction):
 
-    # 		graph = await GD.to_graph()
-    # 		subgraph = DiGraph()
-    # 		for place in place_names:
-    # 			ego = ego_graph(graph, place, radius = 1)
-    # 			subgraph = compose(subgraph, ego)
+                nonlocal dialogue, location
+                    
+                _, ref_url = await reference_validator(
+                    "", 
+                    dialogue._fields["Reference photo URL"].get_value())
+                
+                await location.update(
+                    name = dialogue._fields["Name"].get_value(),
+                    description = dialogue._fields["Description"].get_value(),
+                    reference = ref_url)
+                await location.fetch()   
+                
+                dialogue = await review_location(location, dialogue)
+                await dialogue.refresh(interaction)  
 
-    # 		if subgraph.edges:
-    # 			graph_view = (await GD.to_map(subgraph), 'full')
-    # 		else:
-    # 			description += "\n• Neighbors: There are no paths connected to any of the places you gave."
-    # 			graph_view = None
+            submit_button.callback = submit  
+            await dialogue.view.refresh_children()
 
-    # 		new_name = None
+            return
 
-    # 		async def refresh():
+        async def review_location(location: Location, dialogue: Dialogue | None = None):
 
-    # 			nonlocal description, new_name
+            if occupants := list(await location.occupants):
+                occupants = ", ".join([f"<#{char.id}>" for char in occupants]) 
+            else:
+                occupants = "No one is here at the moment."
 
-    # 			full_description = description
-    # 			if view.name():
-    # 				new_name = await discordify(view.name())
-    # 				new_name = await unique_name(new_name, GD.places.keys())
-    # 				full_description = f'\n• Renaming this place to **#{new_name}**.' + \
-    # 					description
-    # 			else:
-    # 				new_name = None
+            embed, file = await image_embed(
+                f"Reviewing <#{location.id}>",
+                f"**Description:** {location.description or "No description yet."}"
+                f"\n**Connected locations:** Coming soon!" + \
+                f"\n**Occupants:** {occupants}" + \
+                f"\n**Routes:** Coming soon!" + \
+                f"\n**Reference:** " +
+                    ("See below." if location.reference else "None (yet). You should add one!"),
+                "Would you perhaps like to change any of these things?",
+                thumbnail = False,
+                source = ImageSource.URL,
+                asset_str = location.reference or LOGO)
+            
+            if dialogue is None:
+                dialogue = Dialogue(embed, file)
+                await add_components(location, dialogue)
+            else:
+                dialogue.current_embed = embed
+                dialogue.current_file = file
 
-    # 			full_description += await view.format_whitelist(reviewing_places.values())
+            return dialogue
 
-    # 			embed, _ = await mbd(
-    # 				title,
-    # 				full_description,
-    # 				'You can rename a place if you have only one selected.',
-    # 				graph_view)
-    # 			return embed, None
+        location = Location(ctx.channel_id) 
 
-    # 		def checks():
-    # 			nonlocal new_name
-    # 			return not (view.roles() or view.characters() or new_name or view.clearing)
+        if await location.exists:
 
-    # 		async def submit(interaction: Interaction):
+            await location.fetch()
+            dialogue = await review_location(location)
+            return await send_message(ctx.interaction, 
+                dialogue.current_embed, 
+                dialogue.view,
+                dialogue.current_file, 
+                ephemeral = True)
+        
+        embed = text_embed(
+            "Which location?",
+            ("Please select a location channel from the dropdown below"
+                " to review its details. You can also call this command"
+                " in a location channel to select it automatically."),
+            "This will show you everything about the place.",)
+        
+        dialogue = Dialogue(embed) 
 
-    # 			await loading(interaction)
+        channel_select = dialogue.add_channel_select(
+            label = "Pick a channel to review.",
+            purpose = "Location choice",
+            placeholder = "#the-castle",
+            min_values = 1)
+        
+        submit_button = dialogue.add_button("Review selected location", ButtonStyle.primary)
 
-    # 			nonlocal reviewing_places, new_name
+        async def select(interaction: Interaction):
+            nonlocal dialogue
+            location = Location(channel_select.values[0].id)
+            await location.fetch()
+            dialogue.view.clear_items()
+            dialogue = await review_location(location, dialogue)
+            await add_components(location, dialogue)
+            await dialogue.refresh(interaction)
+            return
+        
+        submit_button.callback = select
 
-    # 			description = ''
+        server = RPServer(ctx.guild_id)
+        await server.fetch()
 
-    # 			if view.clearing:
-    # 				description += '\n• Removed the whitelist(s).'
-    # 				for name, place in reviewing_places.items():
+        location_ids = [loc.id for loc in await server.locations]
+        submit_button.should_disable = (lambda : not channel_select.is_valid() or # pyright: ignore[reportPossiblyUnboundVariable]
+            channel_select.values[0].id not in location_ids) # pyright: ignore[reportPossiblyUnboundVariable]
+    
+        dialogue.add_close()
+        await send_message(ctx.interaction, 
+            dialogue.current_embed, 
+            dialogue.view,
+            ephemeral = True)        
 
-    # 					await GD.places[name].clear_whitelist()
-    # 					embed, _ = await mbd(
-    # 						'Opening up.',
-    # 						'You somehow feel like this place just easier to get to.',
-    # 						'For better or for worse.')
-    # 					await to_direct_listeners(embed,
-    # 						interaction.guild,
-    # 						place.channel_ID,
-    # 						occupants_only = True)
-
-    # 			if view.roles() or view.characters():
-
-    # 				description += '\n• New whitelist: ' + \
-    # 					await format_whitelist(view.roles(), view.characters())
-
-    # 				embed, _ = await mbd(
-    # 					'Strange.',
-    # 					"There's a sense that this place just changed in some way.",
-    # 					"Only time will tell if you'll be able to return here as easily as you came.")
-
-    # 				for name, place in reviewing_places.items():
-    # 					await to_direct_listeners(embed,
-    # 						interaction.guild,
-    # 						place.channel_ID,
-    # 						occupants_only = True)
-
-    # 					await GD.places[name].set_roles(view.roles())
-    # 					await GD.places[name].set_characters(view.characters())
-
-    # 			if new_name:
-
-    # 				old_name = list(reviewing_places.keys())[0]
-
-    # 				description += f"\n• Renamed **#{old_name}** to <#{reviewing_place.channel_ID}>."
-
-    # 				await GD.rename_place(old_name, new_name)
-    # 				GD.places.pop(new_name)
-    # 				await GD.save()
-
-    # 				if place_channel := await get_or_fetch(
-    # 					interaction.guild,
-    # 					'channel',
-    # 					reviewing_place.channel_ID,
-    # 					default = None):
-    # 					await place_channel.edit(name = new_name)
-
-    # 				embed, _ = await mbd(
-    # 					'Strange.',
-    # 					f'This place was once named **#{old_name}**,' +
-    # 						f' but you now feel it should be called **#{new_name}**.',
-    # 					'Better find your bearings.')
-    # 				await to_direct_listeners(
-    # 					embed,
-    # 					interaction.guild,
-    # 					reviewing_place.channel_ID,
-    # 					occupants_only = True)
-
-    # 				GD.places[new_name] = reviewing_place
-
-    # 			await GD.save()
-
-    # 			await queue_refresh(interaction.guild)
-
-    # 			embed, _ = await mbd(
-    # 				'Edited.',
-    # 				description,
-    # 				'Another successful revision.')
-    # 			for place in reviewing_places.values():
-    # 				place_channel = get(interaction.guild.text_channels, id = place.channel_ID)
-    # 				await place_channel.send(embed = embed)
-
-    # 			return await no_redundancies(
-    # 				(interaction.channel.name in reviewing_places or interaction.channel.name == new_name),
-    # 				embed,
-    # 				interaction)
-
-    # 		view = DialogueView(refresh, checks)
-    # 		await view.add_roles()
-    # 		await view.add_characters(GD.characters)
-    # 		await view.add_submit(submit)
-    # 		if len(reviewing_places) == 1:
-    # 			await view.add_rename(place_names[0])
-    # 		if any(place.allowed_roles or place.allowed_characters for place in reviewing_places.values()):
-    # 			await view.add_clear()
-    # 		await view.add_cancel()
-    # 		embed, _ = await refresh()
-    # 		_, file = await mbd(image_details = graph_view)
-
-    # 		await send_message(ctx.respond, embed, view, file, ephemeral = True)
-    # 		return
-
-    # 	async def select_menu():
-
-    # 		embed, _ = await mbd(
-    # 			'Review place(s)?',
-    # 			"You can review a place four ways:" +
-    # 				"\n• Call this command inside of a place channel." +
-    # 				"\n• Do `/review place review #place-channel`." +
-    # 				"\n• Select one or more places with the list below." +
-    # 				"\n• To rename a place, you can just rename the channel.",
-    # 			'This will allow you to view place details, like paths and whitelists.')
-
-    # 		async def submit_locations(interaction: Interaction):
-    # 			await ctx.delete()
-    # 			await review_places(view.places())
-    # 			return
-
-    # 		view = DialogueView()
-    # 		await view.add_places(GD.places.keys(), singular = False, callback = submit_locations)
-    # 		await view.add_cancel()
-    # 		await send_message(ctx.respond, embed, view = view)
-    # 		return
-
-    # 	if result := await CM.identify_place_channel(ctx, select_menu, given_place):
-    # 		await review_places([result])
-
-    # 	return
+        return
 
     # @review_group.command(name = 'path', description = 'Look at (or edit) paths.')
     # async def path(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place to start from?', name = 'place', autocomplete = complete_places, required = False)):
@@ -778,12 +726,12 @@ class ReviewCommands(commands.Cog):
             description = "This server is now updated to your specifications."
             description, ref_url = await reference_validator(
                 description, 
-                dialogue.fields["Reference photo URL"].get_value())
+                dialogue._fields["Reference photo URL"].get_value())
 
             await server.update(
-                log_channel_id = dialogue.fields["logging"].get_value(),
-                name = dialogue.fields["Title"].get_value(),
-                description = dialogue.fields["Description"].get_value(),
+                log_channel_id = dialogue._fields["logging"].get_value(),
+                name = dialogue._fields["Title"].get_value(),
+                description = dialogue._fields["Description"].get_value(),
                 reference = ref_url)
             
             dialogue.current_embed = text_embed(

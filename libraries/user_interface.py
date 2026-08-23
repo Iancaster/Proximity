@@ -12,11 +12,14 @@ from io import BytesIO
 from enum import IntEnum
 from pathlib import Path
 from abc import ABC, abstractmethod
+from config.cfg_parser import cfg
 
 #"Constants"
-NO_AVATAR_URL = "https://i.imgur.com/A6qTjRc.jpeg"
+NO_AVATAR_PFP = str(cfg("images", "no_pfp"))
+LOGO = str(cfg("images", "logo"))
+BAD_LINK = str(cfg("images", "bad_link"))
 ASSETS_DIR = Path().cwd() / "assets"
-VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"]
+VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
 
 class ImageSource(IntEnum):
     ASSET = 0
@@ -68,8 +71,10 @@ async def image_embed(
 
     if source == ImageSource.URL:
 
-        if not await validate_url(asset_str):
-            asset_str = NO_AVATAR_URL
+        if asset_str in [LOGO, BAD_LINK, NO_AVATAR_PFP]:
+            pass
+        elif not await validate_url(asset_str):
+            asset_str = NO_AVATAR_PFP
 
         file = None
         place_image(url = asset_str)                # pyright: ignore[reportCallIssue]
@@ -277,6 +282,11 @@ class Popup(Modal):
     
 class DialogueView(View):
 
+    timeout_embed = text_embed(
+        "Timed out.",
+        "Interactions generally time out after thirty seconds of inactivity. Feel free to call the command again!",
+        "This message will self-destruct in five seconds. Five...four...")
+
     def __init__(self, *, timeout: float = 30):
     
         super().__init__(timeout = timeout)
@@ -299,9 +309,7 @@ class DialogueView(View):
         if not interaction.user:
             return False
         
-        matches = interaction.user.id == self.owner_id
-
-        return matches
+        return interaction.user.id == self.owner_id
     
     async def on_timeout(self):
         
@@ -310,11 +318,11 @@ class DialogueView(View):
             try:
                 await self.original_interaction.edit_original_response(
                     content = "This dialogue has timed out. Feel free to call the command again.",
-                    embed = None,
-                    attachments= [],
+                    attachments = [],
                     view = None,
+                    suppress = True,
                     delete_after = 5)
-            except NotFound, HTTPException:
+            except NotFound:
                 pass
         
         return
@@ -331,6 +339,10 @@ class DialogueView(View):
 
         return
 
+    @property
+    def has_changed(self) -> bool:
+        return any(field.get_value() for field in self.fields)
+ 
 class Dialogue:
 
     def __init__(self, 
@@ -343,7 +355,8 @@ class Dialogue:
         if disable_timeout:
             self.view.timeout = None
 
-        self.fields: dict[str, DialogueMixin] = {}
+        self._fields: dict[str, DialogueMixin] = {}
+        self._field_values : dict[str, Any] = {}
 
         self.current_embed = starting_embed
         self.previous_embed: Embed | None = starting_embed
@@ -364,9 +377,11 @@ class Dialogue:
         
         if self.current_file != self.previous_file:
             self.previous_file = self.current_file
-            kwargs["file"] = self.current_file
 
-            if self.current_file is MISSING:
+            if self.current_file is not None:
+                kwargs["file"] = self.current_file
+
+            if self.current_file in (MISSING, None):
                 kwargs["attachments"] = []
 
         await self.view.refresh_children()
@@ -392,7 +407,7 @@ class Dialogue:
             dialogue_callback = self.refresh)
         
         self.view.add_item(button)
-        self.fields[button.field_name] = button
+        self._fields[button.field_name] = button
 
         return button
 
@@ -412,7 +427,7 @@ class Dialogue:
                 print(f"Warning: child {child} does not implement DialogueMixin. Skipping insert.")
                 continue
 
-            self.fields[child.field_name] = child
+            self._fields[child.field_name] = child
 
         return
 
@@ -431,7 +446,7 @@ class Dialogue:
             min_values = min_values)
         
         self.view.add_item(channel_select)
-        self.fields[channel_select.field_name] = channel_select
+        self.add_field(channel_select)
 
         return channel_select
 
@@ -445,6 +460,13 @@ class Dialogue:
 
         return button
     
+    def add_field(self, field) -> None:
+
+        self._fields[field.field_name] = field
+        self._field_values[field.field_name] = field.get_value()
+
+        return
+
     async def close(self, interaction: Interaction):
 
         closed_embed = text_embed(
@@ -462,7 +484,7 @@ class Dialogue:
 
     @property
     def is_valid(self) -> bool:
-        return all(item.is_valid() for item in self.fields.values())
+        return all(item.is_valid() for item in self._fields.values())
 
 async def send_message(
     interaction: Interaction, 

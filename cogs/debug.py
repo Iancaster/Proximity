@@ -6,7 +6,8 @@ from discord import ApplicationContext, Option, \
 from discord.ext import commands
 
 from libraries.classes import RPServer
-from libraries.user_interface import send_message, image_embed, ImageSource
+from libraries.user_interface import ImageSource, LOGO, \
+    send_message, image_embed
 
 #Classes
 class DebugCommands(commands.Cog):
@@ -101,13 +102,11 @@ class DebugCommands(commands.Cog):
             if server.reference is None:
                 footer = "If this server had a reference photo, you could view it here."
                 thumbnail = True
-                source = ImageSource.ASSET
                 asset_str = "logo.png"
             
             else:
                 footer = "Server's reference photo seen above." 
                 thumbnail = False
-                source = ImageSource.URL
                 asset_str = server.reference       
 
         else:
@@ -117,15 +116,14 @@ class DebugCommands(commands.Cog):
                 " servers registered as Proximity Roleplays.")  
             footer = "Check back after this server gets registered!"
             thumbnail = True
-            source = ImageSource.ASSET
-            asset_str = "logo.png"                         
+            asset_str = LOGO                         
 
         embed, file = await image_embed(
             title = "Server debug.",
             description = description,
             footer = footer,
             thumbnail = thumbnail,
-            source = source,
+            source = ImageSource.URL,
             asset_str =  asset_str)
 
         return await send_message(ctx.interaction, embed, file = file, ephemeral = True)
