@@ -1,25 +1,27 @@
 """Where most core functionality resides."""
 
-from typing import Iterable
-
-from discord import ApplicationContext, TextChannel, \
-    CategoryChannel, Guild, PermissionOverwrite, Forbidden, \
-    HTTPException, Webhook, NotFound, Interaction, Embed
+from discord import (ApplicationContext, Interaction,
+    TextChannel, CategoryChannel, Guild,
+    Bot, Webhook, PermissionOverwrite,
+    HTTPException, NotFound, Embed, Permissions)
+from discord.abc import GuildChannel
 from discord.utils import get_or_fetch, find
-from libraries.user_interface import text_embed, image_embed, ImageSource, safe_send, safe_del_channels
-from data.database_handler import DatabaseMixin, CommitResult, \
-    ServerEntry, LocationEntry, RouteEntry, CharacterEntry
-from os import environ
+from libraries.user_interface import safe_send, safe_del_channels
+from data.database_handler import CommitResult, UNSET, _Unset
+from data.database_entries import (
+    roleplay_repo, location_repo, character_repo, route_repo,
+    RoleplayData, LocationData, CharacterData, RouteData)
+from libraries.logger import get_logger, Lumberjack
+from libraries.user_interface import reference_validator, get_channel, get_bot
 
-SELF_USER_ID: int = int(environ.get("USER_ID", default = 0))
+from libraries.embed_templates import notify_log, ErrorEmbeds, RoleplayEmbeds
+
+from datetime import datetime as dt
 
 async def in_text_channel(ctx: ApplicationContext) -> bool:
 
     if not isinstance(ctx.channel, TextChannel):
-        embed = text_embed(
-            "Where am I?",
-            "This command only works in a normal text channel.",
-            "Try calling this command again, but from there instead.")
+        embed = ErrorEmbeds.non_text_channel()
         await ctx.respond(embed = embed, ephemeral = True)
         return False
     
@@ -27,21 +29,14 @@ async def in_text_channel(ctx: ApplicationContext) -> bool:
 
 async def in_prox_rp(ctx: ApplicationContext) -> bool:
 
-    if not await RPServer(ctx.guild_id).exists:
-
-        embed = text_embed(
-            "Hold your horses, cowboy.",
-            "This command is for Proximity roleplay servers, which this is not."
-                " You can make a server into a Prox RP by doing `/new roleplay`"
-                " in it, once I'm there too. Assuming you've got the permissions," \
-                " of course.",
-            "Or just head to your favorite roleplay and ask the staff about it.")
+    if await roleplay_repo.exists(ctx.guild_id) != CommitResult.SUCCESS:
+        embed = ErrorEmbeds.non_prox_rp()
         await ctx.respond(embed = embed, ephemeral = True)
         return False
 
     return True
 
-async def is_administrator(ctx: ApplicationContext) -> bool:
+async def is_administrator(ctx: ApplicationContext) -> bool: # Revisit this once the bot is done.
 
     return True
     
@@ -51,73 +46,121 @@ async def is_administrator(ctx: ApplicationContext) -> bool:
 
     return True
 
-class RelayableMixin:
+class Relayable:
+    """Methods for manipulating channels that relay, like Locations and Character channels."""
 
-    default_avatar_asset: str = "logo.png"
-
-    def __init__(self):
-        self.id: int = 0
-        return
+    default_avatar_asset: str = "logo.png"        
 
     @staticmethod
-    async def make_channel(
-        category_name: str,
+    async def create_category(
+        guild_id: int,
+        is_location_cat: bool
+    ) -> CategoryChannel | CommitResult:
+
+        rp = await Roleplay.load(guild_id)
+        if rp is None:
+            return CommitResult.NO_UPDATE 
+        
+        guild = await get_or_fetch(get_bot(), "guild", guild_id, default = None)
+        if guild is None:
+            return CommitResult.NO_UPDATE
+
+        if is_location_cat:
+            category_type = "locations_cat"
+            category_name = "locations"
+        else:
+            category_type = "characters_cat"
+            category_name = "characters"
+
+        try: 
+            category = await guild.create_category_channel(
+                name = category_name,
+                position = 999,
+                reason = "Requested by user for roleplay purposes.",
+                overwrites = {
+                    guild.default_role:
+                        PermissionOverwrite(read_messages = False),
+                    guild.me : PermissionOverwrite(
+                        send_messages = True,
+                        read_messages = True,
+                        manage_channels = True)})
+
+        except HTTPException:
+            return CommitResult.NO_UPDATE
+
+        db_result = await rp.update(**{category_type : category.id})
+
+        if db_result != CommitResult.SUCCESS:
+            await safe_del_channels([category], "Failed to update RP with new category.")
+            return CommitResult.NO_UPDATE
+        
+        return category
+    
+    @staticmethod
+    async def create_channel(
         channel_name: str, 
-        guild: Guild
-    ) -> TextChannel | None:
+        guild_id: int,        
+        is_location: bool
+    ) -> TextChannel | CommitResult:
 
-        server = RPServer(guild.id)
-        await server.fetch()
+        fetch_result = await roleplay_repo.fetch(guild_id)
 
-        loc_category = await server.get_category(
-            category_name,
-            guild = guild,
-            category_id = server.locations_cat if \
-                category_name == "locations" else server.characters_cat,
-            make_if_needed = True)
+        if not isinstance(fetch_result, RoleplayData):
+            return CommitResult.NO_UPDATE
+
+        category = await get_channel(fetch_result.locations_cat if is_location else fetch_result.characters_cat)
+        if category is None:
+            category_result = await Relayable.create_category(guild_id, is_location)
+
+            if not isinstance(category_result, CategoryChannel):
+                return CommitResult.NO_UPDATE
+
+            category = category_result
+
+        guild = await get_or_fetch(get_bot(), "guild", id = fetch_result.roleplay_id, default = None)
+        if guild is None:
+            return CommitResult.NO_UPDATE
 
         try:
 
-            new_rp_channel = await guild.create_text_channel( 
+            new_channel = await guild.create_text_channel( 
                 name = channel_name,
-                category = loc_category,
+                category = category,
                 reason = f"Requested by user for roleplay purposes.")
 
-        except HTTPException, Forbidden:
-            new_rp_channel = None
+        except HTTPException:
+            new_channel = None
 
-        if new_rp_channel is not None:
-            await RelayableMixin.create_webhook(new_rp_channel)
+        if new_channel is not None:
+            await Relayable.create_webhook(new_channel)
 
-        return new_rp_channel
-
-    async def get_channel(self, guild: Guild | None) -> TextChannel | None:
-
-        return await get_or_fetch(
-            guild, 
-            "channel", 
-            self.id, 
-            default = None)
+        return new_channel if new_channel is not None else CommitResult.NO_UPDATE
 
     @staticmethod
     async def ensure_webhook(channel: TextChannel) -> Webhook:
 
-        webhook = RelayableMixin.find_webhook(channel)
+        webhook = await Relayable.find_webhook(channel)
         
         if webhook is None:
-            webhook = RelayableMixin.create_webhook(channel)
+            webhook = await Relayable.create_webhook(channel)
 
         return webhook # pyright: ignore[reportReturnType]
 
     @staticmethod
     async def find_webhook(channel: TextChannel) -> Webhook | None:
-        return find(lambda w : w.user.id == SELF_USER_ID if w.user else False, await channel.webhooks())
+
+        user = get_bot().user
+
+        if user is None:
+            return None
+        
+        return find(lambda w : w.user.id == user.id if w.user else False, await channel.webhooks()) 
     
     @staticmethod
     async def delete_webhook(channel: TextChannel) -> bool:
         """Deletes this dedicated webhook. Returns whether successfully removed."""
 
-        webhook = await RelayableMixin.find_webhook(channel)
+        webhook = await Relayable.find_webhook(channel)
 
         if webhook is None:
             return True
@@ -141,535 +184,401 @@ class RelayableMixin:
             avatar = avatar,
             reason = "For use in roleplay.")
 
-class RPServer(DatabaseMixin):
-    """Represents one server in the roleplay."""
+class Roleplay:
+    """Represents a guild (a.k.a. a server) that hosts a Prox roleplay."""
 
-    def __init__(self, id: int, console_level: int | None = None):
+    _logger: Lumberjack = get_logger("Roleplay", console_level = 0)
 
-        self.log_channel_id: int | None = None
-        self.locations_cat: int | None = None
-        self.characters_cat: int | None = None
-        self.name: str | None = None
-        self.description: str | None = None
-        self.reference: str | None = None
-        self.character_limit: int | None = None
-        self.location_limit: int | None = None
-        self.subscription_end: int | None = None
-
-        super().__init__(
-            entry_class = ServerEntry, 
-            id = id, 
-            console_level = console_level)
-
+    def __init__(self, data: RoleplayData):
+        self.data = data
         return
-    
-    async def create(self, 
-        log_channel_id: int, 
-        name: str, 
-        description: str | None = None,
-        reference: str | None = None,
-        character_limit: int | None = 10,
-        location_limit: int | None = 10,
-        subscription_end: int | None = None,
-        log_channel: TextChannel | None = None,
-        **_
-    ) -> CommitResult:
-        """Registers this server as an RP one."""
 
-        result = await super().create(
-            log_channel_id = log_channel_id,
-            name = name,
-            description = description,
-            reference = reference,
-            character_limit = character_limit,
-            location_limit = location_limit,
-            subscription_end = subscription_end)
+    @classmethod
+    async def create(cls, data: RoleplayData) -> Roleplay | CommitResult:
 
-        if log_channel is None:
+        result = await roleplay_repo.create(data)
+
+        if result != CommitResult.SUCCESS:
             return result
 
-        embed, file = await image_embed(
-            f"Roleplay Created: {self.name}",
-            "Hello! I am Proximity, ",
-            "Sorry to see you go.",
-            thumbnail = True,
-            source = ImageSource.URL if self.reference else ImageSource.ASSET,
-            asset_str = self.reference or "")
+        fetch_result = await roleplay_repo.fetch(data.roleplay_id)
+
+        if not isinstance(fetch_result, RoleplayData):
+            return CommitResult.UNKNOWN_ERR
         
-        await safe_send(embed, [log_channel], silent = True, file = file)        
-        return result
+        return cls(fetch_result)      
+
+    @classmethod
+    async def load(cls, roleplay_id: int) -> Roleplay | None:
+        fetch_result = await roleplay_repo.fetch(roleplay_id)
+        return cls(fetch_result) if isinstance(fetch_result, RoleplayData) else None
 
     async def update(self, 
-        log_channel_id: int | None = None, 
-        locations_cat: int | None = None,
-        characters_cat: int | None = None,
-        name: str | None = None, 
-        description: str | None = None,
-        reference: str | None = None,
-        character_limit: int | None = None,
-        location_limit: int | None = None,
-        subscription_end: int | None = None,
-        **_
+        log_channel_id: int | None | _Unset = UNSET, 
+        locations_cat: int | None | _Unset = UNSET,
+        characters_cat: int | None | _Unset = UNSET,
+        name: str | _Unset = UNSET,
+        description: str | None | _Unset = UNSET,
+        reference: str | None | _Unset = UNSET,
+        character_limit: int | _Unset = UNSET,
+        location_limit: int | _Unset = UNSET,
+        subscription_end: dt | None | _Unset = UNSET
     ) -> CommitResult:
-        """Updates with current values. Returns True on success."""
+        """Updates with current values. Set a value to None to null it out."""
 
-        return await super().update(
-            log_channel_id = log_channel_id,
-            locations_cat = locations_cat,
-            characters_cat = characters_cat,
-            name = name,
-            description = description,
-            reference = reference,
-            character_limit = character_limit,
-            location_limit = location_limit,
-            subscription_end = subscription_end)
+        changed_values = {k : v for k, v in locals().items() if v != self}
+        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
 
-    async def get_logging_channel(self, guild: Guild | None) -> TextChannel | None:
+        for channel_name in ("log_channel_id", "locations_cat", "characters_cat"):
 
-        if self.log_channel_id is None:
-            return None
+            channel_id = changed_values.get(channel_name, UNSET)
 
-        return await get_or_fetch(
-            guild, 
-            "channel",
-            self.log_channel_id,
-            default = None)
+            if isinstance(channel_id, _Unset):
+                continue
 
-    async def get_category(self, 
-        category_name: str,
-        guild: Guild,
-        category_id: int | None = None, 
-        make_if_needed: bool = True
-    ) -> CategoryChannel | None:
-        
-        if not await self.exists:
-            self._logger.warning(f"Could not find {category_name} category; non-Proximity RP server.")
-            return None 
-        
-        if category_id is not None:
+            channel = await get_channel(int(channel_id))
 
-            found_category = await get_or_fetch(
-                guild, 
-                "channel", 
-                category_id, 
-                default = None)
+            if channel is None:
+                del changed_values[channel_name]
+
+            guild = await get_or_fetch(get_bot(), "guild", self.data.roleplay_id)
+            if not channel.permissions_for(guild.me).send_messages: # pyright: ignore[reportOptionalMemberAccess]
+                del changed_values[channel_name]
+
+        if reference is not UNSET:
+            url_result = await reference_validator(reference) # pyright: ignore[reportArgumentType]
+
+            if url_result != CommitResult.SUCCESS:
+                del changed_values["reference"]
+
+        if not changed_values:
+            return CommitResult.NO_UPDATE
             
-            if found_category is not None:
-                return found_category 
-            
-            if category_name == "locations":
-                await self.update(locations_cat = 0)
+        result = await roleplay_repo.apply(self.data, **changed_values)
+        return result
 
-            elif category_name == "characters":
-                await self.update(characters_cat = 0)
-                
-        if not make_if_needed:
-            self._logger.warning(f"Could not locate {category_name} category for {self.name}.")
-            return None
+    async def delete(self) -> CommitResult: 
         
-        try: 
-            found_category = await guild.create_category_channel(
-                name = category_name,
-                position = 999,
-                overwrites = {
-                    guild.default_role:
-                        PermissionOverwrite(read_messages = False),
-                    guild.me : PermissionOverwrite(
-                        send_messages = True,
-                        read_messages = True,
-                        manage_channels = True)})
+        for loc_data in await self.locations:
+            location = Location(loc_data)
+            await location.delete()
 
-        except Forbidden, HTTPException:
-            return None
-        
-        if category_name == "locations":
-            await self.update(locations_cat = found_category.id)
+        for character_data in await self.characters:
+            character = Character(character_data)
+            await character.delete()
 
-        elif category_name == "characters":
-            await self.update(characters_cat = found_category.id)
-
-        else:
-            self._logger.info(f"Made a category named {category_name}.")
-        
-        return found_category
-
-    async def delete(self, # delete character channels here too
-        log_channel: TextChannel | None = None, **_
-    ) -> CommitResult:
-
-        if log_channel is None:
-            return await super().delete()
-        
-        loc_category = await self.get_category(
-            "locations",
-            category_id = self.locations_cat,
-            guild = log_channel.guild,
-            make_if_needed = False)
-        await safe_del_channels([loc_category], "Roleplay is being deleted.")
-
-        for location in await self.locations:
-
-            loc_channel = await location.get_channel(log_channel.guild)
-            await location.delete(location_channel = loc_channel)
-
-        char_category = await self.get_category(
-            "characters",
-            category_id = self.characters_cat,
-            guild = log_channel.guild,
-            make_if_needed = False)
-        await safe_del_channels([char_category], "Roleplay is being deleted.")
-
-        for character in await self.characters:
-
-            char_channel = await character.get_channel(log_channel.guild)
-            await character.delete(guild = log_channel.guild)
-
-        embed, file = await image_embed(
-            f"Roleplay Deleted: {self.name}",
-            "The following has been deleted: " 
-                "\n - All server data (name, description, reference, etc)."
-                "\n - All Locations, their channels, and all Routes between them."
-                "\n - All Characters and their location channels.",
-            "Sorry to see you go.",
-            thumbnail = True,
-            source = ImageSource.URL if self.reference else ImageSource.ASSET,
-            asset_str = self.reference or "")
-        
-        await safe_send(embed, [log_channel], silent = True, file = file)        
-        return await super().delete()
+        return await roleplay_repo.delete(self.data.roleplay_id)
 
     @property
     async def location_count(self) -> int:
-        return await LocationEntry.count("guild_id", self.id)
+        return await location_repo.count("roleplay_id", self.data.roleplay_id)
     
     @property
     async def character_count(self) -> int:
-        return await CharacterEntry.count("guild_id", self.id)
+        return await character_repo.count("roleplay_id", self.data.roleplay_id)
 
     @property
-    async def locations(self) -> list[Location]:
-        return await Location.fetch_all("guild_id", self.id) # pyright: ignore[reportReturnType]
+    async def locations(self) -> list[LocationData]:
+        return await location_repo.fetch_all("roleplay_id", self.data.roleplay_id)
 
     @property
-    async def characters(self) -> list[Character]:
-        return await Character.fetch_all("guild_id", self.id) # pyright: ignore[reportReturnType]
+    async def characters(self) -> list[CharacterData]:
+        return await character_repo.fetch_all("roleplay_id", self.data.roleplay_id)
 
-class Location(DatabaseMixin, RelayableMixin):
+class Location:
 
-    def __init__(self, id: int, console_level: int | None = None):
+    _logger: Lumberjack = get_logger("Location", console_level = 0)
 
-        self.id: int = id
-        self.guild_id: int | None = None
-        self.name: str | None = None
-        self.description: str | None = None
-        self.reference: str | None = None
-
-        super().__init__(
-            entry_class = LocationEntry, 
-            id = id, 
-            console_level = console_level)
-
+    def __init__(self, data: LocationData):
+        self.data = data
         return
+
+    # async def update(self, 
+    #     name: str | None | _Unset = UNSET, 
+    #     description: str | None | _Unset = UNSET,
+    #     reference: str | None | _Unset = UNSET,
+    # ) -> CommitResult:
+    #     """Updates with current values. Set a value to None to null it out."""
+
+    #     changed_values = {k : v for k, v in locals().items() if v is not UNSET and k != "self"}
+
+    #     return await location_repo.apply(self.data, **changed_values)   
+
+    # async def update(self, 
+    #     name: str | None = None, 
+    #     description: str | None = None,
+    #     reference: str | None = None,
+    #     interaction: Interaction | None = None,
+    #     **_
+    # ) -> CommitResult:
+    #     """Updates this location within the RP."""
+
+    #     if interaction is None or interaction.guild is None:
+    #         return result
+
+    #     updated_channel = await Relayable.get_channel(self, interaction.guild)
+
+    #     if updated_channel is None:
+    #         return result
+        
+        
+    #     if not description:
+    #         embed_description = ("This location has no description" 
+    #             " yet, but you can add one with `/review location`.")
             
-    @staticmethod
-    async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Location]:
-
-        return await DatabaseMixin.fetch_all(
-            col_name = col_name, 
-            value = value,
-            entry_class = LocationEntry,
-            final_class = Location)
-
-    async def create(self, 
-        guild_id: int,
-        name: str, 
-        description: str | None = None,
-        reference: str | None = None,
-        interaction: Interaction | None = None,
-        **_
-    ) -> CommitResult:
-        """Registers this location within the RP."""
-
-        async def finalize() -> CommitResult:
-
-            return await DatabaseMixin.create(
-                self,
-                guild_id = guild_id,
-                name = name,
-                description = description,
-                reference = reference)
-
-        if interaction is None or interaction.guild is None:
-            return await finalize()
-
-        new_loc_channel = await RelayableMixin.make_channel(
-            category_name = "locations",
-            channel_name = name,
-            guild = interaction.guild)
+    #     else:
+    #         embed_description = ("This location has the following" 
+    #             " description set, it'll be visible to players"
+    #             " when they `/look` around in here: \n\n>>> ") + description
         
-        if new_loc_channel is None:
-            return await finalize()
+    #     embed, file = await image_embed(
+    #         f"New Location: {name}",
+    #         description = embed_description,
+    #         footer = ("You can also set the reference photo that way." if 
+    #             reference == "" else "Love what you've done with the place."),
+    #         thumbnail = True,
+    #         source = ImageSource.URL if reference else ImageSource.ASSET,
+    #         asset_str = reference or "")
         
-        self.id = new_loc_channel.id
-        result = await finalize()
+    #     server = RPServer(self.guild_id)
+    #     await server.fetch()
+    #     logging_channel = await server.get_logging_channel(guild = updated_channel.guild)
+    #     await safe_send(embed, [updated_channel, logging_channel], silent = True, file = file)
         
-        if not description:
-            embed_description = ("This location has no description" 
-                " yet, but you can add one with `/review location`.")
-            
-        else:
-            embed_description = ("This location has the following" 
-                " description set, it'll be visible to players"
-                " when they `/look` around in here: \n\n") + description
+    #     return result
+
+    @classmethod
+    async def create(cls, data: LocationData) -> Location | CommitResult:
+
+        rp_data = await roleplay_repo.fetch(data.roleplay_id)
+        if not isinstance(rp_data, RoleplayData):
+            return CommitResult.UNKNOWN_ERR
         
-        embed, file = await image_embed(
-            f"New Location: {name}",
-            description = embed_description,
-            footer = ("You can also set the reference photo that way." if 
-                reference == "" else "Love what you've done with the place."),
-            thumbnail = True,
-            source = ImageSource.URL if reference else ImageSource.ASSET,
-            asset_str = reference or "")
-        
-        server = RPServer(guild_id)
-        await server.fetch()
-        logging_channel = await server.get_logging_channel(guild = new_loc_channel.guild)
-        await safe_send(embed, [new_loc_channel, logging_channel], silent = True, file = file)
+        result = await location_repo.create(data)
+        if result != CommitResult.SUCCESS:
+            return result
+
+        fetch_result = await location_repo.fetch(data.location_id)
+
+        if not isinstance(fetch_result, LocationData):
+            return fetch_result
         
         return result
 
-    async def delete(self, 
-        guild: Guild | None = None, **_
-    ) -> CommitResult:
+    @classmethod
+    async def load(cls, location_id: int) -> Location | None:
+        fetch_result = await location_repo.fetch(location_id)
+        return cls(fetch_result) if isinstance(fetch_result, LocationData) else None
+
+    async def delete(self) -> CommitResult:
         
-        result = await super().delete()
+        result = await location_repo.delete(self.data.location_id)
+        loc_channel = await get_channel(self.data.location_id)
+        await safe_del_channels([loc_channel], "Location deleted by user.")
 
-        if guild is None:
+        rp = await Roleplay.load(self.data.roleplay_id)
+        if rp is None:
+            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}"
+                + f" when deleting location {self.data.location_id}.")
             return result
-
-        await safe_del_channels([await self.get_channel(guild)], "Location deleted by user.")
-
-        server = RPServer(guild.id)
-        await server.fetch()
-        if await server.location_count == 0:
-
-            loc_category = await server.get_category(
-                "locations",
-                guild = guild,
-                category_id = server.locations_cat,
-                make_if_needed = False)
-            
+ 
+        if await rp.location_count == 0:
+            loc_category = await get_channel(rp.data.locations_cat)            
             await safe_del_channels([loc_category], "No more locations remain in this RP.")
         
-        log_channel = await server.get_logging_channel(guild)
-        if log_channel is None:
-            return result
-        
-        embed, file = await image_embed(
-            f"Location Deleted: {self.name}",
-            ("Location removed by user. It no longer exists."
-                "\n - If done through slash"
-                " commands: please verify that the channel was"
-                " deleted properly. Sometimes it can fail due to"
-                " external factors or lack of permissions."
-                "\n - If triggered by you deleting the location"
-                " channel yourself: nothing more needs to be done."),
-            "Feel free to make other locations in its stead!",
-            thumbnail = True,
-            source = ImageSource.URL if self.reference else ImageSource.ASSET,
-            asset_str = self.reference or "")
-        
-        await safe_send(embed, [log_channel], silent = True, file = file)
         return result
 
-    async def new_route(self, 
-        to_location: Location, 
-        guild: Guild,
-        server: RPServer | None = None
-    ) -> bool:
+    # async def new_route(self, 
+    #     to_location: Location, 
+    #     guild: Guild,
+    #     server: RPServer | None = None
+    # ) -> bool:
     
-        if not await to_location.exists:
-            return False
+    #     if not await to_location.exists:
+    #         return False
 
-        self_channel = await self.get_channel(guild)
-        if self_channel is None:
-            return False
+    #     self_channel = await self.get_channel(guild)
+    #     if self_channel is None:
+    #         return False
         
-        log_embed = text_embed(
-            "New route.",
-            f"A new route has been created from <#{self.id}> to <#{to_location.id}>.",
-            "Note that this is one-way. If this is desired, no issue--otherwise, ensure an opposite route exists too.")
+    #     log_embed = text_embed(
+    #         "New route.",
+    #         f"A new route has been created from <#{self.id}> to <#{to_location.id}>.",
+    #         "Note that this is one-way. If this is desired, no issue--otherwise, ensure an opposite route exists too.")
         
-        if server is None:
-            server = RPServer(guild.id)
-            await server.fetch()
+    #     if server is None:
+    #         server = RPServer(guild.id)
+    #         await server.fetch()
 
-        logging_channel = await server.get_logging_channel(guild = guild)
-        await safe_send(log_embed, [self_channel, logging_channel], silent = True)
+    #     logging_channel = await server.get_logging_channel(guild = guild)
+    #     await safe_send(log_embed, [self_channel, logging_channel], silent = True)
 
-        character_embed = text_embed(
-            "New route.",
-            f"You notice a way to reach **{to_location.name}** from here-- is that new?",
-            "Perhaps  it was always there. Perhaps not.")
+    #     character_embed = text_embed(
+    #         "New route.",
+    #         f"You notice a way to reach **{to_location.name}** from here-- is that new?",
+    #         "Perhaps  it was always there. Perhaps not.")
 
-        await self.send_to_inhabitants(guild, character_embed)        
-        return True
+    #     await self.send_to_inhabitants(guild, character_embed)        
+    #     return True
     
-    async def remove_route(self, 
-        to_location: Location, 
-        guild: Guild,
-        server: RPServer | None = None
-    ) -> bool:
+    # async def remove_route(self, 
+    #     to_location: Location, 
+    #     guild: Guild,
+    #     server: RPServer | None = None
+    # ) -> bool:
 
-        self_channel = await self.get_channel(guild)
-        if self_channel is None:
-            return False
+    #     self_channel = await self.get_channel(guild)
+    #     if self_channel is None:
+    #         return False
         
-        log_embed = text_embed(
-            "Route removed.",
-            f"The route from <#{self.id}> to <#{to_location.id}> has been removed.",
-            f"Note that there may still be a route from **{to_location.name}** to **{self.name}**.")
+    #     log_embed = text_embed(
+    #         "Route removed.",
+    #         f"The route from <#{self.id}> to <#{to_location.id}> has been removed.",
+    #         f"Note that there may still be a route from **{to_location.name}** to **{self.name}**.")
         
-        if server is None:
-            server = RPServer(guild.id)
-            await server.fetch()
+    #     if server is None:
+    #         server = RPServer(guild.id)
+    #         await server.fetch()
 
-        logging_channel = await server.get_logging_channel(guild = guild)
-        await safe_send(log_embed, [self_channel, logging_channel], silent = True)
+    #     logging_channel = await server.get_logging_channel(guild = guild)
+    #     await safe_send(log_embed, [self_channel, logging_channel], silent = True)
 
-        character_embed = text_embed(
-            "Route disappeared.",
-            f"You can't seem to reach **{to_location.name}** from here-- I thought you used to be able?",
-            "Perhaps you never could. Perhaps something changed.") 
+    #     character_embed = text_embed(
+    #         "Route disappeared.",
+    #         f"You can't seem to reach **{to_location.name}** from here-- I thought you used to be able?",
+    #         "Perhaps you never could. Perhaps something changed.") 
 
-        await self.send_to_inhabitants(guild, character_embed)        
-        return True
+    #     await self.send_to_inhabitants(guild, character_embed)        
+    #     return True
     
-    async def send_to_inhabitants(self, guild: Guild, embed: Embed) -> None:
-        """Sends a message to all characters in this location."""
+    # async def send_to_inhabitants(self, guild: Guild, embed: Embed) -> None:
+    #     """Sends a message to all characters in this location."""
 
-        for character in await Character.fetch_all("location_id", self.id):
-            char_channel = await character.get_channel(guild)
-            await safe_send(embed = embed, channels = [char_channel])
+    #     for character in await Character.fetch_all("location_id", self.id):
+    #         char_channel = await character.get_channel(guild)
+    #         await safe_send(embed = embed, channels = [char_channel])
 
-        return
+    #     return
 
     @property
-    async def character_count(self) -> int:
-        return await CharacterEntry.count("location_id", self.id)
+    async def occupant_count(self) -> int:
+        return await character_repo.count("location_id", self.data.location_id)
     
     @property
-    async def occupants(self) -> Iterable[Character]:
-        return await Character.fetch_all("location_id", self.id)
+    async def occupants(self) -> list[CharacterData]:
+        return await character_repo.fetch_all("location_id", self.data.location_id)
 
-class Route(DatabaseMixin):
+class Route:
 
-    def __init__(self, 
-        origin_id: int, 
-        destination_id: int, 
-        console_level: int | None = None
-    ):
-
-        self.id: int = origin_id
-        self.to_id: int = destination_id
-
-        super().__init__(
-            entry_class = RouteEntry, 
-            id = origin_id, 
-            sec = destination_id,
-            console_level = console_level)
-
+    def __init__(self, data: RouteData):
+        self.data = data
         return
+
+    # async def create(self, 
+    #     guild: Guild | None = None, 
+    #     **_
+    # ) -> CommitResult:
+    #     """Makes a routes between two locations."""
+
+    #     from_location = Location(self.id)
+
+    #     if not await from_location.exists:
+    #         return CommitResult.ROW_MISSING
+        
+    #     to_location = Location(self.to_id)
+
+    #     if not await to_location.exists:
+    #         return CommitResult.ROW_MISSING
+        
+    #     await from_location.fetch()
+    #     await to_location.fetch()
+        
+    #     result = await DatabaseMixin.create(self, to_id = self.to_id)
+
+    #     if guild is None:
+    #         return result
+
+    #     await from_location.new_route(to_location, guild = guild)
+
+    #     return result
+
+    # async def delete(self, 
+    #     guild: Guild | None = None, **_
+    # ) -> CommitResult:
+        
+    #     result = await DatabaseMixin.delete(self, to_id = self.to_id)
+
+    #     if guild is None:
+    #         return result
+        
+    #     from_location = Location(self.id)
+
+    #     if not await from_location.exists:
+    #         return CommitResult.NO_UPDATE # Deleting a location inherently deletes its routes
+
+    #     to_location = Location(self.to_id)
+    #     if not await to_location.exists:
+    #         return CommitResult.NO_UPDATE
+        
+    #     await from_location.fetch()
+    #     await to_location.fetch()
+
+    #     await from_location.remove_route(to_location, guild = guild)
+    #     return result
+
+class Character:
+
+    _logger: Lumberjack = get_logger("Character", console_level = 0)
     
-    @staticmethod
-    async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Location]:
+    def __init__(self, data: CharacterData):
+        self.data = data
+        return
 
-        return await DatabaseMixin.fetch_all(
-            col_name = col_name, 
-            value = value,
-            entry_class = RouteEntry,
-            final_class = Route)
+    @classmethod
+    async def load(cls, character_id: int) -> Character | None:
+        fetch_result = await character_repo.fetch(character_id)
+        return cls(fetch_result) if isinstance(fetch_result, CharacterData) else None
 
-    async def create(self, 
-        guild: Guild | None = None, 
-        **_
-    ) -> CommitResult:
-        """Makes a routes between two locations."""
 
-        from_location = Location(self.id)
+    async def delete(self, silent: bool = False) -> CommitResult:
+            
+        result = await character_repo.delete(self.data.character_id)
+        char_channel = await get_channel(self.data.character_id)
+        await safe_del_channels([char_channel], "Character deleted by user.")
 
-        if not await from_location.exists:
-            return CommitResult.ROW_MISSING
-        
-        to_location = Location(self.to_id)
-
-        if not await to_location.exists:
-            return CommitResult.ROW_MISSING
-        
-        await from_location.fetch()
-        await to_location.fetch()
-        
-        result = await DatabaseMixin.create(self, to_id = self.to_id)
-
-        if guild is None:
+        rp = await Roleplay.load(self.data.roleplay_id)
+        if rp is None:
+            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}"
+                + f" when deleting character {self.data.character_id}.")
             return result
 
-        await from_location.new_route(to_location, guild = guild)
-
+        if await rp.character_count == 0:
+            char_category = await get_channel(rp.data.characters_cat)            
+            await safe_del_channels([char_category], "No more characters remain in this RP.")
+        
         return result
-
-    async def delete(self, 
-        guild: Guild | None = None, **_
-    ) -> CommitResult:
-        
-        result = await DatabaseMixin.delete(self, to_id = self.to_id)
-
-        if guild is None:
-            return result
-        
-        from_location = Location(self.id)
-
-        if not await from_location.exists:
-            return CommitResult.NO_UPDATE # Deleting a location inherently deletes its routes
-
-        to_location = Location(self.to_id)
-        if not await to_location.exists:
-            return CommitResult.NO_UPDATE
-        
-        await from_location.fetch()
-        await to_location.fetch()
-
-        await from_location.remove_route(to_location, guild = guild)
-        return result
-
-class Character(DatabaseMixin, RelayableMixin):
     
-    def __init__(self, id: int, console_level: int | None = None):
+#         self.eaves_target: int | None = None
+#         self.name: str | None = None
+#         self.description: str | None = None
+#         self.reference: str | None = None
 
-        self.id: int = id
-        self.location_id: int | None = None
-        self.guild_id: int | None = None
-        self.eaves_target: int | None = None
-        self.name: str | None = None
-        self.description: str | None = None
-        self.reference: str | None = None
+#         DatabaseMixin.__init__(
+#             self,
+#             entry_class = CharacterEntry, 
+#             id = id, 
+#             console_level = console_level)
 
-        DatabaseMixin.__init__(
-            self,
-            entry_class = CharacterEntry, 
-            id = id, 
-            console_level = console_level)
-
-        return
+#         return
     
-    @staticmethod
-    async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Character]:
+#     @staticmethod
+#     async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Character]:
         
-        return await DatabaseMixin.fetch_all(
-            col_name = col_name, 
-            value = value,
-            entry_class = CharacterEntry,
-            final_class = Character)
+#         return await DatabaseMixin.fetch_all(
+#             col_name = col_name, 
+#             value = value,
+#             entry_class = CharacterEntry,
+#             final_class = Character)
     
 # @dataclass(slots = True)
 # class Character:

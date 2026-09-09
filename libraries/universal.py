@@ -73,7 +73,7 @@ async def character_change(channel: TextChannel, char_data):
 #         embed = text_embed(
 #             'Easy, bronco.',
 #             "You've got no characters yet.",
-#             'Make a /new place so you can add a /new character.')
+#             'Make a /create place so you can add a /create character.')
 
 #         return embed
 

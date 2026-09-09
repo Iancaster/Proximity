@@ -5,7 +5,9 @@ from discord import ApplicationContext, Option, \
     SlashCommandGroup, Embed
 from discord.ext import commands
 
-from libraries.classes import RPServer
+from libraries.classes import Roleplay
+from data.database_entries import roleplay_repo
+from data.database_handler import CommitResult
 from libraries.user_interface import ImageSource, LOGO, \
     send_message, image_embed
 
@@ -90,16 +92,14 @@ class DebugCommands(commands.Cog):
     @debug_group.command(name = "server", description = "See what server info is saved in the database.")
     async def server(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
+        rp = await Roleplay.load(ctx.guild.id)
+        if rp is not None:
 
-        if await server.exists:
-
-            await server.fetch()
             description = \
-                (f"Server name: **{server.name}**" + 
-                f"\nServer description: {server.description}")
+                (f"Server name: **{rp.data.name}**" + 
+                f"\nServer description: {rp.data.description}")
             
-            if server.reference is None:
+            if rp.data.reference is None:
                 footer = "If this server had a reference photo, you could view it here."
                 thumbnail = True
                 asset_str = "logo.png"
@@ -107,13 +107,14 @@ class DebugCommands(commands.Cog):
             else:
                 footer = "Server's reference photo seen above." 
                 thumbnail = False
-                asset_str = server.reference       
+                asset_str = rp.data.reference       
 
         else:
             description = \
                 ("This server is not in the database." 
                 " You can use this dialogue to view information on" 
-                " servers registered as Proximity Roleplays.")  
+                " servers registered as Proximity Roleplays via"
+                " `/create roleplay`.")  
             footer = "Check back after this server gets registered!"
             thumbnail = True
             asset_str = LOGO                         

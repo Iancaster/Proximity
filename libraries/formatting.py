@@ -5,9 +5,10 @@ from networkx import DiGraph
 from re import search, sub
 from random import randrange
 from requests import head
+from collections.abc import Iterable
 
 # Functions
-async def format_words(words: iter):
+async def format_words(words: Iterable) -> str:
 
 	if not words:
 		return ''

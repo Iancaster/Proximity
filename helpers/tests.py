@@ -35,7 +35,7 @@ async def create_location(guild: Guild, location_name: str = 'test-location'):
 	embed, _ = await mbd(
 		'Cool, new place.',
 		f"{whitelist} If you want to change that, you can use `/review place`.",
-		"Don't forget to connect this place to other places with /new path.")
+		"Don't forget to connect this place to other places with /createpath.")
 	await new_channel.send(embed = embed)
 
 	verify_channel = await get_or_fetch(guild, 'channel', new_channel.id, default = None)

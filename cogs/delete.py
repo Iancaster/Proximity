@@ -5,10 +5,15 @@ from discord import ApplicationContext, Interaction, InteractionContextType, But
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from libraries.classes import RPServer, Location, \
+from libraries.embed_templates import notify_log, RoleplayEmbeds
+from libraries.classes import Roleplay, Location, \
     in_text_channel, is_administrator, in_prox_rp
+from data.database_entries import (
+    roleplay_repo, RoleplayData,
+    location_repo, LocationData)
 from libraries.user_interface import Dialogue, ImageSource, \
     text_embed, image_embed, send_message, LOGO
+from libraries.embed_templates import notify_log, LocEmbeds
 
 class DeleteCommands(commands.Cog):
 
@@ -20,50 +25,59 @@ class DeleteCommands(commands.Cog):
 
     @delete_group.command(name = "location", description = "Delete a location.")
     async def location(self, ctx: ApplicationContext):
+
+        rp = await Roleplay.load(ctx.guild_id)
+        assert rp is not None, "Redo your checks."
  
         async def delete_location(interaction: Interaction):
 
-            if await location.character_count != 0:
+            if location is None:
+                return None
+
+            if await location.occupant_count != 0:
 
                 embed = text_embed(
                     "Can't delete this location.",
-                    f"<#{location.id}> still has characters in it. Please move"
+                    f"<#{location.data.location_id}> still has characters in it. Please move"
                         " them somewhere else first with `/review character`.",
                     "This is to prevent characters from being stranded in a nonexistant location.")
                 dialogue.current_embed = embed
                 dialogue.view.clear_items()
                 return await dialogue.refresh(interaction)
                 
-            if calling_from_location_channel:
+            if interaction.channel_id == location.data.location_id:
                 await interaction.respond("Sure thing!", ephemeral = True)
 
-            log_channel = await server.get_logging_channel(interaction.guild)
-            await location.fetch()
-            await location.delete(log_channel = log_channel, guild = interaction.guild)
+            await location.delete()
+            embed, file = await LocEmbeds.delete.log(
+                location.data.name,
+                location.data.reference)
+            await notify_log(rp.data, embed, file)
 
-            if not calling_from_location_channel:
-                embed = text_embed(
-                    "Location deleted.",
-                    f"Deleted **{location.name}** and all routes connected to it.",
-                    "This can't be undone, but you can always make a new location.")
-                    
-                dialogue.current_embed = embed
+            if interaction.channel_id != location.data.location_id:
+
+                embed, file = \
+                    await LocEmbeds.delete.user(
+                        location.data.name, 
+                        location.data.reference)                    
+                dialogue.current_embed, dialogue.current_file = embed, file
                 dialogue.view.clear_items()
                 await dialogue.refresh(interaction)
 
             return
 
-        server = RPServer(ctx.guild_id)
-        await server.fetch()
-        location = Location(ctx.channel_id)   
-        calling_from_location_channel = await location.exists
+        location = await Location.load(ctx.channel_id)
 
-        if calling_from_location_channel:
+        if await location_repo.exists(ctx.channel_id):
 
             embed = text_embed(
                 "Delete this location?",
-                f"You're about to delete <#{location.id}> and all routes to and from it.",
+                f"You're about to delete <#{ctx.channel_id}> and all routes to and from it.",
                 "This is irreversible, so make sure you really want to do this.")
+
+            dialogue = Dialogue(embed) 
+            submit_button = dialogue.add_button("Delete this location", ButtonStyle.danger)
+            submit_button.callback = delete_location
             
         else:
             
@@ -74,15 +88,8 @@ class DeleteCommands(commands.Cog):
                     " in a location channel to select it automatically."),
                 "This will delete the location, its channel, and all" + 
                     " routes to and from it.")
-            
-        dialogue = Dialogue(embed) 
 
-        if calling_from_location_channel:
-            
-            submit_button = dialogue.add_button("Delete this location", ButtonStyle.danger)
-            submit_button.callback = delete_location     
-
-        else:
+            dialogue = Dialogue(embed) 
 
             channel_select = dialogue.add_channel_select(
                 label = "Select a location to delete.",
@@ -94,15 +101,15 @@ class DeleteCommands(commands.Cog):
 
             async def select(interaction: Interaction):
                 nonlocal location
-                location = Location(channel_select.values[0].id) # pyright: ignore[reportPossiblyUnboundVariable]
+                location = await Location.load(channel_select.values[0].id)
                 await delete_location(interaction)
                 return
             
             submit_button.callback = select
 
-            location_ids = [loc.id for loc in await server.locations]
-            submit_button.should_disable = (lambda : not channel_select.is_valid() or # pyright: ignore[reportPossiblyUnboundVariable]
-                channel_select.values[0].id not in location_ids) # pyright: ignore[reportPossiblyUnboundVariable]
+            location_ids = [loc_data.location_id for loc_data in await rp.locations]
+            submit_button.should_disable = (lambda : not channel_select.is_valid() or 
+                channel_select.values[0].id not in location_ids)
             
             await dialogue.view.refresh_children()
 
@@ -212,7 +219,7 @@ class DeleteCommands(commands.Cog):
     # 			embed, file = await mbd(
     # 				'Path(s) deleted.',
     # 				f'Removed the path(s) to {deleted_mentions}.',
-    # 				'You can always make some new ones with /new path.',
+    # 				'You can always make some new ones with /createpath.',
     # 				(graph_image, 'full'))
     # 			node_channel = get(interaction.guild.text_channels, name = origin_place_name)
     # 			await node_channel.send(embed = embed, file = file)
@@ -375,35 +382,27 @@ class DeleteCommands(commands.Cog):
     @delete_group.command(name = "roleplay", description = "Delete all RP data and channels. Use with caution.")
     async def roleplay(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
+        rp = await Roleplay.load(ctx.guild_id)
+        assert rp is not None, "Redo your checks."
+
         async def delete_data(interaction: Interaction):
 
-            await server.fetch()
-            logging_channel = await server.get_logging_channel(interaction.guild)
-            await server.delete(logging_channel)
+            await rp.delete()
+            embed, file = await RoleplayEmbeds.delete.log(rp.data.reference)
+            await notify_log(rp.data, embed, file)
 
-            embed, file = await image_embed(
-                f"Roleplay Deleted: {server.name}",
-                "The following has been deleted: " 
-                    "\n - All server data (name, description, reference, etc)."
-                    "\n - All Locations, their channels, and all Routes between them."
-                    "\n - All Characters and their location channels.",
-                "Sorry to see you go.",
-                thumbnail = True,
-                source = ImageSource.URL,
-                asset_str = server.reference or LOGO)
-
-            dialogue.current_embed, dialogue.current_file = embed, file
+            dialogue.current_embed, dialogue.current_file = \
+                await RoleplayEmbeds.delete.user(rp.data.name, rp.data.reference)
             dialogue.view.clear_items()
             return await dialogue.refresh(interaction)
 
         embed = text_embed(
             "Delete all data?",
-            "You're about to delete all server data, including"
+            "You're about to delete all roleplay data, including"
                 " all Locations and Characters. Any associated" 
-                " channels will also be deleted, except for the"
+                " channels will be deleted, apart from the"
                 " log channel you set when you registered the server.",
-            "This is irreversible, so make sure you really want to do this.")
+            "This is irreversible, so make sure you're certain you want this.")
 
         dialogue = Dialogue(embed)
         delete_button = dialogue.add_button("Delete all data", ButtonStyle.danger)

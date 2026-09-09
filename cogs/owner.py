@@ -37,54 +37,12 @@ class OwnerCommands(commands.Cog):
         guild_ids = [1111152704279035954])
     async def update(self, ctx: ApplicationContext):
 
-        from libraries.classes import RPServer
-        from discord import Interaction, ButtonStyle
-        
-
-        server = RPServer(ctx.guild_id)
-
-        if not await server.exists:
-
-            embed = text_embed(
-                "Nothing to delete!",
-                "Data is only made when you create new places or characters.",
-                "So, wish granted? This is as deleted as it gets.")
-            dialogue = Dialogue(embed)
-            dialogue.add_close()
-            await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-            return
-
-        async def delete_data(interaction: Interaction):
-
-            await server.delete()
-
-            embed = text_embed(
-                "See you around, then.",
-                "The following has been deleted: " 
-                    "\n• All server data (name, description, reference, etc)."
-                    "\n• All Locations, and Routes between them."
-                    "\n• All Characters."
-                    "\n• All Character Channels and Location Channels.",
-                "Sorry to see you go.")
-            dialogue.current_embed = embed
-            dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
-            
-            return
-
         embed = text_embed(
-            "Delete all data?",
-            "You're about to delete all server data, including"
-                " all Locations and Characters. Any associated" 
-                " channels will also be deleted, except for the"
-                " log channel you set when you registered the server.",
-            "This is irreversible, so make sure you really want to do this.")
-
+            "unused code!",
+            "how did you find this?",
+            "So, wish granted? This is as deleted as it gets.")
         dialogue = Dialogue(embed)
-        delete_button = dialogue.add_button("Delete all data", ButtonStyle.danger)
-        delete_button.callback = delete_data
         dialogue.add_close()
-    
         await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
         return
     

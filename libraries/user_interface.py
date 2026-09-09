@@ -1,11 +1,13 @@
 """Used for sending through Discord."""
 
 from discord import ComponentType, Interaction, ChannelType, MISSING, \
-    HTTPException, TextChannel, Forbidden, CategoryChannel
+    HTTPException, TextChannel, Forbidden, CategoryChannel, Bot
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
 from discord.abc import GuildChannel
 from discord.errors import NotFound
 from discord import File, Embed, ButtonStyle, InputTextStyle
+from discord.utils import get_or_fetch
+
 from aiohttp import ClientSession, ClientTimeout
 from typing import Callable, Any
 from io import BytesIO
@@ -13,6 +15,8 @@ from enum import IntEnum
 from pathlib import Path
 from abc import ABC, abstractmethod
 from config.cfg_parser import cfg
+from libraries.logger import get_logger
+from data.database_handler import _Unset, CommitResult
 
 #"Constants"
 NO_AVATAR_PFP = str(cfg("images", "no_pfp"))
@@ -20,6 +24,30 @@ LOGO = str(cfg("images", "logo"))
 BAD_LINK = str(cfg("images", "bad_link"))
 ASSETS_DIR = Path().cwd() / "assets"
 VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+
+logger = get_logger("UI")
+
+proximity: Bot | None = None
+
+def set_bot(bot: Bot) -> None:
+    global proximity
+    proximity = bot
+    return
+
+def get_bot() -> Bot:
+    global proximity
+    assert proximity is not None, "Bot has not been initialized yet."
+    return proximity
+
+async def get_channel(channel_id: int | None | _Unset) -> GuildChannel | None:
+
+    if channel_id is None:
+        return None
+
+    elif isinstance(channel_id, _Unset):
+        return None
+
+    return await get_or_fetch(get_bot(), "channel", channel_id, default = None)
 
 class ImageSource(IntEnum):
     ASSET = 0
@@ -40,7 +68,11 @@ def text_embed(
 
     return embed
 
-async def validate_url(url: str) -> bool:
+async def validate_url(url: str | None) -> bool:
+
+    if url is None:
+        return False
+    
     # forgive me
     try:
         async with ClientSession() as session:
@@ -57,7 +89,7 @@ async def image_embed(
     footer: str = "No footer.",
     thumbnail: bool = True,
     source: ImageSource = ImageSource.ASSET,
-    asset_str: str = "avatar.png",
+    asset_str: str | None = "avatar.png",
     asset_bytes: BytesIO | None = None,
     ) -> tuple[Embed, File | None]:
 
@@ -71,13 +103,14 @@ async def image_embed(
 
     if source == ImageSource.URL:
 
-        if asset_str in [LOGO, BAD_LINK, NO_AVATAR_PFP]:
-            pass
+        if asset_str in [LOGO, BAD_LINK, NO_AVATAR_PFP, "", None]:
+            asset_str = ""
         elif not await validate_url(asset_str):
             asset_str = NO_AVATAR_PFP
 
-        file = None
-        place_image(url = asset_str)                # pyright: ignore[reportCallIssue]
+        if asset_str:
+            file = None
+            place_image(url = asset_str)
 
     elif source == ImageSource.BYTES:
 
@@ -89,7 +122,7 @@ async def image_embed(
         
     else:
 
-        asset_path = ASSETS_DIR / asset_str
+        asset_path = ASSETS_DIR / (asset_str if asset_str is not None else "")
 
         if not asset_path.exists():
             asset_str = "bad_link.png"
@@ -101,22 +134,15 @@ async def image_embed(
 
     return embed, file
 
-async def reference_validator(description: str, proposed_URL: str) -> tuple[str, str]:
+async def reference_validator(proposed_URL: str) -> CommitResult:
 
     if proposed_URL == "":
-        return description, ""
+        return CommitResult.NO_UPDATE
 
-    description += "\n\nP.S. Took a look at the new reference URL, and it "
-    valid_url = await validate_url(proposed_URL)
+    if not await validate_url(proposed_URL):
+        return CommitResult.FOREIGN_KEY_FAIL
 
-    if valid_url:
-        description += "looks great."
-
-    else:
-        description += "doesn't seem to be a valid image. Try again maybe?"
-        proposed_URL = ""
-
-    return description, proposed_URL
+    return CommitResult.SUCCESS
 
 class DialogueMixin(ABC):
 
@@ -446,6 +472,7 @@ class Dialogue:
             min_values = min_values)
         
         self.view.add_item(channel_select)
+        channel_select.callback = self.refresh
         self.add_field(channel_select)
 
         return channel_select
@@ -512,25 +539,29 @@ async def send_message(
 
 async def safe_send(
     embed: Embed, 
-    channels: list[TextChannel | None], 
-    silent: bool = True, **kwargs
+    channels: list[GuildChannel | int | None], 
+    silent: bool = True, 
+    **kwargs
 ) -> None:
 
     for chan in channels:
 
-        if chan is None:
+        if isinstance(chan, int):
+            chan = await get_or_fetch(get_bot(), "channel", chan, default = None)
+
+        if not isinstance(chan, TextChannel):
             continue
 
         try: 
             await chan.send(embed = embed, silent = silent, **kwargs)
 
-        except HTTPException, Forbidden:
-            pass
+        except HTTPException:
+            logger.warning(f"Failed to send message to channel {chan.id}.")
 
     return
 
 async def safe_del_channels(
-    channels: list[TextChannel | CategoryChannel | None],
+    channels: list[GuildChannel | None],
     reason: str
 ) -> None:
     
@@ -541,9 +572,10 @@ async def safe_del_channels(
             
         try:
             await chan.delete(reason = reason)
-        except Forbidden, HTTPException, NotFound:
-            pass
-    
+            
+        except HTTPException:
+            logger.warning(f"Failed to delete channel {chan.id}.")
+
     return
 
 # class DialogueView(View):

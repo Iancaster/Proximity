@@ -616,7 +616,7 @@ class CharacterCommands(commands.Cog):
 					"\n\n**Commands**" +
 						"\n*These all have a <name> option, for you to " +
 							" optionally name a __place__ as you call the command.*" +
-						"\n\n• `/new place <name>`: Create a new __place__. If" +
+						"\n\n• `/create place <name>`: Create a new __place__. If" +
 							" no `<name>`, you'll can set one with the modal" +
 							" dialogue. You can also set a __whitelist__." +
 						"\n\n*If there's no `<name>` given, these next two commands" +
@@ -634,7 +634,7 @@ class CharacterCommands(commands.Cog):
 					"\n\n**Commands**" +
 						"\n*Like before, you can <name> a __place__ to work on," +
 							" call from within a __place__, or use the dropdown.*" +
-						"\n\n• `/new path <name>`: Create new __path__s." +
+						"\n\n• `/createpath <name>`: Create new __path__s." +
 							" You can set a __whitelist__, overwrite, and toggle" +
 							" whether they're two-way or one-way." +
 						"\n• `/delete path <name>`: Delete __path__ between" +
@@ -649,7 +649,7 @@ class CharacterCommands(commands.Cog):
 						"\n• You must be a Host." +
 					"\n\n**Commands**" +
 						"\n*For these, you can <name> a __character__.*" +
-						"\n\n• `/new character <name>`: Create a new __Character__" +
+						"\n\n• `/create character <name>`: Create a new __Character__" +
 						" with the given <name>. Call from within a __place__ channel," +
 							" or set the place with the modal dialogue in the menu." +
 						"\n\n*These ones will give you the context-sensitivity" +

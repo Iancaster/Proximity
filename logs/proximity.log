@@ -956,3 +956,971 @@
 05/25/26 | 13:21:21 [DEBUG] DB Mixin: Logger set up.
 05/25/26 | 13:22:10 [DEBUG] DB Mixin: Logger set up.
 05/25/26 | 13:35:09 [DEBUG] DB Mixin: Logger set up.
+08/23/26 | 13:21:06 [DEBUG] DB Mixin: Logger set up.
+08/23/26 | 13:21:19 [WARNING] DB Mixin: Could not locate characters category for Test RP.
+08/23/26 | 13:21:57 [INFO] DB Mixin: New record made in locations table, ID: 1541226009305808997.
+08/23/26 | 13:22:07 [INFO] DB Mixin: New record made in locations table, ID: 1541226061910515803.
+08/23/26 | 13:25:02 [DEBUG] DB Mixin: Logger set up.
+08/23/26 | 13:25:02 [WARNING] DB Mixin: Could not locate characters category for Test RP.
+08/23/26 | 13:25:13 [INFO] DB Mixin: Deleting record in locations with primary ID: 1541226061910515803.
+08/23/26 | 13:26:27 [DEBUG] DB Mixin: Logger set up.
+08/23/26 | 13:26:35 [INFO] DB Mixin: New record made in locations table, ID: 1541227185430335578.
+08/23/26 | 13:28:10 [DEBUG] DB Mixin: Logger set up.
+08/23/26 | 13:28:10 [WARNING] DB Mixin: Could not locate characters category for Test RP.
+08/23/26 | 13:29:03 [INFO] DB Mixin: New record made in locations table, ID: 1541227805889531977.
+08/23/26 | 16:11:19 [DEBUG] Main Logger: Logger set up.
+08/23/26 | 16:11:19 [INFO] Main Logger: Running program.
+08/23/26 | 16:11:19 [INFO] Main Logger: Execution concluded.
+08/23/26 | 16:11:43 [DEBUG] Main Logger: Logger set up.
+08/23/26 | 16:11:43 [INFO] Main Logger: Running program.
+08/23/26 | 16:11:43 [INFO] Main Logger: Execution concluded.
+08/24/26 | 16:08:58 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 16:08:58 [INFO] Main Logger: Running program.
+08/24/26 | 16:09:11 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 16:09:11 [INFO] Main Logger: Running program.
+08/24/26 | 16:09:24 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 16:09:24 [INFO] Main Logger: Running program.
+08/24/26 | 16:20:36 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 16:20:36 [INFO] Main Logger: Running program.
+08/24/26 | 16:21:10 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 16:21:10 [INFO] Main Logger: Running program.
+08/24/26 | 19:31:27 [DEBUG] Main Logger: Logger set up.
+08/24/26 | 19:31:27 [INFO] Main Logger: Running program.
+08/30/26 | 19:46:21 [DEBUG] Main Logger: Logger set up.
+08/30/26 | 19:46:21 [INFO] Main Logger: Running program.
+08/30/26 | 19:46:21 [INFO] Main Logger: Execution concluded.
+08/30/26 | 19:46:52 [DEBUG] Main Logger: Logger set up.
+08/30/26 | 19:46:52 [INFO] Main Logger: Running program.
+08/30/26 | 19:46:52 [INFO] Main Logger: Execution concluded.
+08/31/26 | 17:30:34 [DEBUG] UI: Logger set up.
+08/31/26 | 17:30:34 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:30:34 [DEBUG] Location: Logger set up.
+08/31/26 | 17:30:34 [DEBUG] Character: Logger set up.
+08/31/26 | 17:35:55 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 17:35:55 [INFO] Main Logger: Running program.
+08/31/26 | 17:35:55 [INFO] Main Logger: Execution concluded.
+08/31/26 | 17:36:14 [DEBUG] UI: Logger set up.
+08/31/26 | 17:36:14 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:36:14 [DEBUG] Location: Logger set up.
+08/31/26 | 17:36:14 [DEBUG] Character: Logger set up.
+08/31/26 | 17:39:05 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 17:39:05 [INFO] Main Logger: Running program.
+08/31/26 | 17:40:07 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 17:40:07 [INFO] Main Logger: Running program.
+08/31/26 | 17:40:07 [INFO] Main Logger: Execution concluded.
+08/31/26 | 17:43:19 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 17:43:19 [INFO] Main Logger: Running program.
+08/31/26 | 17:43:19 [INFO] Main Logger: Execution concluded.
+08/31/26 | 17:43:24 [DEBUG] UI: Logger set up.
+08/31/26 | 17:43:24 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:43:24 [DEBUG] Location: Logger set up.
+08/31/26 | 17:43:24 [DEBUG] Character: Logger set up.
+08/31/26 | 17:48:44 [DEBUG] UI: Logger set up.
+08/31/26 | 17:48:44 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:48:44 [DEBUG] Location: Logger set up.
+08/31/26 | 17:48:44 [DEBUG] Character: Logger set up.
+08/31/26 | 17:53:54 [DEBUG] UI: Logger set up.
+08/31/26 | 17:53:54 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:53:54 [DEBUG] Location: Logger set up.
+08/31/26 | 17:53:54 [DEBUG] Character: Logger set up.
+08/31/26 | 17:56:51 [DEBUG] UI: Logger set up.
+08/31/26 | 17:56:51 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:56:51 [DEBUG] Location: Logger set up.
+08/31/26 | 17:56:51 [DEBUG] Character: Logger set up.
+08/31/26 | 17:59:29 [DEBUG] UI: Logger set up.
+08/31/26 | 17:59:29 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 17:59:29 [DEBUG] Location: Logger set up.
+08/31/26 | 17:59:29 [DEBUG] Character: Logger set up.
+08/31/26 | 17:59:29 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 17:59:29 [INFO] Main Logger: Running program.
+08/31/26 | 18:02:42 [DEBUG] UI: Logger set up.
+08/31/26 | 18:02:42 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:02:42 [DEBUG] Location: Logger set up.
+08/31/26 | 18:02:42 [DEBUG] Character: Logger set up.
+08/31/26 | 18:02:42 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:02:42 [INFO] Main Logger: Running program.
+08/31/26 | 18:09:25 [DEBUG] UI: Logger set up.
+08/31/26 | 18:09:25 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:09:25 [DEBUG] Location: Logger set up.
+08/31/26 | 18:09:25 [DEBUG] Character: Logger set up.
+08/31/26 | 18:09:25 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:09:25 [INFO] Main Logger: Running program.
+08/31/26 | 18:09:55 [DEBUG] UI: Logger set up.
+08/31/26 | 18:09:55 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:09:55 [DEBUG] Location: Logger set up.
+08/31/26 | 18:09:55 [DEBUG] Character: Logger set up.
+08/31/26 | 18:09:55 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:09:55 [INFO] Main Logger: Running program.
+08/31/26 | 18:10:28 [DEBUG] UI: Logger set up.
+08/31/26 | 18:10:28 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:10:28 [DEBUG] Location: Logger set up.
+08/31/26 | 18:10:28 [DEBUG] Character: Logger set up.
+08/31/26 | 18:10:28 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:10:28 [INFO] Main Logger: Running program.
+08/31/26 | 18:11:17 [DEBUG] UI: Logger set up.
+08/31/26 | 18:11:17 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:11:17 [DEBUG] Location: Logger set up.
+08/31/26 | 18:11:17 [DEBUG] Character: Logger set up.
+08/31/26 | 18:11:17 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:11:17 [INFO] Main Logger: Running program.
+08/31/26 | 18:11:44 [DEBUG] UI: Logger set up.
+08/31/26 | 18:11:44 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:11:44 [DEBUG] Location: Logger set up.
+08/31/26 | 18:11:44 [DEBUG] Character: Logger set up.
+08/31/26 | 18:11:44 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:11:44 [INFO] Main Logger: Running program.
+08/31/26 | 18:15:04 [DEBUG] UI: Logger set up.
+08/31/26 | 18:15:04 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:15:04 [DEBUG] Location: Logger set up.
+08/31/26 | 18:15:04 [DEBUG] Character: Logger set up.
+08/31/26 | 18:15:04 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:15:04 [INFO] Main Logger: Running program.
+08/31/26 | 18:16:34 [DEBUG] UI: Logger set up.
+08/31/26 | 18:16:34 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:16:34 [DEBUG] Location: Logger set up.
+08/31/26 | 18:16:34 [DEBUG] Character: Logger set up.
+08/31/26 | 18:16:34 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:16:34 [INFO] Main Logger: Running program.
+08/31/26 | 18:16:47 [DEBUG] UI: Logger set up.
+08/31/26 | 18:16:47 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:16:47 [DEBUG] Location: Logger set up.
+08/31/26 | 18:16:47 [DEBUG] Character: Logger set up.
+08/31/26 | 18:16:47 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:16:47 [INFO] Main Logger: Running program.
+08/31/26 | 18:18:02 [DEBUG] UI: Logger set up.
+08/31/26 | 18:18:02 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:18:02 [DEBUG] Location: Logger set up.
+08/31/26 | 18:18:02 [DEBUG] Character: Logger set up.
+08/31/26 | 18:18:02 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:18:02 [INFO] Main Logger: Running program.
+08/31/26 | 18:19:53 [DEBUG] UI: Logger set up.
+08/31/26 | 18:19:53 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:19:53 [DEBUG] Location: Logger set up.
+08/31/26 | 18:19:53 [DEBUG] Character: Logger set up.
+08/31/26 | 18:19:53 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:19:53 [INFO] Main Logger: Running program.
+08/31/26 | 18:21:10 [DEBUG] UI: Logger set up.
+08/31/26 | 18:21:10 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 18:21:10 [DEBUG] Location: Logger set up.
+08/31/26 | 18:21:10 [DEBUG] Character: Logger set up.
+08/31/26 | 18:21:10 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 18:21:10 [INFO] Main Logger: Running program.
+08/31/26 | 19:24:10 [DEBUG] UI: Logger set up.
+08/31/26 | 19:24:10 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:24:10 [DEBUG] Location: Logger set up.
+08/31/26 | 19:24:10 [DEBUG] Character: Logger set up.
+08/31/26 | 19:24:10 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:24:10 [INFO] Main Logger: Running program.
+08/31/26 | 19:24:14 [ERROR] Main Logger: Failed to create test location channel.
+08/31/26 | 19:24:35 [DEBUG] UI: Logger set up.
+08/31/26 | 19:24:35 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:24:35 [DEBUG] Location: Logger set up.
+08/31/26 | 19:24:35 [DEBUG] Character: Logger set up.
+08/31/26 | 19:24:35 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:24:35 [INFO] Main Logger: Running program.
+08/31/26 | 19:24:50 [DEBUG] UI: Logger set up.
+08/31/26 | 19:24:50 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:24:50 [DEBUG] Location: Logger set up.
+08/31/26 | 19:24:50 [DEBUG] Character: Logger set up.
+08/31/26 | 19:24:50 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:24:50 [INFO] Main Logger: Running program.
+08/31/26 | 19:26:08 [DEBUG] UI: Logger set up.
+08/31/26 | 19:26:08 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:26:08 [DEBUG] Location: Logger set up.
+08/31/26 | 19:26:08 [DEBUG] Character: Logger set up.
+08/31/26 | 19:26:08 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:26:08 [INFO] Main Logger: Running program.
+08/31/26 | 19:27:16 [DEBUG] UI: Logger set up.
+08/31/26 | 19:27:16 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:27:16 [DEBUG] Location: Logger set up.
+08/31/26 | 19:27:16 [DEBUG] Character: Logger set up.
+08/31/26 | 19:27:16 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:27:16 [INFO] Main Logger: Running program.
+08/31/26 | 19:30:14 [DEBUG] UI: Logger set up.
+08/31/26 | 19:30:14 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:30:14 [DEBUG] Location: Logger set up.
+08/31/26 | 19:30:14 [DEBUG] Character: Logger set up.
+08/31/26 | 19:30:14 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:30:14 [INFO] Main Logger: Running program.
+08/31/26 | 19:30:25 [ERROR] Main Logger: Failed to create test location channel.
+08/31/26 | 19:30:25 [DEBUG] Main Logger: Channel creation result: Row not found or no change needed.
+08/31/26 | 19:30:33 [DEBUG] UI: Logger set up.
+08/31/26 | 19:30:33 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:30:33 [DEBUG] Location: Logger set up.
+08/31/26 | 19:30:33 [DEBUG] Character: Logger set up.
+08/31/26 | 19:30:33 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:30:33 [INFO] Main Logger: Running program.
+08/31/26 | 19:31:14 [DEBUG] UI: Logger set up.
+08/31/26 | 19:31:14 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:31:14 [DEBUG] Location: Logger set up.
+08/31/26 | 19:31:14 [DEBUG] Character: Logger set up.
+08/31/26 | 19:31:14 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:31:14 [INFO] Main Logger: Running program.
+08/31/26 | 19:36:55 [DEBUG] UI: Logger set up.
+08/31/26 | 19:36:55 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:36:55 [DEBUG] Location: Logger set up.
+08/31/26 | 19:36:55 [DEBUG] Character: Logger set up.
+08/31/26 | 19:36:55 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:36:55 [INFO] Main Logger: Running program.
+08/31/26 | 19:37:22 [DEBUG] UI: Logger set up.
+08/31/26 | 19:37:22 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:37:22 [DEBUG] Location: Logger set up.
+08/31/26 | 19:37:22 [DEBUG] Character: Logger set up.
+08/31/26 | 19:37:22 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:37:22 [INFO] Main Logger: Running program.
+08/31/26 | 19:40:43 [DEBUG] UI: Logger set up.
+08/31/26 | 19:40:43 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:40:43 [DEBUG] Location: Logger set up.
+08/31/26 | 19:40:43 [DEBUG] Character: Logger set up.
+08/31/26 | 19:40:43 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:40:43 [INFO] Main Logger: Running program.
+08/31/26 | 19:41:53 [DEBUG] UI: Logger set up.
+08/31/26 | 19:41:53 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:41:53 [DEBUG] Location: Logger set up.
+08/31/26 | 19:41:53 [DEBUG] Character: Logger set up.
+08/31/26 | 19:41:53 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:41:53 [INFO] Main Logger: Running program.
+08/31/26 | 19:44:17 [DEBUG] UI: Logger set up.
+08/31/26 | 19:44:17 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:44:17 [DEBUG] Location: Logger set up.
+08/31/26 | 19:44:17 [DEBUG] Character: Logger set up.
+08/31/26 | 19:44:17 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:44:17 [INFO] Main Logger: Running program.
+08/31/26 | 19:48:10 [DEBUG] UI: Logger set up.
+08/31/26 | 19:48:10 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:48:10 [DEBUG] Location: Logger set up.
+08/31/26 | 19:48:10 [DEBUG] Character: Logger set up.
+08/31/26 | 19:48:11 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:48:11 [INFO] Main Logger: Running program.
+08/31/26 | 19:48:55 [DEBUG] UI: Logger set up.
+08/31/26 | 19:49:14 [DEBUG] UI: Logger set up.
+08/31/26 | 19:49:14 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:49:14 [DEBUG] Location: Logger set up.
+08/31/26 | 19:49:14 [DEBUG] Character: Logger set up.
+08/31/26 | 19:49:14 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:49:14 [INFO] Main Logger: Running program.
+08/31/26 | 19:51:16 [DEBUG] UI: Logger set up.
+08/31/26 | 19:51:16 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:51:16 [DEBUG] Location: Logger set up.
+08/31/26 | 19:51:16 [DEBUG] Character: Logger set up.
+08/31/26 | 19:51:16 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:51:16 [INFO] Main Logger: Running program.
+08/31/26 | 19:51:21 [ERROR] Main Logger: Failed to create test location channel.
+08/31/26 | 19:51:21 [DEBUG] Main Logger: Channel creation result: Row not found or no change needed.
+08/31/26 | 19:51:43 [DEBUG] UI: Logger set up.
+08/31/26 | 19:51:43 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:51:43 [DEBUG] Location: Logger set up.
+08/31/26 | 19:51:43 [DEBUG] Character: Logger set up.
+08/31/26 | 19:51:43 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:51:43 [INFO] Main Logger: Running program.
+08/31/26 | 19:53:54 [DEBUG] UI: Logger set up.
+08/31/26 | 19:53:54 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:53:54 [DEBUG] Location: Logger set up.
+08/31/26 | 19:53:54 [DEBUG] Character: Logger set up.
+08/31/26 | 19:53:54 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:53:54 [INFO] Main Logger: Running program.
+08/31/26 | 19:56:56 [DEBUG] UI: Logger set up.
+08/31/26 | 19:56:56 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 19:56:56 [DEBUG] Location: Logger set up.
+08/31/26 | 19:56:56 [DEBUG] Character: Logger set up.
+08/31/26 | 19:56:56 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 19:56:56 [INFO] Main Logger: Running program.
+08/31/26 | 20:03:27 [DEBUG] UI: Logger set up.
+08/31/26 | 20:03:27 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:03:27 [DEBUG] Location: Logger set up.
+08/31/26 | 20:03:27 [DEBUG] Character: Logger set up.
+08/31/26 | 20:03:27 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:03:27 [INFO] Main Logger: Running program.
+08/31/26 | 20:03:58 [DEBUG] UI: Logger set up.
+08/31/26 | 20:03:58 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:03:58 [DEBUG] Location: Logger set up.
+08/31/26 | 20:03:58 [DEBUG] Character: Logger set up.
+08/31/26 | 20:03:58 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:03:58 [INFO] Main Logger: Running program.
+08/31/26 | 20:04:51 [DEBUG] UI: Logger set up.
+08/31/26 | 20:04:51 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:04:51 [DEBUG] Location: Logger set up.
+08/31/26 | 20:04:51 [DEBUG] Character: Logger set up.
+08/31/26 | 20:04:51 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:04:51 [INFO] Main Logger: Running program.
+08/31/26 | 20:06:00 [DEBUG] UI: Logger set up.
+08/31/26 | 20:06:00 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:06:00 [DEBUG] Location: Logger set up.
+08/31/26 | 20:06:00 [DEBUG] Character: Logger set up.
+08/31/26 | 20:06:00 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:06:00 [INFO] Main Logger: Running program.
+08/31/26 | 20:07:04 [DEBUG] UI: Logger set up.
+08/31/26 | 20:07:04 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:07:04 [DEBUG] Location: Logger set up.
+08/31/26 | 20:07:04 [DEBUG] Character: Logger set up.
+08/31/26 | 20:07:04 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:07:04 [INFO] Main Logger: Running program.
+08/31/26 | 20:07:19 [DEBUG] UI: Logger set up.
+08/31/26 | 20:07:19 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:07:19 [DEBUG] Location: Logger set up.
+08/31/26 | 20:07:19 [DEBUG] Character: Logger set up.
+08/31/26 | 20:07:19 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:07:19 [INFO] Main Logger: Running program.
+08/31/26 | 20:08:42 [DEBUG] UI: Logger set up.
+08/31/26 | 20:08:42 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:08:42 [DEBUG] Location: Logger set up.
+08/31/26 | 20:08:42 [DEBUG] Character: Logger set up.
+08/31/26 | 20:08:42 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:08:42 [INFO] Main Logger: Running program.
+08/31/26 | 20:09:12 [DEBUG] UI: Logger set up.
+08/31/26 | 20:09:12 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:09:12 [DEBUG] Location: Logger set up.
+08/31/26 | 20:09:12 [DEBUG] Character: Logger set up.
+08/31/26 | 20:09:12 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:09:12 [INFO] Main Logger: Running program.
+08/31/26 | 20:09:30 [DEBUG] UI: Logger set up.
+08/31/26 | 20:09:30 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:09:30 [DEBUG] Location: Logger set up.
+08/31/26 | 20:09:30 [DEBUG] Character: Logger set up.
+08/31/26 | 20:09:30 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:09:30 [INFO] Main Logger: Running program.
+08/31/26 | 20:10:47 [DEBUG] UI: Logger set up.
+08/31/26 | 20:10:47 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:10:47 [DEBUG] Location: Logger set up.
+08/31/26 | 20:10:47 [DEBUG] Character: Logger set up.
+08/31/26 | 20:10:47 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:10:47 [INFO] Main Logger: Running program.
+08/31/26 | 20:11:39 [DEBUG] UI: Logger set up.
+08/31/26 | 20:11:39 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:11:39 [DEBUG] Location: Logger set up.
+08/31/26 | 20:11:39 [DEBUG] Character: Logger set up.
+08/31/26 | 20:11:39 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:11:39 [INFO] Main Logger: Running program.
+08/31/26 | 20:11:59 [DEBUG] UI: Logger set up.
+08/31/26 | 20:11:59 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:11:59 [DEBUG] Location: Logger set up.
+08/31/26 | 20:11:59 [DEBUG] Character: Logger set up.
+08/31/26 | 20:11:59 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:11:59 [INFO] Main Logger: Running program.
+08/31/26 | 20:12:12 [DEBUG] UI: Logger set up.
+08/31/26 | 20:12:12 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:12:12 [DEBUG] Location: Logger set up.
+08/31/26 | 20:12:12 [DEBUG] Character: Logger set up.
+08/31/26 | 20:12:12 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:12:12 [INFO] Main Logger: Running program.
+08/31/26 | 20:13:08 [DEBUG] UI: Logger set up.
+08/31/26 | 20:13:08 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:13:08 [DEBUG] Location: Logger set up.
+08/31/26 | 20:13:08 [DEBUG] Character: Logger set up.
+08/31/26 | 20:13:08 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:13:08 [INFO] Main Logger: Running program.
+08/31/26 | 20:13:34 [DEBUG] UI: Logger set up.
+08/31/26 | 20:13:34 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:13:34 [DEBUG] Location: Logger set up.
+08/31/26 | 20:13:34 [DEBUG] Character: Logger set up.
+08/31/26 | 20:13:34 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:13:34 [INFO] Main Logger: Running program.
+08/31/26 | 20:13:43 [DEBUG] UI: Logger set up.
+08/31/26 | 20:13:43 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:13:43 [DEBUG] Location: Logger set up.
+08/31/26 | 20:13:43 [DEBUG] Character: Logger set up.
+08/31/26 | 20:13:43 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:13:43 [INFO] Main Logger: Running program.
+08/31/26 | 20:15:27 [DEBUG] UI: Logger set up.
+08/31/26 | 20:15:27 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:15:27 [DEBUG] Location: Logger set up.
+08/31/26 | 20:15:27 [DEBUG] Character: Logger set up.
+08/31/26 | 20:15:27 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:15:27 [INFO] Main Logger: Running program.
+08/31/26 | 20:15:32 [ERROR] Main Logger: Failed to create test location channel.
+08/31/26 | 20:15:32 [DEBUG] Main Logger: Channel creation result: Row not found or no change needed.
+08/31/26 | 20:17:51 [DEBUG] UI: Logger set up.
+08/31/26 | 20:17:51 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:17:51 [DEBUG] Location: Logger set up.
+08/31/26 | 20:17:51 [DEBUG] Character: Logger set up.
+08/31/26 | 20:17:51 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:17:51 [INFO] Main Logger: Running program.
+08/31/26 | 20:18:05 [DEBUG] UI: Logger set up.
+08/31/26 | 20:18:05 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:18:05 [DEBUG] Location: Logger set up.
+08/31/26 | 20:18:05 [DEBUG] Character: Logger set up.
+08/31/26 | 20:18:05 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:18:05 [INFO] Main Logger: Running program.
+08/31/26 | 20:19:20 [DEBUG] UI: Logger set up.
+08/31/26 | 20:19:20 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:19:20 [DEBUG] Location: Logger set up.
+08/31/26 | 20:19:20 [DEBUG] Character: Logger set up.
+08/31/26 | 20:19:20 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:19:20 [INFO] Main Logger: Running program.
+08/31/26 | 20:19:34 [DEBUG] UI: Logger set up.
+08/31/26 | 20:19:34 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:19:34 [DEBUG] Location: Logger set up.
+08/31/26 | 20:19:34 [DEBUG] Character: Logger set up.
+08/31/26 | 20:19:34 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:19:34 [INFO] Main Logger: Running program.
+08/31/26 | 20:20:14 [ERROR] Main Logger: Failed to create test location channel.
+08/31/26 | 20:20:14 [DEBUG] Main Logger: Channel creation result: Row not found or no change needed.
+08/31/26 | 20:20:40 [DEBUG] UI: Logger set up.
+08/31/26 | 20:20:40 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:20:40 [DEBUG] Location: Logger set up.
+08/31/26 | 20:20:40 [DEBUG] Character: Logger set up.
+08/31/26 | 20:20:40 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:20:40 [INFO] Main Logger: Running program.
+08/31/26 | 20:20:49 [DEBUG] UI: Logger set up.
+08/31/26 | 20:20:49 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:20:49 [DEBUG] Location: Logger set up.
+08/31/26 | 20:20:49 [DEBUG] Character: Logger set up.
+08/31/26 | 20:20:49 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:20:49 [INFO] Main Logger: Running program.
+08/31/26 | 20:21:40 [DEBUG] UI: Logger set up.
+08/31/26 | 20:21:40 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:21:40 [DEBUG] Location: Logger set up.
+08/31/26 | 20:21:40 [DEBUG] Character: Logger set up.
+08/31/26 | 20:21:40 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:21:40 [INFO] Main Logger: Running program.
+08/31/26 | 20:21:49 [DEBUG] UI: Logger set up.
+08/31/26 | 20:21:49 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:21:49 [DEBUG] Location: Logger set up.
+08/31/26 | 20:21:49 [DEBUG] Character: Logger set up.
+08/31/26 | 20:21:49 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:21:49 [INFO] Main Logger: Running program.
+08/31/26 | 20:25:02 [DEBUG] UI: Logger set up.
+08/31/26 | 20:25:02 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:25:02 [DEBUG] Location: Logger set up.
+08/31/26 | 20:25:02 [DEBUG] Character: Logger set up.
+08/31/26 | 20:25:02 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:25:02 [INFO] Main Logger: Running program.
+08/31/26 | 20:25:12 [DEBUG] UI: Logger set up.
+08/31/26 | 20:25:12 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:25:12 [DEBUG] Location: Logger set up.
+08/31/26 | 20:25:12 [DEBUG] Character: Logger set up.
+08/31/26 | 20:25:12 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:25:12 [INFO] Main Logger: Running program.
+08/31/26 | 20:27:39 [DEBUG] UI: Logger set up.
+08/31/26 | 20:27:39 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:27:39 [DEBUG] Location: Logger set up.
+08/31/26 | 20:27:39 [DEBUG] Character: Logger set up.
+08/31/26 | 20:27:39 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:27:39 [INFO] Main Logger: Running program.
+08/31/26 | 20:28:56 [DEBUG] UI: Logger set up.
+08/31/26 | 20:28:56 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:28:56 [DEBUG] Location: Logger set up.
+08/31/26 | 20:28:56 [DEBUG] Character: Logger set up.
+08/31/26 | 20:28:56 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:28:56 [INFO] Main Logger: Running program.
+08/31/26 | 20:30:08 [DEBUG] UI: Logger set up.
+08/31/26 | 20:30:08 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:30:08 [DEBUG] Location: Logger set up.
+08/31/26 | 20:30:08 [DEBUG] Character: Logger set up.
+08/31/26 | 20:30:08 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:30:08 [INFO] Main Logger: Running program.
+08/31/26 | 20:30:15 [DEBUG] UI: Logger set up.
+08/31/26 | 20:30:15 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:30:15 [DEBUG] Location: Logger set up.
+08/31/26 | 20:30:15 [DEBUG] Character: Logger set up.
+08/31/26 | 20:30:15 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:30:15 [INFO] Main Logger: Running program.
+08/31/26 | 20:31:12 [DEBUG] UI: Logger set up.
+08/31/26 | 20:31:12 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:31:12 [DEBUG] Location: Logger set up.
+08/31/26 | 20:31:12 [DEBUG] Character: Logger set up.
+08/31/26 | 20:31:12 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:31:12 [INFO] Main Logger: Running program.
+08/31/26 | 20:32:00 [DEBUG] UI: Logger set up.
+08/31/26 | 20:32:00 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:32:00 [DEBUG] Location: Logger set up.
+08/31/26 | 20:32:00 [DEBUG] Character: Logger set up.
+08/31/26 | 20:32:00 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:32:00 [INFO] Main Logger: Running program.
+08/31/26 | 20:32:41 [DEBUG] UI: Logger set up.
+08/31/26 | 20:32:41 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:32:41 [DEBUG] Location: Logger set up.
+08/31/26 | 20:32:41 [DEBUG] Character: Logger set up.
+08/31/26 | 20:32:41 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:32:41 [INFO] Main Logger: Running program.
+08/31/26 | 20:32:57 [DEBUG] UI: Logger set up.
+08/31/26 | 20:32:57 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:32:57 [DEBUG] Location: Logger set up.
+08/31/26 | 20:32:57 [DEBUG] Character: Logger set up.
+08/31/26 | 20:32:57 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:32:57 [INFO] Main Logger: Running program.
+08/31/26 | 20:33:10 [DEBUG] UI: Logger set up.
+08/31/26 | 20:33:10 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:33:10 [DEBUG] Location: Logger set up.
+08/31/26 | 20:33:10 [DEBUG] Character: Logger set up.
+08/31/26 | 20:33:10 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:33:10 [INFO] Main Logger: Running program.
+08/31/26 | 20:33:18 [DEBUG] UI: Logger set up.
+08/31/26 | 20:33:18 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:33:18 [DEBUG] Location: Logger set up.
+08/31/26 | 20:33:18 [DEBUG] Character: Logger set up.
+08/31/26 | 20:33:18 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:33:18 [INFO] Main Logger: Running program.
+08/31/26 | 20:33:58 [DEBUG] UI: Logger set up.
+08/31/26 | 20:33:58 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:33:58 [DEBUG] Location: Logger set up.
+08/31/26 | 20:33:58 [DEBUG] Character: Logger set up.
+08/31/26 | 20:33:58 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:33:58 [INFO] Main Logger: Running program.
+08/31/26 | 20:34:09 [DEBUG] UI: Logger set up.
+08/31/26 | 20:34:09 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:34:09 [DEBUG] Location: Logger set up.
+08/31/26 | 20:34:09 [DEBUG] Character: Logger set up.
+08/31/26 | 20:34:09 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:34:09 [INFO] Main Logger: Running program.
+08/31/26 | 20:35:23 [DEBUG] UI: Logger set up.
+08/31/26 | 20:35:23 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:35:23 [DEBUG] Location: Logger set up.
+08/31/26 | 20:35:23 [DEBUG] Character: Logger set up.
+08/31/26 | 20:35:23 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:35:23 [INFO] Main Logger: Running program.
+08/31/26 | 20:35:49 [DEBUG] UI: Logger set up.
+08/31/26 | 20:35:49 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:35:49 [DEBUG] Location: Logger set up.
+08/31/26 | 20:35:49 [DEBUG] Character: Logger set up.
+08/31/26 | 20:35:49 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:35:49 [INFO] Main Logger: Running program.
+08/31/26 | 20:37:26 [DEBUG] UI: Logger set up.
+08/31/26 | 20:37:26 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:37:26 [DEBUG] Location: Logger set up.
+08/31/26 | 20:37:26 [DEBUG] Character: Logger set up.
+08/31/26 | 20:37:26 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:37:26 [INFO] Main Logger: Running program.
+08/31/26 | 20:39:51 [DEBUG] UI: Logger set up.
+08/31/26 | 20:39:51 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:39:51 [DEBUG] Location: Logger set up.
+08/31/26 | 20:39:51 [DEBUG] Character: Logger set up.
+08/31/26 | 20:39:51 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:39:51 [INFO] Main Logger: Running program.
+08/31/26 | 20:41:50 [DEBUG] UI: Logger set up.
+08/31/26 | 20:41:50 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:41:50 [DEBUG] Location: Logger set up.
+08/31/26 | 20:41:50 [DEBUG] Character: Logger set up.
+08/31/26 | 20:41:50 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:41:50 [INFO] Main Logger: Running program.
+08/31/26 | 20:41:59 [DEBUG] UI: Logger set up.
+08/31/26 | 20:41:59 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:41:59 [DEBUG] Location: Logger set up.
+08/31/26 | 20:41:59 [DEBUG] Character: Logger set up.
+08/31/26 | 20:41:59 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:41:59 [INFO] Main Logger: Running program.
+08/31/26 | 20:46:19 [DEBUG] UI: Logger set up.
+08/31/26 | 20:46:19 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:46:19 [DEBUG] Location: Logger set up.
+08/31/26 | 20:46:19 [DEBUG] Character: Logger set up.
+08/31/26 | 20:46:19 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:46:19 [INFO] Main Logger: Running program.
+08/31/26 | 20:46:27 [DEBUG] UI: Logger set up.
+08/31/26 | 20:46:27 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:46:27 [DEBUG] Location: Logger set up.
+08/31/26 | 20:46:27 [DEBUG] Character: Logger set up.
+08/31/26 | 20:46:27 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:46:27 [INFO] Main Logger: Running program.
+08/31/26 | 20:55:35 [DEBUG] UI: Logger set up.
+08/31/26 | 20:55:35 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:55:35 [DEBUG] Location: Logger set up.
+08/31/26 | 20:55:35 [DEBUG] Character: Logger set up.
+08/31/26 | 20:55:35 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:55:35 [INFO] Main Logger: Running program.
+08/31/26 | 20:55:42 [DEBUG] UI: Logger set up.
+08/31/26 | 20:55:42 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:55:42 [DEBUG] Location: Logger set up.
+08/31/26 | 20:55:42 [DEBUG] Character: Logger set up.
+08/31/26 | 20:55:42 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:55:42 [INFO] Main Logger: Running program.
+08/31/26 | 20:58:04 [DEBUG] UI: Logger set up.
+08/31/26 | 20:58:04 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:58:04 [DEBUG] Location: Logger set up.
+08/31/26 | 20:58:04 [DEBUG] Character: Logger set up.
+08/31/26 | 20:58:04 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:58:04 [INFO] Main Logger: Running program.
+08/31/26 | 20:58:15 [DEBUG] UI: Logger set up.
+08/31/26 | 20:58:15 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:58:15 [DEBUG] Location: Logger set up.
+08/31/26 | 20:58:15 [DEBUG] Character: Logger set up.
+08/31/26 | 20:58:15 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:58:15 [INFO] Main Logger: Running program.
+08/31/26 | 20:59:52 [DEBUG] UI: Logger set up.
+08/31/26 | 20:59:52 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 20:59:52 [DEBUG] Location: Logger set up.
+08/31/26 | 20:59:52 [DEBUG] Character: Logger set up.
+08/31/26 | 20:59:52 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 20:59:52 [INFO] Main Logger: Running program.
+08/31/26 | 21:00:02 [DEBUG] UI: Logger set up.
+08/31/26 | 21:00:02 [DEBUG] Roleplay: Logger set up.
+08/31/26 | 21:00:02 [DEBUG] Location: Logger set up.
+08/31/26 | 21:00:02 [DEBUG] Character: Logger set up.
+08/31/26 | 21:00:02 [DEBUG] Main Logger: Logger set up.
+08/31/26 | 21:00:02 [INFO] Main Logger: Running program.
+09/01/26 | 20:50:04 [DEBUG] UI: Logger set up.
+09/01/26 | 20:50:04 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:50:04 [DEBUG] Location: Logger set up.
+09/01/26 | 20:50:04 [DEBUG] Character: Logger set up.
+09/01/26 | 20:50:04 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:50:04 [INFO] Main Logger: Running program.
+09/01/26 | 20:51:01 [DEBUG] UI: Logger set up.
+09/01/26 | 20:51:01 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:51:01 [DEBUG] Location: Logger set up.
+09/01/26 | 20:51:01 [DEBUG] Character: Logger set up.
+09/01/26 | 20:51:01 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:51:01 [INFO] Main Logger: Running program.
+09/01/26 | 20:51:21 [DEBUG] UI: Logger set up.
+09/01/26 | 20:51:21 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:51:21 [DEBUG] Location: Logger set up.
+09/01/26 | 20:51:21 [DEBUG] Character: Logger set up.
+09/01/26 | 20:51:21 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:51:21 [INFO] Main Logger: Running program.
+09/01/26 | 20:51:45 [DEBUG] UI: Logger set up.
+09/01/26 | 20:51:45 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:51:45 [DEBUG] Location: Logger set up.
+09/01/26 | 20:51:45 [DEBUG] Character: Logger set up.
+09/01/26 | 20:51:45 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:51:45 [INFO] Main Logger: Running program.
+09/01/26 | 20:53:08 [DEBUG] UI: Logger set up.
+09/01/26 | 20:53:08 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:53:08 [DEBUG] Location: Logger set up.
+09/01/26 | 20:53:08 [DEBUG] Character: Logger set up.
+09/01/26 | 20:53:08 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:53:08 [INFO] Main Logger: Running program.
+09/01/26 | 20:53:17 [DEBUG] UI: Logger set up.
+09/01/26 | 20:53:17 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:53:17 [DEBUG] Location: Logger set up.
+09/01/26 | 20:53:17 [DEBUG] Character: Logger set up.
+09/01/26 | 20:53:17 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:53:17 [INFO] Main Logger: Running program.
+09/01/26 | 20:54:20 [DEBUG] UI: Logger set up.
+09/01/26 | 20:54:20 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:54:20 [DEBUG] Location: Logger set up.
+09/01/26 | 20:54:20 [DEBUG] Character: Logger set up.
+09/01/26 | 20:54:20 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:54:20 [INFO] Main Logger: Running program.
+09/01/26 | 20:54:29 [DEBUG] UI: Logger set up.
+09/01/26 | 20:54:29 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:54:29 [DEBUG] Location: Logger set up.
+09/01/26 | 20:54:29 [DEBUG] Character: Logger set up.
+09/01/26 | 20:54:29 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:54:29 [INFO] Main Logger: Running program.
+09/01/26 | 20:57:12 [DEBUG] UI: Logger set up.
+09/01/26 | 20:57:12 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:57:12 [DEBUG] Location: Logger set up.
+09/01/26 | 20:57:12 [DEBUG] Character: Logger set up.
+09/01/26 | 20:57:12 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:57:12 [INFO] Main Logger: Running program.
+09/01/26 | 20:58:07 [DEBUG] UI: Logger set up.
+09/01/26 | 20:58:07 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:58:07 [DEBUG] Location: Logger set up.
+09/01/26 | 20:58:07 [DEBUG] Character: Logger set up.
+09/01/26 | 20:58:07 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:58:07 [INFO] Main Logger: Running program.
+09/01/26 | 20:59:21 [DEBUG] UI: Logger set up.
+09/01/26 | 20:59:21 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 20:59:21 [DEBUG] Location: Logger set up.
+09/01/26 | 20:59:21 [DEBUG] Character: Logger set up.
+09/01/26 | 20:59:21 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 20:59:21 [INFO] Main Logger: Running program.
+09/01/26 | 21:00:59 [DEBUG] UI: Logger set up.
+09/01/26 | 21:00:59 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 21:00:59 [DEBUG] Location: Logger set up.
+09/01/26 | 21:00:59 [DEBUG] Character: Logger set up.
+09/01/26 | 21:00:59 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 21:00:59 [INFO] Main Logger: Running program.
+09/01/26 | 21:01:09 [DEBUG] UI: Logger set up.
+09/01/26 | 21:01:09 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 21:01:09 [DEBUG] Location: Logger set up.
+09/01/26 | 21:01:09 [DEBUG] Character: Logger set up.
+09/01/26 | 21:01:09 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 21:01:09 [INFO] Main Logger: Running program.
+09/01/26 | 21:02:32 [DEBUG] UI: Logger set up.
+09/01/26 | 21:02:32 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 21:02:32 [DEBUG] Location: Logger set up.
+09/01/26 | 21:02:32 [DEBUG] Character: Logger set up.
+09/01/26 | 21:02:32 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 21:02:32 [INFO] Main Logger: Running program.
+09/01/26 | 21:02:37 [DEBUG] Main Logger: Dev script concluded.
+09/01/26 | 21:03:50 [DEBUG] UI: Logger set up.
+09/01/26 | 21:03:50 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 21:03:50 [DEBUG] Location: Logger set up.
+09/01/26 | 21:03:50 [DEBUG] Character: Logger set up.
+09/01/26 | 21:03:50 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 21:03:50 [INFO] Main Logger: Running program.
+09/01/26 | 21:03:55 [DEBUG] Main Logger: Dev script concluded.
+09/01/26 | 21:04:52 [DEBUG] UI: Logger set up.
+09/01/26 | 21:04:52 [DEBUG] Roleplay: Logger set up.
+09/01/26 | 21:04:52 [DEBUG] Location: Logger set up.
+09/01/26 | 21:04:52 [DEBUG] Character: Logger set up.
+09/01/26 | 21:04:52 [DEBUG] Main Logger: Logger set up.
+09/01/26 | 21:04:52 [INFO] Main Logger: Running program.
+09/01/26 | 21:04:57 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 19:23:17 [DEBUG] UI: Logger set up.
+09/02/26 | 19:23:17 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 19:23:17 [DEBUG] Location: Logger set up.
+09/02/26 | 19:23:17 [DEBUG] Character: Logger set up.
+09/02/26 | 19:23:17 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 19:23:17 [INFO] Main Logger: Running program.
+09/02/26 | 19:23:23 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 19:35:15 [DEBUG] UI: Logger set up.
+09/02/26 | 19:35:15 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 19:35:15 [DEBUG] Location: Logger set up.
+09/02/26 | 19:35:15 [DEBUG] Character: Logger set up.
+09/02/26 | 19:35:15 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 19:35:15 [INFO] Main Logger: Running program.
+09/02/26 | 19:35:19 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 19:35:35 [DEBUG] UI: Logger set up.
+09/02/26 | 19:35:35 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 19:35:35 [DEBUG] Location: Logger set up.
+09/02/26 | 19:35:35 [DEBUG] Character: Logger set up.
+09/02/26 | 19:35:35 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 19:35:35 [INFO] Main Logger: Running program.
+09/02/26 | 19:35:40 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 19:35:44 [DEBUG] UI: Logger set up.
+09/02/26 | 19:35:44 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 19:35:44 [DEBUG] Location: Logger set up.
+09/02/26 | 19:35:44 [DEBUG] Character: Logger set up.
+09/02/26 | 19:35:44 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 19:35:44 [INFO] Main Logger: Running program.
+09/02/26 | 20:09:50 [DEBUG] UI: Logger set up.
+09/02/26 | 20:09:50 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:09:50 [DEBUG] Location: Logger set up.
+09/02/26 | 20:09:50 [DEBUG] Character: Logger set up.
+09/02/26 | 20:09:50 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:09:50 [INFO] Main Logger: Running program.
+09/02/26 | 20:09:53 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:10:09 [DEBUG] UI: Logger set up.
+09/02/26 | 20:10:09 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:10:09 [DEBUG] Location: Logger set up.
+09/02/26 | 20:10:09 [DEBUG] Character: Logger set up.
+09/02/26 | 20:10:09 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:10:09 [INFO] Main Logger: Running program.
+09/02/26 | 20:10:14 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:11:18 [DEBUG] UI: Logger set up.
+09/02/26 | 20:11:18 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:11:18 [DEBUG] Location: Logger set up.
+09/02/26 | 20:11:18 [DEBUG] Character: Logger set up.
+09/02/26 | 20:11:18 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:11:18 [INFO] Main Logger: Running program.
+09/02/26 | 20:11:21 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:11:30 [DEBUG] UI: Logger set up.
+09/02/26 | 20:11:30 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:11:30 [DEBUG] Location: Logger set up.
+09/02/26 | 20:11:30 [DEBUG] Character: Logger set up.
+09/02/26 | 20:11:30 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:11:30 [INFO] Main Logger: Running program.
+09/02/26 | 20:11:34 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:31:37 [DEBUG] UI: Logger set up.
+09/02/26 | 20:31:37 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:31:37 [DEBUG] Location: Logger set up.
+09/02/26 | 20:31:37 [DEBUG] Character: Logger set up.
+09/02/26 | 20:31:37 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:31:37 [INFO] Main Logger: Running program.
+09/02/26 | 20:31:41 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:31:49 [DEBUG] UI: Logger set up.
+09/02/26 | 20:31:49 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:31:49 [DEBUG] Location: Logger set up.
+09/02/26 | 20:31:49 [DEBUG] Character: Logger set up.
+09/02/26 | 20:31:49 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:31:49 [INFO] Main Logger: Running program.
+09/02/26 | 20:31:54 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:32:59 [DEBUG] UI: Logger set up.
+09/02/26 | 20:32:59 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:32:59 [DEBUG] Location: Logger set up.
+09/02/26 | 20:32:59 [DEBUG] Character: Logger set up.
+09/02/26 | 20:32:59 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:32:59 [INFO] Main Logger: Running program.
+09/02/26 | 20:33:02 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:37:03 [DEBUG] UI: Logger set up.
+09/02/26 | 20:37:03 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:37:03 [DEBUG] Location: Logger set up.
+09/02/26 | 20:37:03 [DEBUG] Character: Logger set up.
+09/02/26 | 20:37:03 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:37:03 [INFO] Main Logger: Running program.
+09/02/26 | 20:37:07 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:37:24 [DEBUG] UI: Logger set up.
+09/02/26 | 20:37:24 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:37:24 [DEBUG] Location: Logger set up.
+09/02/26 | 20:37:24 [DEBUG] Character: Logger set up.
+09/02/26 | 20:37:24 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:37:24 [INFO] Main Logger: Running program.
+09/02/26 | 20:37:29 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:39:27 [DEBUG] UI: Logger set up.
+09/02/26 | 20:39:27 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:39:27 [DEBUG] Location: Logger set up.
+09/02/26 | 20:39:27 [DEBUG] Character: Logger set up.
+09/02/26 | 20:39:27 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:39:27 [INFO] Main Logger: Running program.
+09/02/26 | 20:39:32 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:39:36 [DEBUG] UI: Logger set up.
+09/02/26 | 20:39:36 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:39:36 [DEBUG] Location: Logger set up.
+09/02/26 | 20:39:36 [DEBUG] Character: Logger set up.
+09/02/26 | 20:39:36 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:39:36 [INFO] Main Logger: Running program.
+09/02/26 | 20:39:41 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:41:36 [DEBUG] UI: Logger set up.
+09/02/26 | 20:41:36 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:41:36 [DEBUG] Location: Logger set up.
+09/02/26 | 20:41:36 [DEBUG] Character: Logger set up.
+09/02/26 | 20:41:36 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:41:36 [INFO] Main Logger: Running program.
+09/02/26 | 20:41:42 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:41:44 [DEBUG] UI: Logger set up.
+09/02/26 | 20:41:44 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:41:44 [DEBUG] Location: Logger set up.
+09/02/26 | 20:41:44 [DEBUG] Character: Logger set up.
+09/02/26 | 20:41:44 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:41:44 [INFO] Main Logger: Running program.
+09/02/26 | 20:41:51 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:42:34 [DEBUG] UI: Logger set up.
+09/02/26 | 20:42:34 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:42:34 [DEBUG] Location: Logger set up.
+09/02/26 | 20:42:34 [DEBUG] Character: Logger set up.
+09/02/26 | 20:42:34 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:42:34 [INFO] Main Logger: Running program.
+09/02/26 | 20:42:39 [DEBUG] Main Logger: Dev script concluded.
+09/02/26 | 20:48:52 [DEBUG] UI: Logger set up.
+09/02/26 | 20:48:52 [DEBUG] Roleplay: Logger set up.
+09/02/26 | 20:48:52 [DEBUG] Location: Logger set up.
+09/02/26 | 20:48:52 [DEBUG] Character: Logger set up.
+09/02/26 | 20:48:52 [DEBUG] Main Logger: Logger set up.
+09/02/26 | 20:48:52 [INFO] Main Logger: Running program.
+09/02/26 | 20:48:57 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:10:56 [DEBUG] UI: Logger set up.
+09/04/26 | 11:10:56 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:10:56 [DEBUG] Location: Logger set up.
+09/04/26 | 11:10:56 [DEBUG] Character: Logger set up.
+09/04/26 | 11:10:56 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:10:56 [INFO] Main Logger: Running program.
+09/04/26 | 11:11:03 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:20:23 [DEBUG] UI: Logger set up.
+09/04/26 | 11:20:23 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:20:23 [DEBUG] Location: Logger set up.
+09/04/26 | 11:20:23 [DEBUG] Character: Logger set up.
+09/04/26 | 11:20:24 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:20:24 [INFO] Main Logger: Running program.
+09/04/26 | 11:20:30 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:21:09 [DEBUG] UI: Logger set up.
+09/04/26 | 11:21:09 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:21:09 [DEBUG] Location: Logger set up.
+09/04/26 | 11:21:09 [DEBUG] Character: Logger set up.
+09/04/26 | 11:21:09 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:21:09 [INFO] Main Logger: Running program.
+09/04/26 | 11:21:16 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:23:35 [DEBUG] UI: Logger set up.
+09/04/26 | 11:23:35 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:23:35 [DEBUG] Location: Logger set up.
+09/04/26 | 11:23:35 [DEBUG] Character: Logger set up.
+09/04/26 | 11:23:35 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:23:35 [INFO] Main Logger: Running program.
+09/04/26 | 11:23:40 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:24:18 [DEBUG] UI: Logger set up.
+09/04/26 | 11:24:18 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:24:18 [DEBUG] Location: Logger set up.
+09/04/26 | 11:24:18 [DEBUG] Character: Logger set up.
+09/04/26 | 11:24:18 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:24:18 [INFO] Main Logger: Running program.
+09/04/26 | 11:24:24 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:25:17 [WARNING] UI: Failed to send message to channel 1111152704954314836.
+09/04/26 | 11:31:07 [DEBUG] UI: Logger set up.
+09/04/26 | 11:31:07 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:31:07 [DEBUG] Location: Logger set up.
+09/04/26 | 11:31:07 [DEBUG] Character: Logger set up.
+09/04/26 | 11:31:07 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:31:07 [INFO] Main Logger: Running program.
+09/04/26 | 11:31:12 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:31:32 [DEBUG] UI: Logger set up.
+09/04/26 | 11:31:32 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:31:32 [DEBUG] Location: Logger set up.
+09/04/26 | 11:31:32 [DEBUG] Character: Logger set up.
+09/04/26 | 11:31:32 [DEBUG] Main Logger: Logger set up.
+09/04/26 | 11:31:32 [INFO] Main Logger: Running program.
+09/04/26 | 11:31:37 [DEBUG] Main Logger: Dev script concluded.
+09/04/26 | 11:31:42 [DEBUG] UI: Logger set up.
+09/04/26 | 11:31:42 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:31:42 [DEBUG] Location: Logger set up.
+09/04/26 | 11:31:42 [DEBUG] Character: Logger set up.
+09/04/26 | 11:38:14 [DEBUG] UI: Logger set up.
+09/04/26 | 11:38:14 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:38:14 [DEBUG] Location: Logger set up.
+09/04/26 | 11:38:14 [DEBUG] Character: Logger set up.
+09/04/26 | 11:56:13 [DEBUG] UI: Logger set up.
+09/04/26 | 11:56:13 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 11:56:13 [DEBUG] Location: Logger set up.
+09/04/26 | 11:56:13 [DEBUG] Character: Logger set up.
+09/04/26 | 12:04:27 [DEBUG] UI: Logger set up.
+09/04/26 | 12:04:27 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:04:27 [DEBUG] Location: Logger set up.
+09/04/26 | 12:04:27 [DEBUG] Character: Logger set up.
+09/04/26 | 12:05:51 [DEBUG] UI: Logger set up.
+09/04/26 | 12:05:51 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:05:51 [DEBUG] Location: Logger set up.
+09/04/26 | 12:05:51 [DEBUG] Character: Logger set up.
+09/04/26 | 12:08:14 [DEBUG] UI: Logger set up.
+09/04/26 | 12:08:15 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:08:15 [DEBUG] Location: Logger set up.
+09/04/26 | 12:08:15 [DEBUG] Character: Logger set up.
+09/04/26 | 12:08:50 [DEBUG] UI: Logger set up.
+09/04/26 | 12:08:50 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:08:50 [DEBUG] Location: Logger set up.
+09/04/26 | 12:08:50 [DEBUG] Character: Logger set up.
+09/04/26 | 12:16:04 [DEBUG] UI: Logger set up.
+09/04/26 | 12:16:04 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:16:04 [DEBUG] Location: Logger set up.
+09/04/26 | 12:16:04 [DEBUG] Character: Logger set up.
+09/04/26 | 12:31:46 [DEBUG] UI: Logger set up.
+09/04/26 | 12:31:46 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:31:46 [DEBUG] Location: Logger set up.
+09/04/26 | 12:31:46 [DEBUG] Character: Logger set up.
+09/04/26 | 12:44:30 [DEBUG] UI: Logger set up.
+09/04/26 | 12:44:30 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:44:30 [DEBUG] Location: Logger set up.
+09/04/26 | 12:44:30 [DEBUG] Character: Logger set up.
+09/04/26 | 12:45:45 [DEBUG] UI: Logger set up.
+09/04/26 | 12:45:45 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:45:45 [DEBUG] Location: Logger set up.
+09/04/26 | 12:45:45 [DEBUG] Character: Logger set up.
+09/04/26 | 12:48:48 [DEBUG] UI: Logger set up.
+09/04/26 | 12:48:48 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:48:48 [DEBUG] Location: Logger set up.
+09/04/26 | 12:48:48 [DEBUG] Character: Logger set up.
+09/04/26 | 12:54:56 [DEBUG] UI: Logger set up.
+09/04/26 | 12:54:56 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 12:54:56 [DEBUG] Location: Logger set up.
+09/04/26 | 12:54:56 [DEBUG] Character: Logger set up.
+09/04/26 | 13:13:04 [DEBUG] UI: Logger set up.
+09/04/26 | 13:13:04 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:13:04 [DEBUG] Location: Logger set up.
+09/04/26 | 13:13:04 [DEBUG] Character: Logger set up.
+09/04/26 | 13:16:47 [DEBUG] UI: Logger set up.
+09/04/26 | 13:16:47 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:16:47 [DEBUG] Location: Logger set up.
+09/04/26 | 13:16:47 [DEBUG] Character: Logger set up.
+09/04/26 | 13:20:48 [DEBUG] UI: Logger set up.
+09/04/26 | 13:20:48 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:20:48 [DEBUG] Location: Logger set up.
+09/04/26 | 13:20:48 [DEBUG] Character: Logger set up.
+09/04/26 | 13:22:31 [DEBUG] UI: Logger set up.
+09/04/26 | 13:22:31 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:22:31 [DEBUG] Location: Logger set up.
+09/04/26 | 13:22:31 [DEBUG] Character: Logger set up.
+09/04/26 | 13:22:40 [DEBUG] UI: Logger set up.
+09/04/26 | 13:22:40 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:22:40 [DEBUG] Location: Logger set up.
+09/04/26 | 13:22:40 [DEBUG] Character: Logger set up.
+09/04/26 | 13:23:44 [DEBUG] UI: Logger set up.
+09/04/26 | 13:23:44 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:23:44 [DEBUG] Location: Logger set up.
+09/04/26 | 13:23:44 [DEBUG] Character: Logger set up.
+09/04/26 | 13:29:53 [DEBUG] UI: Logger set up.
+09/04/26 | 13:29:53 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:29:53 [DEBUG] Location: Logger set up.
+09/04/26 | 13:29:53 [DEBUG] Character: Logger set up.
+09/04/26 | 13:34:18 [DEBUG] UI: Logger set up.
+09/04/26 | 13:34:18 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 13:34:18 [DEBUG] Location: Logger set up.
+09/04/26 | 13:34:18 [DEBUG] Character: Logger set up.
+09/04/26 | 14:01:22 [DEBUG] UI: Logger set up.
+09/04/26 | 14:01:22 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 14:01:22 [DEBUG] Location: Logger set up.
+09/04/26 | 14:01:22 [DEBUG] Character: Logger set up.
+09/04/26 | 14:04:15 [DEBUG] UI: Logger set up.
+09/04/26 | 14:04:15 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 14:04:15 [DEBUG] Location: Logger set up.
+09/04/26 | 14:04:15 [DEBUG] Character: Logger set up.
+09/04/26 | 14:15:08 [DEBUG] UI: Logger set up.
+09/04/26 | 14:15:08 [DEBUG] Roleplay: Logger set up.
+09/04/26 | 14:15:08 [DEBUG] Location: Logger set up.
+09/04/26 | 14:15:08 [DEBUG] Character: Logger set up.

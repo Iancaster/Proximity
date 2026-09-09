@@ -467,7 +467,7 @@ class GuildData:
 				'This is a command for characters. If you have access' \
 					' to any Character Channels, call the command' \
 					' in there instead.',
-				'Otherwise, ask a Host to make a /new character for you.')
+				'Otherwise, ask a Host to make a /create character for you.')
 			await send_message(ctx.respond, embed)
 
 		return False
@@ -1220,7 +1220,7 @@ class ChannelManager:
 			embed, _ = await mbd(
 				'Easy, bronco.',
 				"You've got no places to work with.",
-				'Make some first with /new place.')
+				'Make some first with /create place.')
 			await send_message(ctx.respond, embed)
 			return
 
@@ -1254,7 +1254,7 @@ class ChannelManager:
 			embed, _ = await mbd(
 				'Easy, bronco.',
 				"You've got no characters yet.",
-				'Make a /new place so you can add a /new character.')
+				'Make a /create place so you can add a /create character.')
 			await send_message(ctx.respond, embed)
 			return
 

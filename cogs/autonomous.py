@@ -8,7 +8,14 @@ from discord import Bot, TextChannel
 from discord.utils import get_or_fetch
 from discord.ext import commands
 
-from libraries.classes import RPServer, Location, Character
+from data.database_handler import CommitResult
+from data.database_entries import (
+    roleplay_repo, RoleplayData,
+    location_repo, LocationData,
+    character_repo, CharacterData
+)
+from libraries.embed_templates import notify_log, LocEmbeds, CharacterEmbeds
+from libraries.classes import Relayable, Roleplay, Location, Character
 
 
 class Autonomous(commands.Cog):
@@ -116,43 +123,54 @@ class Autonomous(commands.Cog):
 
     #     return
 
+# make a way to detect and prevent character deletion
     @commands.Cog.listener() 
     async def on_guild_channel_delete(self, channel: TextChannel):
 
-        server = RPServer(channel.guild.id)
+        rp_data = await roleplay_repo.fetch(channel.guild.id)
 
-        if not await server.exists:
-            return
-        
-        await server.fetch()
-
-        character = Character(channel.id)
-
-        if await character.exists:
-            return await character.delete()
-
-        location = Location(channel.id)
-
-        if not await location.exists:
+        if not isinstance(rp_data, RoleplayData):
             return
 
-        if await location.character_count == 0:
+        character = await Character.load(channel.id)
+        if character is not None:            
+            await character.delete()
+            embed, file = await CharacterEmbeds.delete.auto(
+                character.data.name, 
+                character.data.reference)
+            await notify_log(rp_data, embed, file)
+            return
 
-            await location.fetch()
+        location = await Location.load(channel.id)
+        if location is None:
+            return
 
-            log_channel = await get_or_fetch(
-                channel.guild, 
-                "channel", 
-                server.log_channel_id or 0,
-                default = None)
+        if await location.occupant_count == 0:
 
-            await location.delete(
-                log_channel = log_channel,
-                location_channel = None)
+            await location.delete()
+            embed, file = await LocEmbeds.delete.auto(
+                location.data.name, 
+                location.data.reference)
+            await notify_log(rp_data, embed, file)
  
             return
 
-        # make a way to detect and prevent character deletion
+        return
+
+        replacement_channel = await Relayable.create_channel(
+            location.data.name,
+            channel.guild.id,
+            is_location = True)
+        replacement_data = LocationData(
+            location_id = replacement_channel.id,
+            roleplay_id = replacement_channel.guild.id,
+            name = location.data.name,
+            reference = location.data.reference)
+        replacement_location = await Location.create(replacement_data)
+
+        # for char_data in await location.occupants:
+        #     character = Character(char_data)
+        #     await character.update()
 
         return
 

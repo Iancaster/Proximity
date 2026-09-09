@@ -1,17 +1,25 @@
 
 
 
-from libraries.classes import RPServer, Location
+from libraries.classes import Roleplay, Location, Relayable
 from libraries.user_interface import Dialogue, Popup, ImageSource, \
-    text_embed, image_embed, send_message, reference_validator, LOGO
+    text_embed, image_embed, send_message, reference_validator, LOGO, \
+    safe_send
+from data.database_entries import ( 
+    roleplay_repo, RoleplayData,
+    location_repo, LocationData,
+    character_repo, CharacterData,
+    route_repo, RouteData)
+from data.database_handler import CommitResult
+from libraries.embed_templates import notify_log, \
+    RoleplayEmbeds, LocEmbeds, CharacterEmbeds, ErrorEmbeds
 
 from discord import ApplicationContext, InteractionContextType, \
-    ButtonStyle, InputTextStyle, Interaction
+    ButtonStyle, InputTextStyle, Interaction, TextChannel
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
-#from types import MethodType
 
-from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPServer
+from libraries.classes import in_text_channel, is_administrator, in_prox_rp, Roleplay
 
 # from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
 # 	DialogueView, Character, ListenerManager
@@ -24,54 +32,52 @@ from libraries.classes import in_text_channel, is_administrator, in_prox_rp, RPS
 # from data.listeners import direct_listeners, queue_refresh, \
 # 	to_direct_listeners
 
-class NewCommands(commands.Cog):
+class CreateCommands(commands.Cog):
 
-    new_group = SlashCommandGroup(
-        name = "new",
+    create_group = SlashCommandGroup(
+        name = "create",
         description = "Create new Roleplays, Locations, Routes, and Characters-- in that order.",
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator])
 
-    @new_group.command(
+    @create_group.command(
         name = "location", 
-        description = "Create a new location for Characters to roleplay in.",
+        description = "Create a new Location for Characters to roleplay in.",
         checks = [in_prox_rp])
     async def location(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
-        await server.fetch()
+        rp = await Roleplay.load(ctx.guild_id)
+        assert rp is not None, "howwww"
 
-        if server.location_limit is not None \
-            and await server.location_count >= server.location_limit:
+        if rp.data.location_limit is not None \
+            and await rp.location_count >= rp.data.location_limit:
 
-            embed = text_embed(
-                "Easy there.",
-                f"Looks like you're already at your limit of {server.location_limit}" \
-                    " locations. If you'd like more, think about a subscription.", 
-                "Proceeds go straight for server costs and feature improvements.")
+            embed = await LocEmbeds.create.hit_limit(
+                location_limit = rp.data.location_limit, 
+                end_date = rp.data.subscription_end)
             
             await ctx.respond(embed = embed, ephemeral = True)
             return
 
         embed = text_embed(
             "Someplace new?",
-            "Technically, all you need to provide is a name, and"
-                " I can make the location and its channel. But you can" \
-                " also set a description and a reference photo.", 
-            "All of this can be edited later with /review location.")
+            "All you need to provide is a name, and"
+                " I can make the Location and its channel. But if you like," \
+                " you can include a description and a reference photo.", 
+            "All of this can be edited later with /review Location.")
         
         dialogue = Dialogue(embed, disable_timeout = True)
         details_popup = Popup(title = "New location details")
 
         details_popup.add_text(
             label = "Name", 
-            placeholder = "What should the location be named?", 
+            placeholder = "What should the Location be named?", 
             min_length = 1, 
             max_length = 100)
         
         details_popup.add_text(
             label = "Description", 
-            placeholder = "Share some lore, maybe, or the sounds or scents of a scene?", 
+            placeholder = "Share some lore! Or how it sounds, maybe how it smells?", 
             min_length = 0, 
             max_length = 300,
             required = False,
@@ -85,7 +91,7 @@ class NewCommands(commands.Cog):
             required = False,
             style = InputTextStyle.paragraph)
 
-        details_button = dialogue.add_button(label = "Set location details", style = ButtonStyle.blurple)
+        details_button = dialogue.add_button(label = "Set Location details", style = ButtonStyle.blurple)
         dialogue.add_modal(details_popup, details_button)
 
         submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
@@ -93,29 +99,48 @@ class NewCommands(commands.Cog):
         dialogue.add_close()      
 
         async def submit(interaction: Interaction):
-                
-            description = "Created the location (and its channel). Don't" \
-                " forget to connect it to its neighbors!"
-            description, ref_url = await reference_validator(
-                description, 
-                dialogue._fields["Reference photo URL"].get_value())
             
-            location = Location(0) # Hacky deferred PK assignment, but what can you do.
-            await location.create(
-                guild_id = server.id,
+            url = dialogue._fields["Reference photo URL"].get_value()
+            url_result = await reference_validator(url)
+
+            if url_result != CommitResult.SUCCESS:
+                url = None
+
+            loc_channel = await Relayable.create_channel(
+                channel_name = dialogue._fields["Name"].get_value(), 
+                guild_id = interaction.guild_id, # pyright: ignore[reportArgumentType]
+                is_location = True)
+            
+            if not isinstance(loc_channel, TextChannel):
+
+                embed = ErrorEmbeds.channel_creation_err()
+                dialogue.current_embed, dialogue.current_file = embed, None
+                dialogue.view.clear_items()
+                return await dialogue.refresh(interaction)
+
+            loc_data = LocationData(
+                location_id = loc_channel.id,
+                roleplay_id = loc_channel.guild.id,
                 name = dialogue._fields["Name"].get_value(),
                 description = dialogue._fields["Description"].get_value(),
-                reference = ref_url,
-                interaction = interaction)            
-            
-            dialogue.current_embed, dialogue.current_file = await image_embed(
-                "Very nice.",
-                description = description,
-                footer = "Use /new route. And like everything " \
-                    " else, you can always /review this location later.",
-                thumbnail = True,
-                source = ImageSource.URL,
-                asset_str = ref_url or LOGO)
+                reference = url)
+    
+            await Location.create(loc_data)  
+            embed, file = await LocEmbeds.create.log(
+                name = loc_data.name,
+                description = loc_data.description,
+                reference = loc_data.reference)
+            await notify_log(rp.data, embed, file)
+
+            embed, file = await LocEmbeds.create.channel(
+                description = loc_data.description,
+                reference = loc_data.reference)
+            await safe_send(embed, [loc_channel], silent = False, file = file)
+
+            embed, file = await LocEmbeds.create.user(
+                description = loc_data.description,
+                reference = loc_data.reference)
+            dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()
             return await dialogue.refresh(interaction)
 
@@ -290,19 +315,17 @@ class NewCommands(commands.Cog):
     #     # await send_message(ctx.respond, embed, view, file)
     #     return
 
-    @new_group.command(name = "roleplay", description = "Make this server a new Proximity roleplay!")
+    @create_group.command(name = "roleplay", description = "Make this server a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
-        server = RPServer(ctx.guild_id)
-
-        if await server.exists:
+        if await roleplay_repo.exists(ctx.guild_id) == CommitResult.SUCCESS :
 
             embed = text_embed(
                 "Way ahead of you.",
                 "This server is already registered for roleplay. If you want to start over," \
                 " delete the existing data with `/delete roleplay` and then call this" \
                 " command again.",
-                "But if you just want a /new place or a /new character, call those instead.")
+                "But if you just want a /create location or a /create character, call those instead.")
             
             return await send_message(ctx.interaction, embed, ephemeral = True)
             
@@ -311,13 +334,13 @@ class NewCommands(commands.Cog):
             "First things first, your roleplay needs a name. Plus,"
                 " you need to designate a channel for admin logs (like" \
                 " character creation, place creation, and so on)." \
-                " And if you're feeling fancy, you can also set a" \
-                " description and/or reference photo. ", 
+                " And if you're feeling fancy, you can also add a" \
+                " description or even a reference photo. ", 
             "You can change all these things later with /review roleplay.")
         
         dialogue = Dialogue(embed, disable_timeout = True)
         dialogue.add_channel_select(
-            label = "logging", 
+            label = "Logging", 
             purpose = " for admin logs",
             min_values = 1)
 
@@ -364,27 +387,24 @@ class NewCommands(commands.Cog):
 
         async def submit(interaction: Interaction):
 
-            description = "This server is now registered. First" \
-                " things first: set up a `/new location`."
+            url = dialogue._fields["Reference photo URL"].get_value()
+            url_result = await reference_validator(url)
 
-            description, ref_url = await reference_validator(
-                description, 
-                dialogue._fields["Reference photo URL"].get_value())
-
-            await server.create(
-                log_channel_id = dialogue._fields["logging"].get_value(),
+            rp_data = RoleplayData(
+                roleplay_id = ctx.guild_id,
                 name = dialogue._fields["Title"].get_value(),
+                log_channel_id = dialogue._fields["Logging"].get_value(),
                 description = dialogue._fields["Description"].get_value(),
-                reference = ref_url,
-                character_limit = 10,
-                location_limit = 10,
-                subscription_end = None)
+                reference = url if url_result == CommitResult.SUCCESS else None)
+
+            await Roleplay.create(rp_data)
+            embed, file = await RoleplayEmbeds.create.log(
+                rp_data.name, 
+                rp_data.reference)
+            await notify_log(rp_data, embed, file)
             
-            dialogue.current_embed = text_embed(
-                "All set!",
-                description = description,
-                footer = "And if you ever change your mind about" \
-                    " the deets, you can just do /review roleplay.")
+            dialogue.current_embed, dialogue.current_file = \
+                await RoleplayEmbeds.create.user(rp_data.name, url_result)
             dialogue.view.clear_items()
             await dialogue.refresh(interaction)
 
@@ -396,4 +416,4 @@ class NewCommands(commands.Cog):
         return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
     
 def setup(prox):
-    prox.add_cog(NewCommands(prox), override = True)
+    prox.add_cog(CreateCommands(prox), override = True)
