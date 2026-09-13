@@ -2,7 +2,8 @@
 from discord import Embed, File
 from typing import Coroutine
 
-from data.database_entries import RoleplayData, CommitResult
+from data.database_entries import CommitResult, \
+    RoleplayData, LocationData
 from data.database_handler import _Unset, UNSET
 from libraries.user_interface import text_embed, image_embed, \
     ImageSource, safe_send, get_channel, reference_validator
@@ -54,6 +55,23 @@ class ErrorEmbeds:
                 " See about getting that corrected first.",
             "Should just be as simple as granting a role with the permissions given.")
 
+    @staticmethod
+    def non_location() -> Embed:
+
+        return text_embed(
+            "Hold on, this isn't a Location.",
+            "This command only works in Location channels." + \
+                " Maybe the developer will change this, in time...",
+            "Until then, just go to a Location channel and call this command again.")
+
+    @staticmethod
+    def no_locs_selected() -> Embed:
+
+        return text_embed(
+            "No location selected.",
+            "This command requires that you select a location.",
+            "Try calling it again?")
+
 class _CharDelete:
 
     @staticmethod
@@ -85,6 +103,91 @@ class _CharDelete:
 
 class CharacterEmbeds:
     delete = _CharDelete
+
+class _RouteCreate:
+
+    @staticmethod
+    async def log(
+        origin: LocationData,
+        destinations: list[LocationData],
+        directionality: str
+    ) -> Embed:
+
+        dest_mentions = ", ".join(d.mention for d in destinations)
+
+        description = f"Connected {origin.mention} to {dest_mentions}. It's "
+
+        if directionality == "<->":
+            description += "both-ways-- there and back. Characters can move" + \
+                " along the Route in either direction."
+        elif directionality == "->":
+            description += "one-way-- Characters can go there, but not back."
+        elif directionality == "<-":
+            description += "one-way-- Characters can come from there, but" + \
+                " not the other way around."
+
+        return text_embed(
+            f"{origin.name} connected.",
+            description,
+            "As a reminder, Characters can be heard through nearby Routes.")
+        
+    @staticmethod
+    async def user(
+        origin: LocationData,
+        destinations: list[LocationData],
+        directionality: str
+    ) -> Embed:
+
+        description = f"Connected {len(destinations)} other Location/s to" + \
+            f" {origin.mention}. It's "
+
+        if directionality == "<->":
+            description += "both-ways-- there and back. Characters can move" + \
+                " along the route in either direction."
+        elif directionality == "->":
+            description += "one-way-- Characters can go there, but not back."
+        elif directionality == "<-":
+            description += "one-way-- Characters can come from there, but" + \
+                " not the other way around."
+
+        description += ("\n\n >>> *Notice: some channels you selected on the" +
+            " menu might have been dropped, if you selected channels that" +
+            " don't go to a Location, or if there's already a Route between" +
+            " that Location and here.*")
+
+        return text_embed(
+            f"{origin.name} connected.",
+            description,
+            "As a reminder, Characters can be heard through nearby Routes.")
+
+    @staticmethod
+    async def channel(
+        origin: LocationData,
+        destinations: list[LocationData],
+        directionality: str
+    ) -> Embed:
+        
+        dest_mentions = ", ".join(d.mention for d in destinations)
+
+        description = f"{origin.mention} is now connected to {len(destinations)}" + \
+            f" other Location/s: {dest_mentions}. It's "
+
+        if directionality == "<->":
+            description += "both-ways-- there and back. Characters can move" + \
+                " along the routes in either direction."
+        elif directionality == "->":
+            description += "one-way-- Characters can go there, but not back."
+        elif directionality == "<-":
+            description += "one-way-- Characters can come from there, but" + \
+                " not the other way around."
+
+        return text_embed(
+            f"{origin.name} connected.",
+            description,
+            "As a reminder, Characters can be heard across nearby Routes.")                                                 
+
+class RouteEmbeds:
+    create = _RouteCreate
 
 class _LocDelete:
 
@@ -161,7 +264,19 @@ class _LocCreate:
                 " description, which is visible to Characters who `/look` around:"
                 "\n>>> ") + description # pyright: ignore[reportOperatorIssue]
 
-        footer = "Be sure to connect it to other locations with /create route."
+        embed_description += ("\n\n_As a reminder, Location channels aren't for roleplaying"
+            " inside of. It's basically a log. Although there are some"
+            " interesting things Hosts can do by posting in a Location"
+            " channel directly..._")
+        
+        if reference is None:
+            footer = "This Location has no reference photo attached."
+        elif await reference_validator(reference) != CommitResult.SUCCESS:
+            footer = ("The reference photo provided wasn't valid.")
+        else:
+            footer = "Pretty nifty reference photo."
+
+        footer = "Be sure to connect it to other locations with /create Route."
         
         return await image_embed(
             f"New Location: {name}",
@@ -191,11 +306,18 @@ class _LocCreate:
                 " description, which is visible to players who `/look` around:"
                 "\n>>> ") + description
 
-        footer = ("As a reminder, Location channels aren't for roleplaying"
+        embed_description += ("\n\n_As a reminder, Location channels aren't for roleplaying"
             " inside of. It's basically a log. Use the"
             " Character channels for roleplay. (Probably the only time"
             " you'll be posting in a Location channel directly is if"
-            " you're posting as the Location itself...which could be cool, actually.)")
+            " you're posting as the Location itself...which could be cool, actually._)")
+
+        if reference is None:
+            footer = "You can add a reference photo later with /review Location."
+        elif await reference_validator(reference) != CommitResult.SUCCESS:
+            footer = ("Unfortunately, the reference photo you provided isn't valid.")
+        else:
+            footer = "Love the reference you chose."
         
         return await image_embed(
             "Location made!",
@@ -222,10 +344,17 @@ class _LocCreate:
                 " description, which is visible to players who `/look` around:"
                 "\n>>> ") + description
 
-        footer = ("As a reminder, Location channels aren't for roleplaying"
+        embed_description += ("\n\n_As a reminder, Location channels aren't for roleplaying"
             " inside of. It's basically a log. Although there are some"
             " interesting things Hosts can do by posting in a Location"
-            " channel directly...")
+            " channel directly..._")
+        
+        if reference is None:
+            footer = "This location has no reference photo attached, currently."
+        elif await reference_validator(reference) != CommitResult.SUCCESS:
+            footer = ("Unfortunately, the reference photo passed in isn't valid.")
+        else:
+            footer = "Pretty nifty reference photo."
         
         return await image_embed(
             f"New Location!",
@@ -235,9 +364,20 @@ class _LocCreate:
             source = ImageSource.URL,
             asset_str = reference)
 
+class _LocReview:
+
+    @staticmethod
+    async def user(
+        description: str | None, 
+        reference: str | None
+    ) -> tuple[Embed, File | None]:
+
+        ...
+
 class LocEmbeds:
     delete = _LocDelete
     create = _LocCreate
+    review = _LocReview
 
 class _RoleplayDelete:
 
@@ -408,7 +548,6 @@ class _RoleplayUpdate:
             old_rp_data, 
             prop_diffs, 
             new_rp_data) 
-
 
 class RoleplayEmbeds:
     delete = _RoleplayDelete

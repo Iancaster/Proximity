@@ -19,6 +19,18 @@ class RoleplayData:
     subscription_end: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=7))
 
+    @property
+    def log_mention(self) -> str:
+        return f"<#{self.log_channel_id}>"
+
+    @property
+    def loc_mention(self) -> str:
+        return f"*<#{self.loc_mention}>*"
+    
+    @property
+    def char_mention(self) -> str:
+        return f"*<#{self.characters_cat}>*"
+
 @dataclass
 class LocationData:
     location_id: int
@@ -26,6 +38,12 @@ class LocationData:
     name: str
     description: str | None = None
     reference: str | None = None
+
+    @property
+    def mention(self) -> str:
+        """Format the channel ID as a clickable hyperlink. Only works in
+        embedded titles, bodies, and un-embedded message content."""
+        return f"<#{self.location_id}>"
 
 @dataclass
 class CharacterData:
@@ -37,10 +55,16 @@ class CharacterData:
     description: str | None = None
     reference: str | None = None
 
+    @property
+    def mention(self) -> str:
+        return f"<#{self.character_id}>"
+
+
 @dataclass
 class RouteData:
     from_id: int
     to_id: int
+    roleplay_id: int
 
 EntryType = TypeVar("EntryType", RoleplayData, LocationData, CharacterData, RouteData)
 

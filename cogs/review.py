@@ -25,151 +25,169 @@ class ReviewCommands(commands.Cog):
         contexts = [InteractionContextType.guild],
         checks = [in_text_channel, is_administrator, in_prox_rp])
 
-    # @review_group.command(name = "location", description = "Examine or change the details of a location.")
-    # async def location(self, ctx: ApplicationContext):
+    @review_group.command(name = "location", description = "Examine or change the details of a Location.")
+    async def location(self, ctx: ApplicationContext):
 
-    #     async def add_components(location: Location, dialogue: Dialogue):
+        location = await Location.load(ctx.channel_id)
+        rp = await Roleplay.load(ctx.guild_id)
+        assert rp is not None, "tf"
 
-    #         details_popup = Popup(title = "Edit location details")
+        async def add_components(curr_location: Location, curr_dialogue: Dialogue) -> None:
 
-    #         details_popup.add_text(
-    #             label = "Name",
-    #             placeholder = "What should the location be renamed?",
-    #             value = location.name,
-    #             min_length = 1,
-    #             max_length = 100)
+            details_popup = Popup(title = "Review Location details")
 
-    #         details_popup.add_text(
-    #             label = "Description",
-    #             placeholder = "Share some lore, maybe, or the sounds or scents of a scene?",
-    #             value = location.description,
-    #             min_length = 0,
-    #             max_length = 300,
-    #             required = False,
-    #             style = InputTextStyle.paragraph)
+            details_popup.add_text(
+                label = "Name",
+                placeholder = "What should the Location be renamed?",
+                value = curr_location.data.name,
+                min_length = 1,
+                max_length = 100)
 
-    #         details_popup.add_text(
-    #             label = "Reference photo URL",
-    #             placeholder = "Right click an Imgur image and select 'Copy Link'.",
-    #             value = location.reference,
-    #             min_length = 1,
-    #             max_length = 300,
-    #             required = False,
-    #             style = InputTextStyle.paragraph)
+            details_popup.add_text(
+                label = "Description",
+                placeholder = "Share some lore, maybe, or the sounds or scents of a scene?",
+                value = curr_location.data.description,
+                min_length = 0,
+                max_length = 300,
+                required = False,
+                style = InputTextStyle.paragraph)
 
-    #         details_button = dialogue.add_button(label = "Change location details", style = ButtonStyle.blurple)
-    #         dialogue.add_modal(details_popup, details_button)
+            details_popup.add_text(
+                label = "Reference",
+                placeholder = "Right click an Imgur image and select 'Copy Link'.",
+                value = curr_location.data.reference,
+                min_length = 1,
+                max_length = 300,
+                required = False,
+                style = InputTextStyle.paragraph)
 
-    #         submit_button = dialogue.add_button(label = "Submit edits", style = ButtonStyle.success)
-    #         submit_button.should_disable = lambda : not dialogue.is_valid
-    #         dialogue.add_close()
+            details_button = curr_dialogue.add_button(label = "Review Location details", style = ButtonStyle.blurple)
+            curr_dialogue.add_modal(details_popup, details_button)
 
-    #         async def submit(interaction: Interaction):
+            submit_button = curr_dialogue.add_button(label = "Submit edits", style = ButtonStyle.success)
+            submit_button.should_disable = lambda : not curr_dialogue.is_valid
+            curr_dialogue.add_close()
 
-    #             nonlocal dialogue, location
+            async def submit(interaction: Interaction):
 
-    #             _, ref_url = await reference_validator(
-    #                 "",
-    #                 dialogue._fields["Reference photo URL"].get_value())
+                nonlocal curr_dialogue, curr_location
 
-    #             await location.update(
-    #                 name = dialogue._fields["Name"].get_value(),
-    #                 description = dialogue._fields["Description"].get_value(),
-    #                 reference = ref_url)
-    #             await location.fetch()
+                url =  curr_dialogue._fields["Reference"].get_value()
+                url_result = await reference_validator(url)
+                if url_result != CommitResult.SUCCESS:
+                    url = None
 
-    #             dialogue = await review_location(location, dialogue)
-    #             await dialogue.refresh(interaction)
+                await curr_location.update(
+                    name = curr_dialogue._fields["Name"].get_value(),
+                    description = curr_dialogue._fields["Description"].get_value(),
+                    reference = url)
 
-    #         submit_button.callback = submit
-    #         await dialogue.view.refresh_children()
+                curr_dialogue = await review_location(curr_location, curr_dialogue)   
+                curr_dialogue.view.clear_items()
+                await add_components(curr_location, curr_dialogue)
+                await curr_dialogue.refresh(interaction)
 
-    #         return
+            submit_button.callback = submit
+            curr_dialogue = await review_location(curr_location, curr_dialogue)
+            return
 
-    #     async def review_location(location: Location, dialogue: Dialogue | None = None):
+        async def review_location(
+            curr_location: Location, 
+            curr_dialogue: Dialogue | None = None
+        ) -> Dialogue:
 
-    #         if occupants := list(await location.occupants):
-    #             occupants = ", ".join([f"<#{char.id}>" for char in occupants])
-    #         else:
-    #             occupants = "No one is here at the moment."
+            if occupants := await curr_location.occupants:
+                occupants = ", ".join([f"<#{c.character_id}>" for c in occupants])
+            else:
+                occupants = "No one is here at the moment."
 
-    #         embed, file = await image_embed(
-    #             f"Reviewing <#{location.id}>",
-    #             f"**Description:** {location.description or "No description yet."}"
-    #             f"\n**Connected locations:** Coming soon!" + \
-    #             f"\n**Occupants:** {occupants}" + \
-    #             f"\n**Routes:** Coming soon!" + \
-    #             f"\n**Reference:** " +
-    #                 ("See below." if location.reference else "None (yet). You should add one!"),
-    #             "Would you perhaps like to change any of these things?",
-    #             thumbnail = False,
-    #             source = ImageSource.URL,
-    #             asset_str = location.reference or LOGO)
+            if curr_location.data.description:
+                loc_description = "See below.\n>>> " + curr_location.data.description
+            else:
+                loc_description = "No description yet."
 
-    #         if dialogue is None:
-    #             dialogue = Dialogue(embed, file)
-    #             await add_components(location, dialogue)
-    #         else:
-    #             dialogue.current_embed = embed
-    #             dialogue.current_file = file
+            neighbors_text = ""
+            inlet_ids = [data.from_id for data in await curr_location.inlet_routes]
+            outlet_ids = [data.to_id for data in await curr_location.outlet_routes]
 
-    #         return dialogue
+            for id in inlet_ids:
 
-    #     location = Location(ctx.channel_id)
+                if id in outlet_ids:
+                    outlet_ids.remove(id)
+                    neighbors_text += f"\n - <#{id}> <-> Here"
 
-    #     if await location.exists:
+                else:
+                    neighbors_text += f"\n - <#{id}> -> Here"
 
-    #         await location.fetch()
-    #         dialogue = await review_location(location)
-    #         return await send_message(ctx.interaction,
-    #             dialogue.current_embed,
-    #             dialogue.view,
-    #             dialogue.current_file,
-    #             ephemeral = True)
+            for id in outlet_ids:
+                neighbors_text += f"\n - Here -> <#{id}>"
+                
+            embed, file = await image_embed(
+                f"Reviewing {curr_location.data.mention}",
+                (f"**Occupants:** {occupants}" +
+                f"\n**Neighbors:** {neighbors_text or "None-- consider `/create Route`."}" + 
+                f"\n**Reference:** " +
+                    ("See below." if curr_location.data.reference else "None (yet). You should add one!") +
+                "**\nDescription:** " + loc_description),
+                "Would you perhaps like to change any of these things?",
+                thumbnail = False,
+                source = ImageSource.URL,
+                asset_str = curr_location.data.reference)
 
-    #     embed = text_embed(
-    #         "Which location?",
-    #         ("Please select a location channel from the dropdown below"
-    #             " to review its details. You can also call this command"
-    #             " in a location channel to select it automatically."),
-    #         "This will show you everything about the place.",)
+            if curr_dialogue is None:
+                curr_dialogue = Dialogue(embed, file)
+                await add_components(curr_location, curr_dialogue)
+            else:
+                curr_dialogue.current_embed = embed
+                curr_dialogue.current_file = file
 
-    #     dialogue = Dialogue(embed)
+            await curr_dialogue.view.refresh_children()
+            return curr_dialogue
 
-    #     channel_select = dialogue.add_channel_select(
-    #         label = "Pick a channel to review.",
-    #         purpose = "Location choice",
-    #         placeholder = "#the-castle",
-    #         min_values = 1)
+        if location is None:
 
-    #     submit_button = dialogue.add_button("Review selected location", ButtonStyle.primary)
+            embed = text_embed(
+                "Which Location?",
+                ("Please select a Location channel from the dropdown below" +
+                    " to review its details. You can also call this command" +
+                    " in a Location channel to select it automatically."),
+                "This will show you everything about the place.")
 
-    #     async def select(interaction: Interaction):
-    #         nonlocal dialogue
-    #         location = Location(channel_select.values[0].id)
-    #         await location.fetch()
-    #         dialogue.view.clear_items()
-    #         dialogue = await review_location(location, dialogue)
-    #         await add_components(location, dialogue)
-    #         await dialogue.refresh(interaction)
-    #         return
+            dialogue = Dialogue(embed)
 
-    #     submit_button.callback = select
+            channel_select = dialogue.add_channel_select(
+                label = "Pick a Location to review.",
+                purpose = "Location Choice",
+                placeholder = "#the-castle",
+                min_values = 1)
 
-    #     server = Roleplay(ctx.guild_id)
-    #     await server.load()
+            submit_button = dialogue.add_button("Select Location", ButtonStyle.primary)
 
-    #     location_ids = [loc.id for loc in await server.locations]
-    #     submit_button.should_disable = (lambda : not channel_select.is_valid() or # pyright: ignore[reportPossiblyUnboundVariable]
-    #         channel_select.values[0].id not in location_ids) # pyright: ignore[reportPossiblyUnboundVariable]
+            async def select(interaction: Interaction):
+                nonlocal dialogue, location
+                location = await Location.load(channel_select.values[0].id)
+                dialogue.view.clear_items()
+                dialogue = await review_location(location, dialogue) # pyright: ignore[reportArgumentType]
+                await add_components(location, dialogue) # pyright: ignore[reportArgumentType]
+                await dialogue.refresh(interaction)
+                return
 
-    #     dialogue.add_close()
-    #     await send_message(ctx.interaction,
-    #         dialogue.current_embed,
-    #         dialogue.view,
-    #         ephemeral = True)
+            submit_button.callback = select
+            location_ids = [loc.location_id for loc in await rp.locations]
+            submit_button.should_disable = (lambda : not channel_select.is_valid() or
+                channel_select.values[0].id not in location_ids)
+            
+            dialogue.add_close()
 
-    #     return
+        else:
+            dialogue = await review_location(curr_location = location, curr_dialogue = None)
+
+        await send_message(ctx.interaction,
+            dialogue.current_embed,
+            dialogue.view,
+            ephemeral = True)
+
+        return
 
     # @review_group.command(name = 'path', description = 'Look at (or edit) paths.')
     # async def path(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place to start from?', name = 'place', autocomplete = complete_places, required = False)):
@@ -651,11 +669,11 @@ class ReviewCommands(commands.Cog):
             f"Reviewing {rp.data.name}",
             f"**Character Count:** {await rp.character_count} / {rp.data.character_limit}"
                 f"\n**Character Category:** " +
-                    (f"*<#{rp.data.characters_cat}>*" if rp.data.characters_cat is not None else "None yet.") +
+                    (f"{rp.data.char_mention}" if rp.data.characters_cat is not None else "None yet.") +
                 f"\n**Location Count:** {await rp.location_count} / {rp.data.location_limit}"
                 f"\n**Location Category:** " +
-                    (f"*<#{rp.data.locations_cat}>*" if rp.data.locations_cat is not None else "None yet.") +
-                f"\n**Log Channel:** <#{rp.data.log_channel_id}>"
+                    (f"{rp.data.loc_mention}" if rp.data.locations_cat is not None else "None yet.") +
+                f"\n**Log Channel:** {rp.data.log_mention}"
                 f"\n**Description:** {rp.data.description}"
                 "\n**Reference:** " +
                     ("See below." if rp.data.reference else "None (yet). You should add one!"),

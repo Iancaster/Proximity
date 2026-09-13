@@ -13,8 +13,18 @@ from data.database_entries import (
     RoleplayData, LocationData, CharacterData, RouteData)
 from libraries.logger import get_logger, Lumberjack
 from libraries.user_interface import reference_validator, get_channel, get_bot
+from math import radians, cos, sin
 
-from libraries.embed_templates import notify_log, ErrorEmbeds, RoleplayEmbeds
+from libraries.embed_templates import ErrorEmbeds
+
+
+from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
+	draw_networkx_edges, shell_layout, draw_networkx_labels
+from math import sqrt
+from matplotlib.pyplot import margins, gcf, tight_layout, axis, close, figure
+from matplotlib.patches import ArrowStyle
+from collections.abc import Callable
+from io import BytesIO
 
 from datetime import datetime as dt
 
@@ -44,6 +54,15 @@ async def is_administrator(ctx: ApplicationContext) -> bool: # Revisit this once
         await ctx.respond("To prevent abuse, only server administrators may use this command.", ephemeral = True)
         return False
 
+    return True
+
+async def in_location(ctx: ApplicationContext) -> bool:
+
+    if await location_repo.exists(ctx.channel_id) != CommitResult.SUCCESS:
+        embed = ErrorEmbeds.non_location()
+        await ctx.respond(embed = embed, ephemeral = True)
+        return False
+    
     return True
 
 class Relayable:
@@ -293,16 +312,17 @@ class Location:
         self.data = data
         return
 
-    # async def update(self, 
-    #     name: str | None | _Unset = UNSET, 
-    #     description: str | None | _Unset = UNSET,
-    #     reference: str | None | _Unset = UNSET,
-    # ) -> CommitResult:
-    #     """Updates with current values. Set a value to None to null it out."""
+    async def update(self, 
+        name: str | None | _Unset = UNSET, 
+        description: str | None | _Unset = UNSET,
+        reference: str | None | _Unset = UNSET,
+    ) -> CommitResult:
+        """Updates with current values. Set a value to None to null it out."""
 
-    #     changed_values = {k : v for k, v in locals().items() if v is not UNSET and k != "self"}
+        changed_values = {k : v for k, v in locals().items() if v != self}
+        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
 
-    #     return await location_repo.apply(self.data, **changed_values)   
+        return await location_repo.apply(self.data, **changed_values)   
 
     # async def update(self, 
     #     name: str | None = None, 
@@ -461,6 +481,32 @@ class Location:
     #     return
 
     @property
+    async def inlet_routes(self) -> list[RouteData]:
+        return await route_repo.fetch_all("to_id", self.data.location_id)
+
+    @property
+    async def outlet_routes(self) -> list[RouteData]:
+        return await route_repo.fetch_all("from_id", self.data.location_id)
+
+    @property
+    async def connections(self) -> list[RouteData]:
+        return await self.inlet_routes + await self.outlet_routes
+
+    @property
+    async def neighbors(self) -> list[LocationData]:
+
+        conns = await self.connections
+        neigh_ids = {id for route in conns for id in (route.to_id, route.from_id)}
+
+        if not neigh_ids:
+            return []
+        
+        neigh_ids.remove(self.data.location_id)
+        results = [await location_repo.fetch(id) for id in neigh_ids]
+
+        return [res for res in results if isinstance(res, LocationData)]
+
+    @property
     async def occupant_count(self) -> int:
         return await character_repo.count("location_id", self.data.location_id)
     
@@ -474,57 +520,26 @@ class Route:
         self.data = data
         return
 
-    # async def create(self, 
-    #     guild: Guild | None = None, 
-    #     **_
-    # ) -> CommitResult:
-    #     """Makes a routes between two locations."""
-
-    #     from_location = Location(self.id)
-
-    #     if not await from_location.exists:
-    #         return CommitResult.ROW_MISSING
+    @classmethod
+    async def create(cls, data: RouteData) -> Route | CommitResult:
         
-    #     to_location = Location(self.to_id)
+        result = await route_repo.create(data)
+        if result != CommitResult.SUCCESS:
+            return result
 
-    #     if not await to_location.exists:
-    #         return CommitResult.ROW_MISSING
+        fetch_result = await route_repo.fetch(data.from_id, data.to_id)
+
+        if not isinstance(fetch_result, RouteData):
+            return fetch_result
         
-    #     await from_location.fetch()
-    #     await to_location.fetch()
-        
-    #     result = await DatabaseMixin.create(self, to_id = self.to_id)
+        return result
 
-    #     if guild is None:
-    #         return result
+    async def delete(self) -> CommitResult:
+        return await route_repo.delete(self.data.from_id, self.data.to_id)
 
-    #     await from_location.new_route(to_location, guild = guild)
-
-    #     return result
-
-    # async def delete(self, 
-    #     guild: Guild | None = None, **_
-    # ) -> CommitResult:
-        
-    #     result = await DatabaseMixin.delete(self, to_id = self.to_id)
-
-    #     if guild is None:
-    #         return result
-        
-    #     from_location = Location(self.id)
-
-    #     if not await from_location.exists:
-    #         return CommitResult.NO_UPDATE # Deleting a location inherently deletes its routes
-
-    #     to_location = Location(self.to_id)
-    #     if not await to_location.exists:
-    #         return CommitResult.NO_UPDATE
-        
-    #     await from_location.fetch()
-    #     await to_location.fetch()
-
-    #     await from_location.remove_route(to_location, guild = guild)
-    #     return result
+    @property
+    async def ends(self) -> tuple[int, int]:
+        return (self.data.to_id, self.data.from_id)
 
 class Character:
 
@@ -557,7 +572,95 @@ class Character:
             await safe_del_channels([char_category], "No more characters remain in this RP.")
         
         return result
-    
+
+class GameWorld:
+
+    def __init__(self, graph: DiGraph):
+        self.graph = graph
+
+    @classmethod
+    async def _fetch_total(cls, roleplay_id: int) -> DiGraph:
+
+        graph = DiGraph()
+
+        loc_datas = await location_repo.fetch_all("roleplay_id", roleplay_id)
+        graph.add_nodes_from((loc.location_id, {"name" : loc.name}) for loc in loc_datas)
+
+        routes = await route_repo.fetch_all("roleplay_id", roleplay_id)
+        graph.add_edges_from((r.to_id, r.from_id) for r in routes)
+
+        return graph
+
+    @classmethod
+    async def from_roleplay(cls, roleplay_id: int) -> GameWorld:
+        return cls(await GameWorld._fetch_total(roleplay_id))
+
+    @classmethod
+    async def from_location(cls, 
+        location_id: int,
+        roleplay_id: int,
+        undirected: bool, 
+        radius: int,
+    ) -> GameWorld:
+
+        return ego_graph(
+            await GameWorld._fetch_total(roleplay_id), 
+            location_id, 
+            radius = radius, 
+            undirected = undirected)
+
+    def render(self) -> BytesIO:
+
+        node_count = self.graph.number_of_nodes()
+        labels = {node: data["name"] for node, data in graph.nodes(data=True)}
+
+        side = max(6, node_count * 0.9)
+        node_size = max(300, 1600 - node_count * 60)
+        font_size = max(8, 14 - node_count // 4)
+
+        figure(figsize = (side, side))
+        positions = shell_layout(self.graph, rotate = 25)
+
+        draw_networkx_nodes(
+            self.graph,
+            pos = positions,
+            node_shape = "o",
+            node_size = node_size,
+            node_color = "#ffffff",
+            edgecolors = "gray",
+            linewidths = 1.5)
+
+        draw_networkx_labels(
+            self.graph,
+            pos = positions,
+            labels = labels,
+            font_size = font_size,
+            font_weight = "bold")
+
+        draw_networkx_edges(
+            self.graph,
+            pos = positions,
+            node_size = node_size,
+            edge_color = "black",
+            width = 2.0,
+            arrowstyle = ArrowStyle("-|>"), # pyright: ignore[reportArgumentType]
+            arrowsize = 25,
+            min_source_margin = 30,
+            min_target_margin = 30) 
+
+        margins(x = 0.15, y = 0.15)
+        tight_layout(pad = 0.8)
+        axis("off")
+
+        map_image = gcf()
+        close()
+        bytesIO = BytesIO()
+        map_image.savefig(bytesIO, format = "jpg", dpi = 150)
+        bytesIO.seek(0)
+
+        return bytesIO
+
+
 #         self.eaves_target: int | None = None
 #         self.name: str | None = None
 #         self.description: str | None = None

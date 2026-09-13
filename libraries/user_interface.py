@@ -225,19 +225,24 @@ class ChannelSelect(Select, DialogueMixin):
         purpose: str = "",
         dialogue_callback: Callable,
         placeholder: str | None = None,
-        min_values: int = 0):
+        min_values: int = 0,
+        max_values: int = 1):
 
         Select.__init__(self, 
             custom_id = purpose, 
             select_type = ComponentType.channel_select,
             channel_types = [ChannelType.text],
             placeholder = placeholder,
-            min_values = min_values)
+            min_values = min_values,
+            max_values = max_values)
         DialogueMixin.__init__(self, field_name = label, callback_override = dialogue_callback)
         return
     
     def get_value(self) -> Any:
-        return self.values[0].id if self.values is not None else None # pyright: ignore[reportAttributeAccessIssue]
+        return self.values[0].id if self.values is not None else None
+
+    def get_channel_ids(self) -> list[int]:
+        return [val.id for val in self.values]
     
     def is_valid(self) -> bool:
         selected_count = len(self.values) if self.values is not None else 0
@@ -348,7 +353,7 @@ class DialogueView(View):
                     view = None,
                     suppress = True,
                     delete_after = 5)
-            except NotFound:
+            except HTTPException:
                 pass
         
         return
@@ -461,7 +466,8 @@ class Dialogue:
         label: str, 
         purpose: str = "", 
         placeholder: str | None = None,
-        min_values: int = 0
+        min_values: int = 0,
+        max_values: int = 1
     ) -> ChannelSelect:
 
         channel_select = ChannelSelect(
@@ -469,7 +475,8 @@ class Dialogue:
             purpose = purpose,
             placeholder = placeholder,
             dialogue_callback = self.refresh,
-            min_values = min_values)
+            min_values = min_values,
+            max_values = max_values)
         
         self.view.add_item(channel_select)
         channel_select.callback = self.refresh

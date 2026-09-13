@@ -8,6 +8,7 @@ from data.database_entries import (
     location_repo, LocationData)
 from data.database_handler import initialize_db, CommitResult 
 from main import set_post_ready, main as main_main
+from PIL import Image
 
 logger = get_logger(console_level = 0)
 
@@ -57,13 +58,17 @@ async def create_wedding_hall() -> Location | CommitResult:
 
 async def main() -> None:
 
+
     rp = await Roleplay.load(DEV_GUILD_ID)
 
     if rp is None:
         rp = await reset_test_server()
         await create_wedding_hall()
-    else:
-        await (await Roleplay.load(DEV_GUILD_ID)).delete()
+
+        assert not isinstance(rp, CommitResult), "ayo?"
+
+    data = await rp.render(await rp.graph)
+    Image.open(data).show()
 
     logger.debug("Dev script concluded.")
 

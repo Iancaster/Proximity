@@ -1,7 +1,5 @@
 
-
-
-from libraries.classes import Roleplay, Location, Relayable
+from libraries.classes import Roleplay, Location, Route, Character, Relayable
 from libraries.user_interface import Dialogue, Popup, ImageSource, \
     text_embed, image_embed, send_message, reference_validator, LOGO, \
     safe_send
@@ -12,14 +10,16 @@ from data.database_entries import (
     route_repo, RouteData)
 from data.database_handler import CommitResult
 from libraries.embed_templates import notify_log, \
-    RoleplayEmbeds, LocEmbeds, CharacterEmbeds, ErrorEmbeds
+    RoleplayEmbeds, LocEmbeds, CharacterEmbeds, ErrorEmbeds, RouteEmbeds
 
 from discord import ApplicationContext, InteractionContextType, \
-    ButtonStyle, InputTextStyle, Interaction, TextChannel
+    ButtonStyle, InputTextStyle, Interaction, TextChannel, Embed
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from libraries.classes import in_text_channel, is_administrator, in_prox_rp, Roleplay
+from libraries.classes import in_text_channel, \
+    is_administrator, in_prox_rp, in_location, \
+    Roleplay
 
 # from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
 # 	DialogueView, Character, ListenerManager
@@ -38,12 +38,12 @@ class CreateCommands(commands.Cog):
         name = "create",
         description = "Create new Roleplays, Locations, Routes, and Characters-- in that order.",
         contexts = [InteractionContextType.guild],
-        checks = [in_text_channel, is_administrator])
+        checks = [in_text_channel, is_administrator, in_location])
 
     @create_group.command(
         name = "location", 
         description = "Create a new Location for Characters to roleplay in.",
-        checks = [in_prox_rp])
+        checks = [in_prox_rp, is_administrator])
     async def location(self, ctx: ApplicationContext):
 
         rp = await Roleplay.load(ctx.guild_id)
@@ -129,35 +129,186 @@ class CreateCommands(commands.Cog):
             embed, file = await LocEmbeds.create.log(
                 name = loc_data.name,
                 description = loc_data.description,
-                reference = loc_data.reference)
+                reference = dialogue._fields["Reference photo URL"].get_value())
             await notify_log(rp.data, embed, file)
 
             embed, file = await LocEmbeds.create.channel(
                 description = loc_data.description,
-                reference = loc_data.reference)
+                reference = dialogue._fields["Reference photo URL"].get_value())
             await safe_send(embed, [loc_channel], silent = False, file = file)
 
             embed, file = await LocEmbeds.create.user(
                 description = loc_data.description,
-                reference = loc_data.reference)
+                reference = dialogue._fields["Reference photo URL"].get_value())
+
+            embed, file = await LocEmbeds.create.user(
+                description = loc_data.description,
+                reference = dialogue._fields["Reference photo URL"].get_value())
             dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()
-            return await dialogue.refresh(interaction)
+            await dialogue.refresh(interaction)
+            return
 
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
         return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
 
-    # @new_group.command(
-    #     name = "route", 
-    #     description = "Lets characters travel (and be heard) between locations.", 
-    #     checks = [in_prox_rp])
-    # async def route(self, ctx: ApplicationContext):
+    @create_group.command(
+        name = "route", 
+        description = "Lets Characters travel between Locations.", 
+        checks = [is_administrator, in_location])
+    async def route(self, ctx: ApplicationContext):
 
-    #     server = RPServer(ctx.guild_id)
+        location = await Location.load(ctx.channel_id) 
+        assert location is not None, "checks failed"
 
-    #     return
+        rp_data = await roleplay_repo.fetch(ctx.guild_id)
+        assert isinstance(rp_data, RoleplayData), "eh"
+
+        directions = {
+            "<->" : "Goes both ways",
+            "->" : "Only goes from here to the other location",
+            "<-" : "Only allows travel *from* those locations *to* here"}
+        directionality = 0
+
+        async def build_embed(selected_direction: int = directionality) -> Embed:
+
+            nonlocal directions
+
+            description = ("What other Location(s) should this be connected to? Select" + 
+                " one or more Locations you want to ensure are connected" + 
+                " and choose what direction the pathways go.")
+
+            for i, pair in enumerate(directions.items()):
+
+                arrow, expl = pair                
+                if i == selected_direction:
+                    description += f"\n**- {arrow} {expl}**"
+                else:
+                    description += f"\n- {arrow} {expl}"
+
+            embed = text_embed(
+                "Where to?",
+                description,
+                "Most of the time, you want your Routes to be two-ways, not one-way.")
+
+            return embed            
+
+        dialogue = Dialogue(await build_embed())
+
+        async def submit(interaction: Interaction):
+
+            neighbors = dialogue._fields["Neighbors"].get_channel_ids() # pyright: ignore[reportAttributeAccessIssue]
+            neighbors = [await location_repo.fetch(n) for n in neighbors]
+            neighbors = [n for n in neighbors if not isinstance(n, CommitResult)]
+
+            if not neighbors:
+
+                dialogue.current_embed = ErrorEmbeds.no_locs_selected()
+                dialogue.view.clear_items()
+                await dialogue.refresh(interaction)
+                return
+
+            existing_routes = [end for route in await location.connections for end in (route.to_id, route.from_id)]
+            neighbors = [n for n in neighbors if n.location_id not in existing_routes]
+
+            if not neighbors:
+                dialogue.current_embed = text_embed(
+                    "No new connections.",
+                    ("`/create Route` is only for creating new Routes-- if you" +
+                        " already have a Route between this Location and another," +
+                        " then this command won't affect it. If you want to overwrite" +
+                        " a Route, you can use `/review Route` or just `/delete" +
+                        " Route` and recreate."),
+                    "Feel free to call the command again.")
+                dialogue.view.clear_items()
+                await dialogue.refresh(interaction)
+                return
+
+            chosen_dir = list(directions.keys())[directionality]
+
+            if chosen_dir == "<->":
+                reciprocal = "<->"
+            elif chosen_dir == "->":
+                reciprocal = "<-"
+            else:
+                reciprocal = "->"
+
+            for neigh in neighbors:
+
+                if ">" in chosen_dir:
+                    data = RouteData(
+                        from_id = location.data.location_id,
+                        to_id = neigh.location_id,
+                        roleplay_id = rp_data.roleplay_id)
+                    await Route.create(data)
+
+                if "<" in chosen_dir:
+                    data = RouteData(
+                        from_id = neigh.location_id,
+                        to_id = location.data.location_id,
+                        roleplay_id = rp_data.roleplay_id)
+                    await Route.create(data)
+
+                embed = await RouteEmbeds.create.channel(
+                    origin = neigh,
+                    destinations = [location.data],
+                    directionality = reciprocal)
+                await safe_send(embed, [neigh.location_id], silent = True)
+
+            embed = await RouteEmbeds.create.log(
+                location.data, 
+                neighbors, 
+                chosen_dir)
+            await notify_log(rp_data, embed)
+
+            embed = await RouteEmbeds.create.channel(
+                location.data,
+                neighbors,
+                chosen_dir)
+            await safe_send(embed, [location.data.location_id], silent = True)
+
+            embed = await RouteEmbeds.create.user(
+                location.data, 
+                neighbors,
+                chosen_dir)
+
+            dialogue.current_embed = embed
+            dialogue.view.clear_items()
+            await dialogue.refresh(interaction)
+            return
+            
+        dialogue.add_channel_select(
+            "Neighbors",
+            "Neighbor selection",
+            "#the-courtyard",
+            min_values = 1,
+            max_values = 5)
+
+        async def cycle_direction(interaction: Interaction):
+            nonlocal directionality
+            directionality = directionality + 1 if directionality < 2 else 0
+            dialogue.current_embed = await build_embed(directionality)
+            await dialogue.refresh(interaction)
+            return
+        
+        dir_button = dialogue.add_button("Change direction", style = ButtonStyle.secondary)
+        dir_button.callback = cycle_direction
+
+        submit_button = dialogue.add_button("Submit", style = ButtonStyle.success)
+        submit_button.callback = submit
+        submit_button.should_disable = lambda : not dialogue._fields["Neighbors"].get_value()
+        submit_button.disabled = True
+
+        dialogue.add_close()
+
+        await send_message(ctx.interaction,
+            dialogue.current_embed,
+            dialogue.view,
+            ephemeral = True)
+
+        return
 
     #@new_group.command(name = 'character', description = 'A new actor onstage.')
     # async def character(self, ctx: ApplicationContext):

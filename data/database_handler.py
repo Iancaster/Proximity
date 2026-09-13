@@ -76,6 +76,7 @@ async def initialize_db():
         CREATE TABLE IF NOT EXISTS routes (
             from_id        INT REFERENCES locations(location_id) ON DELETE CASCADE,
             to_id          INT REFERENCES locations(location_id) ON DELETE CASCADE,
+            roleplay_id    INT REFERENCES roleplays(roleplay_id) ON DELETE CASCADE,
             PRIMARY KEY (from_id, to_id));
                            
         CREATE TABLE IF NOT EXISTS characters (

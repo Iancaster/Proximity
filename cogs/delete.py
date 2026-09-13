@@ -72,7 +72,7 @@ class DeleteCommands(commands.Cog):
 
             embed = text_embed(
                 "Delete this location?",
-                f"You're about to delete <#{ctx.channel_id}> and all routes to and from it.",
+                f"You're about to delete <#{ctx.channel_id}> and all Routes to and from it.",
                 "This is irreversible, so make sure you really want to do this.")
 
             dialogue = Dialogue(embed) 
