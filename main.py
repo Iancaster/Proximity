@@ -33,7 +33,10 @@ async def main():
     if not (token := environ.get("TOKEN")):
         raise RuntimeError("Have you forgotten the .env?")
 
-    bot = Bot(intents = intents, owner_id = cfg("account", "owner_id"))
+    bot = Bot(
+        intents = intents, 
+        owner_id = cfg("account", "owner_id"),
+        debug_guilds = [1111152704279035954])
     set_bot(bot)
     await initialize_db()	
     
@@ -71,14 +74,7 @@ async def main():
 
         return
         
-    bot.load_extensions(
-        "cogs.owner", 
-        "cogs.debug", 
-        "cogs.create",
-        "cogs.delete", 
-        "cogs.review",
-        "cogs.autonomous"
-    )
+    bot.load_extensions("cogs")
     await bot.start(token)
     return
 

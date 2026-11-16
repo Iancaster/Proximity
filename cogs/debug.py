@@ -5,7 +5,7 @@ from discord import ApplicationContext, Option, \
     SlashCommandGroup, Embed, ButtonStyle, Interaction
 from discord.ext import commands
 
-from libraries.classes import Roleplay, Location
+from libraries.classes import Roleplay, Location, GameWorld
 from data.database_entries import roleplay_repo, location_repo
 from data.database_handler import CommitResult
 from libraries.user_interface import ImageSource, LOGO, \
@@ -34,8 +34,8 @@ class DebugCommands(commands.Cog):
 
         await send_message(ctx.interaction, content = "boop", ephemeral = True)  
 
-        graph = await rp.graph      
-        print(graph.nodes[1547486058722361434])
+        game_world = await GameWorld.from_roleplay(rp.data.roleplay_id)
+        print(game_world.graph.nodes[1547486058722361434])
         return
 
     @debug_group.command(name = "server", description = "See what server info is saved in the database.")

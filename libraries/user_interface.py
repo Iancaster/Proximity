@@ -1,7 +1,7 @@
 """Used for sending through Discord."""
 
 from discord import ComponentType, Interaction, ChannelType, MISSING, \
-    HTTPException, TextChannel, Forbidden, CategoryChannel, Bot
+    HTTPException, TextChannel, Bot, SelectOption
 from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
 from discord.abc import GuildChannel
 from discord.errors import NotFound
@@ -144,6 +144,20 @@ async def reference_validator(proposed_URL: str) -> CommitResult:
 
     return CommitResult.SUCCESS
 
+def oxfordize(words: list, prefix: str = "", suffix: str = "") -> str:
+
+    if not words:
+        return "None."
+
+    if len(words) == 1:
+        return f"{prefix}{words[0]}{suffix}"
+
+    if len(words) == 2:
+        return f"{prefix}{words[0]}{suffix} and {prefix}{words[1]}{suffix}"
+
+    return ", ".join(f"{prefix}{item}{suffix}" for item in words[:-1]) + \
+        f", and {prefix}{words[-1]}{suffix}"
+
 class DialogueMixin(ABC):
 
     def __init__(self, 
@@ -222,7 +236,7 @@ class ChannelSelect(Select, DialogueMixin):
 
     def __init__(self, *, 
         label: str,
-        purpose: str = "",
+        purpose: str | None = None,
         dialogue_callback: Callable,
         placeholder: str | None = None,
         min_values: int = 0,
@@ -250,6 +264,38 @@ class ChannelSelect(Select, DialogueMixin):
 
     @property
     def values(self) -> list[GuildChannel]: # pyright: ignore[reportIncompatibleMethodOverride]
+        return super().values # pyright: ignore[reportReturnType]
+
+class TextSelect(Select, DialogueMixin):
+
+    def __init__(self, *, 
+        label: str,
+        purpose: str | None = None,
+        dialogue_callback: Callable,
+        options: list[SelectOption],
+        placeholder: str | None = None,
+        min_values: int = 0,
+        max_values: int = 1):
+
+        Select.__init__(self, 
+            custom_id = purpose, 
+            select_type = ComponentType.string_select,
+            options = options,
+            placeholder = placeholder,
+            min_values = min_values,
+            max_values = max_values)
+        DialogueMixin.__init__(self, field_name = label, callback_override = dialogue_callback)
+        return
+    
+    def get_value(self) -> Any:
+        return self.values[0] if self.values is not None else None
+    
+    def is_valid(self) -> bool:
+        selected_count = len(self.values) if self.values is not None else 0
+        return self.min_values <= selected_count <= self.max_values
+
+    @property
+    def values(self) -> list[SelectOption]: # pyright: ignore[reportIncompatibleMethodOverride]
         return super().values # pyright: ignore[reportReturnType]
 
 class TextField(InputText, DialogueMixin):
@@ -353,6 +399,7 @@ class DialogueView(View):
                     view = None,
                     suppress = True,
                     delete_after = 5)
+                
             except HTTPException:
                 pass
         
@@ -419,6 +466,7 @@ class Dialogue:
 
         try:
             await interaction.response.edit_message(**kwargs)
+        
         except NotFound, HTTPException:
 
             try:
@@ -464,7 +512,7 @@ class Dialogue:
 
     def add_channel_select(self, 
         label: str, 
-        purpose: str = "", 
+        purpose: str | None = None, 
         placeholder: str | None = None,
         min_values: int = 0,
         max_values: int = 1
@@ -483,6 +531,30 @@ class Dialogue:
         self.add_field(channel_select)
 
         return channel_select
+
+    def add_character_select(self, 
+        label: str, 
+        char_options: list[SelectOption],
+        purpose: str | None = None, 
+        placeholder: str | None = None,
+        min_values: int = 0,
+        max_values: int = 1
+    ) -> TextSelect:
+
+        character_select = TextSelect(
+            label = label,
+            purpose = purpose,
+            placeholder = placeholder,
+            dialogue_callback = self.refresh,
+            options = char_options,
+            min_values = min_values,
+            max_values = max_values)
+        
+        self.view.add_item(character_select)
+        character_select.callback = self.refresh
+        self.add_field(character_select)
+
+        return character_select
 
     def add_close(self) -> Button:
 

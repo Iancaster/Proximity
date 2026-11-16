@@ -4,7 +4,7 @@ updates, like events and keeping the listeners
 up to date.
 """
 
-from discord import Bot, TextChannel
+from discord import Bot, TextChannel, Message
 from discord.utils import get_or_fetch
 from discord.ext import commands
 
@@ -15,25 +15,60 @@ from data.database_entries import (
     character_repo, CharacterData
 )
 from libraries.embed_templates import notify_log, LocEmbeds, CharacterEmbeds
-from libraries.classes import Relayable, Roleplay, Location, Character
+from libraries.classes import Relayable, Roleplay, Location, Character, get_channel
 
+SELF_ID = 1114004384926421126 
+DEV_ID = 1161017761888219228
 
 class Autonomous(commands.Cog):
 
-    # @commands.Cog.listener()
-    # async def on_message(self, message: Message):
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
 
-    #     if message.webhook_id:
-    #         return
+        if not isinstance(message.channel, TextChannel):
+            return
+        
+        webhook = await Relayable.find_webhook(message.channel)
+        if webhook is None:
+            return        
 
-    #     if message.author.id == 1114004384926421126 or message.author.id == 1161017761888219228: #Self.
-    #         return
+        if message.webhook_id:
+            return
+            
+        if message.content and message.content[0] == '\\':
+            return
 
-    #     if message.content and message.content[0] == '\\':
-    #         return
+        char_data = await character_repo.fetch(message.channel.id)
+        if isinstance(char_data, CharacterData):
 
-    #     await relay(message, Character(message.channel.id))
-    #     return
+            loc_channel = await get_channel(char_data.location_id)
+
+            if not isinstance(loc_channel, TextChannel):
+
+                await message.channel.send(
+                    "This character is not in a valid location. " +
+                    "Please contact the server owner to fix this.")
+                
+                return
+
+            character = Character(char_data)
+            await character.speak(
+                content = message.content, 
+                file = message.attachments[0] if message.attachments else None)
+            return
+
+        loc_data = await location_repo.fetch(message.channel.id)
+        if isinstance(loc_data, LocationData):
+
+            location = Location(loc_data)
+
+            await location.speak(
+                content = message.content, 
+                embed = message.embeds[0] if message.embeds else None,
+                file = message.attachments[0] if message.attachments else None) # pyright: ignore[reportArgumentType]
+            return 
+
+        return
 
     # @commands.Cog.listener()
     # async def on_guild_join(self, guild: Guild):

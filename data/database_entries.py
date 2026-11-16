@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TypeVar, Generic, Type
 from data.database_handler import get_db, CommitResult, UNSET
 from sqlite3 import IntegrityError, OperationalError
+from discord import SelectOption
 
 @dataclass
 class RoleplayData:
@@ -25,11 +26,11 @@ class RoleplayData:
 
     @property
     def loc_mention(self) -> str:
-        return f"*<#{self.loc_mention}>*"
+        return f"*<#{self.locations_cat}>*"
     
     @property
     def char_mention(self) -> str:
-        return f"*<#{self.characters_cat}>*"
+        return f"**{self.characters_cat}**"
 
 @dataclass
 class LocationData:
@@ -41,9 +42,11 @@ class LocationData:
 
     @property
     def mention(self) -> str:
-        """Format the channel ID as a clickable hyperlink. Only works in
-        embedded titles, bodies, and un-embedded message content."""
         return f"<#{self.location_id}>"
+
+    @property
+    def char_mention(self) -> str:
+        return f"*{self.name.capitalize()}*"
 
 @dataclass
 class CharacterData:
@@ -59,6 +62,15 @@ class CharacterData:
     def mention(self) -> str:
         return f"<#{self.character_id}>"
 
+    @property
+    def char_mention(self) -> str:
+        return f"**{self.name}**"
+
+    @property
+    def as_option(self) -> SelectOption:
+        return SelectOption(
+            label = self.name,
+            value = str(self.character_id))
 
 @dataclass
 class RouteData:

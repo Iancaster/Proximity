@@ -97,7 +97,7 @@ class ReviewCommands(commands.Cog):
         ) -> Dialogue:
 
             if occupants := await curr_location.occupants:
-                occupants = ", ".join([f"<#{c.character_id}>" for c in occupants])
+                occupants = ", ".join([c.mention for c in occupants])
             else:
                 occupants = "No one is here at the moment."
 

@@ -38,7 +38,7 @@ class DeleteCommands(commands.Cog):
 
                 embed = text_embed(
                     "Can't delete this location.",
-                    f"<#{location.data.location_id}> still has characters in it. Please move"
+                    f"{location.data.mention} still has characters in it. Please move"
                         " them somewhere else first with `/review character`.",
                     "This is to prevent characters from being stranded in a nonexistant location.")
                 dialogue.current_embed = embed

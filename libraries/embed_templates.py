@@ -36,6 +36,14 @@ class ErrorEmbeds:
             "Try calling this command again, but from there instead.")
 
     @staticmethod
+    def non_character() -> Embed:
+
+        return text_embed(
+            "This isn't a character channel.",
+            "This command only works for characters.",
+            "Try calling this command again there.")
+
+    @staticmethod
     def non_prox_rp() -> Embed:
 
         return text_embed(
@@ -101,8 +109,15 @@ class _CharDelete:
             source = ImageSource.URL,
             asset_str = reference)
 
+#class _CharCreate:
+
+class _CharReview:
+    ...
+
 class CharacterEmbeds:
     delete = _CharDelete
+    #create =
+    review = _CharReview 
 
 class _RouteCreate:
 
