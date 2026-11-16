@@ -11,7 +11,7 @@ from libraries.classes import Roleplay, Location, Route, \
     Character, Relayable
 from libraries.user_interface import Dialogue, Popup, ImageSource, \
     text_embed, image_embed, send_message, reference_validator, LOGO, \
-    safe_send, oxfordize
+    safe_send, oxfordize, get_channel
 from data.database_entries import ( 
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
@@ -113,9 +113,9 @@ class CharacterCommands(commands.Cog):
         async def examine_occupants(interaction: Interaction):
 
             embed = text_embed(
-                "Who else is here?",
+                "Take a closer look at someone.",
                 f"Who would you like to take a closer look at?",
-                "Care to look closer?")
+                "They probably won't mind.")
 
             dialogue.view.clear_items()
             dialogue.current_embed = embed
@@ -149,6 +149,16 @@ class CharacterCommands(commands.Cog):
                         footer = "P.S., if they had a reference pic, it would" + \
                             " be included here.")
                     file = None
+
+                focus_embed, focus_image = await image_embed(
+                    "Like what you see?",
+                    f"{character.data.char_mention} stole a glance at you.",
+                    "Maybe they thought you wouldn't notice.",
+                    thumbnail = True,
+                    source = ImageSource.URL,
+                    asset_str = character.data.reference)
+
+                await safe_send(focus_embed, [focus_id], silent = True, file = focus_image)
 
                 dialogue.current_embed, dialogue.current_file = embed, file
                 return await dialogue.refresh(interaction)

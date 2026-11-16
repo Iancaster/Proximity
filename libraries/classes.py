@@ -749,17 +749,17 @@ class Character:
         
         if not isinstance(char_channel, TextChannel):
             return CommitResult.ROW_MISSING
-
+        
         await Relayable.send_through_hook(
-            channel = loc_channel, 
+            channel = char_channel,
             avatar_url = self.data.reference,
             content = content,
             username = self.data.name,
             embed = None,
             file = file)
-
+        
         await Relayable.send_through_hook(
-            channel = char_channel,
+            channel = loc_channel, 
             avatar_url = self.data.reference,
             content = content,
             username = self.data.name,
@@ -777,7 +777,7 @@ class Character:
         await location.send_to_neighbors(
             avatar_url = self.data.reference,
             content = content,
-            username = self.data.name,
+            username = f"From the direction of {location.data.name}...",
             embed = None,
             file = file)
 

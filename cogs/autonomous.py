@@ -34,6 +34,9 @@ class Autonomous(commands.Cog):
 
         if message.webhook_id:
             return
+
+        if message.author == message.guild.me: # pyright: ignore[reportOptionalMemberAccess]
+            return
             
         if message.content and message.content[0] == '\\':
             return
@@ -52,22 +55,24 @@ class Autonomous(commands.Cog):
                 return
 
             character = Character(char_data)
+
+            await message.delete(reason = "Proxied.")
             await character.speak(
                 content = message.content, 
                 file = message.attachments[0] if message.attachments else None)
-            await message.delete(reason = "Proxied.")
             return
 
         loc_data = await location_repo.fetch(message.channel.id)
         if isinstance(loc_data, LocationData):
 
             location = Location(loc_data)
-
+            
+            await message.delete(reason = "Proxied.")
             await location.speak(
                 content = message.content, 
                 embed = message.embeds[0] if message.embeds else None,
                 file = message.attachments[0] if message.attachments else None) # pyright: ignore[reportArgumentType]
-            await message.delete(reason = "Proxied.")
+
             return 
 
         return
