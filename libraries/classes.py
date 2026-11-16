@@ -474,6 +474,15 @@ class Location:
         file: File | None = None
     ) -> None:
 
+        loc_channel = await get_channel(self.data.location_id)
+        await Relayable.send_through_hook(
+            channel = loc_channel, # pyright: ignore[reportArgumentType]
+            avatar_url = self.data.reference,
+            content = content,
+            username = self.data.name,
+            embed = embed,
+            file = file)
+
         for character in await self.occupants:
 
             char_channel = await get_channel(character.character_id)
@@ -736,8 +745,21 @@ class Character:
         if not isinstance(loc_channel, TextChannel):
             return CommitResult.ROW_MISSING
 
+        char_channel = await get_channel(self.data.character_id)
+        
+        if not isinstance(char_channel, TextChannel):
+            return CommitResult.ROW_MISSING
+
         await Relayable.send_through_hook(
-            channel = loc_channel, # pyright: ignore[reportArgumentType]
+            channel = loc_channel, 
+            avatar_url = self.data.reference,
+            content = content,
+            username = self.data.name,
+            embed = None,
+            file = file)
+
+        await Relayable.send_through_hook(
+            channel = char_channel,
             avatar_url = self.data.reference,
             content = content,
             username = self.data.name,
@@ -765,11 +787,10 @@ class Character:
     def mumble(content: str) -> str:
 
         return ''.join(
-            c if c.isspace() else
             c if c.isupper() else
-            c if c in (".", ",", ";", "$", "!", "?") else
-            c if random() < 0.2 else
-            "*" for c in content)
+            c if not c.isalnum() else
+            c if random() < 0.3 else
+            "\*" for c in content)
 
 class GameWorld:
 
