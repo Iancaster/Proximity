@@ -8,28 +8,20 @@
 #from networkx import DiGraph, ego_graph, compose, shortest_path
 
 from libraries.classes import Roleplay, Location, Route, \
-    Character, Relayable
-from libraries.user_interface import Dialogue, Popup, ImageSource, \
-    text_embed, image_embed, send_message, reference_validator, LOGO, \
-    safe_send, oxfordize, get_channel
+    Character, Relayable, GameWorld, \
+    in_text_channel, in_prox_rp, in_location, in_char_channel
+from libraries.user_interface import Dialogue, send_message, \
+    reference_validator, safe_send
 from data.database_entries import ( 
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
     character_repo, CharacterData,
     route_repo, RouteData)
 from data.database_handler import CommitResult
-from libraries.embed_templates import notify_log, \
-    RoleplayEmbeds, LocEmbeds, CharacterEmbeds, ErrorEmbeds, RouteEmbeds
+from libraries.embed_templates import CharacterEmbeds, UserEmbeds
 
-from discord import ApplicationContext, InteractionContextType, \
-    ButtonStyle, InputTextStyle, Interaction, TextChannel, Embed, \
-    File
+from discord import ApplicationContext, ButtonStyle, Interaction
 from discord.ext import commands
-from discord.commands import SlashCommandGroup
-
-from libraries.classes import in_text_channel, \
-    is_administrator, in_prox_rp, in_location, \
-    in_char_channel, Roleplay
 
 # Classes
 class CharacterCommands(commands.Cog):
@@ -45,50 +37,21 @@ class CharacterCommands(commands.Cog):
 
         location = await Location.load(character.data.location_id)
         assert location is not None, "How did the location check fail?"
-    
+
+        neighbors = await location.neighbors
         occupants = await location.occupants
         occupants.remove(character.data)
 
-        dialogue = Dialogue(None, None)
+        dialogue = Dialogue(None, None) # pyright: ignore[reportArgumentType]
 
         async def look_overview():
 
-            title = f"Looking around {location.data.char_mention}"
-            description = "You look around and "
-            footer = "Take a closer look at something?"
-    
-            if len(occupants) > 0:
-                occ_names = [occ.char_mention for occ in occupants]
-                description += f"see {oxfordize(occ_names)} here with you."
-    
-            else:
-                description += "don't see anyone else in here with you."  
-    
-            if neighbors := await location.neighbors:
-                neigh_names = [neigh.char_mention for neigh in neighbors]
-                description += f"\n\nThis location is adjacent to {oxfordize(neigh_names)}."
-            else:
-                description += "\n\nYou don't see any other way in or out. Uh oh."   
-    
-            if location.data.reference:
-    
-                embed, file = await image_embed(
-                    title = title,
-                    description = description,
-                    footer = footer,
-                    thumbnail = True,
-                    source = ImageSource.URL,
-                    asset_str =  location.data.reference)
-    
-            else:
-    
-                embed = text_embed(
-                    title = title,
-                    description = description,
-                    footer = footer)
-                file = None
-
             dialogue.view.clear_items()
+            dialogue.current_embed, dialogue.current_file = \
+                await UserEmbeds.look.overview(
+                    loc_data = location.data,
+                    occupants = occupants,
+                    neighbors = neighbors)
 
             if len(occupants) > 0:
                 occ_button = dialogue.add_button("Focus on someone")
@@ -102,7 +65,6 @@ class CharacterCommands(commands.Cog):
                 route_button = dialogue.add_button("Examine the routes", style = ButtonStyle.secondary)
                 route_button.callback = examine_routes
 
-            dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.add_close()
             return
 
@@ -112,60 +74,33 @@ class CharacterCommands(commands.Cog):
 
         async def examine_occupants(interaction: Interaction):
 
-            embed = text_embed(
-                "Take a closer look at someone.",
-                f"Who would you like to take a closer look at?",
-                "They probably won't mind.")
-
             dialogue.view.clear_items()
-            dialogue.current_embed = embed
-            dialogue.current_file = None
+            dialogue.current_embed, dialogue.current_file = \
+                UserEmbeds.look.examine_char_undecided(), None
 
             async def focus_on_person(interaction: Interaction):
 
                 focus_id = int(dialogue._fields["Character focus"].get_value())
-                focus_data = await character_repo.fetch(focus_id)
+                examined_char_data = await character_repo.fetch(focus_id)
 
-                assert isinstance(focus_data, CharacterData), "ayo??"
+                assert isinstance(examined_char_data, CharacterData), "ayo??"
 
-                title = f"Looking at {focus_data.char_mention}"
-                description = focus_data.description or "This character" + \
-                    " doesn't have much known about them."
+                dialogue.current_embed, dialogue.current_file = \
+                    await UserEmbeds.look.examine_char(examined_char_data)
+                await dialogue.refresh(interaction)
 
-                if focus_data.reference:
-                    embed, file = await image_embed(
-                        title = title,
-                        description = description,
-                        footer = "Pretty cool reference pic, right?",
-                        thumbnail = False,
-                        source = ImageSource.URL,
-                        asset_str = focus_data.reference)
-                    
-                else:
+                shown_embed, shown_file = \
+                    await UserEmbeds.look.shown_while_focusing(character.data)
 
-                    embed = text_embed(
-                        title = title,
-                        description = description,
-                        footer = "P.S., if they had a reference pic, it would" + \
-                            " be included here.")
-                    file = None
-
-                focus_embed, focus_image = await image_embed(
-                    "Like what you see?",
-                    f"{character.data.char_mention} stole a glance at you.",
-                    "Maybe they thought you wouldn't notice.",
-                    thumbnail = True,
-                    source = ImageSource.URL,
-                    asset_str = character.data.reference)
-
-                await safe_send(focus_embed, [focus_id], silent = True, file = focus_image)
-
-                dialogue.current_embed, dialogue.current_file = embed, file
-                return await dialogue.refresh(interaction)
+                return await safe_send(
+                    embed = shown_embed, 
+                    channels = [focus_id], 
+                    silent = True, 
+                    file = shown_file)
 
             char_focus = dialogue.add_character_select(
                 label = "Character focus",
-                placeholder = "Which character to look towards?",
+                placeholder = "Which character?",
                 char_options = [c.as_option for c in occupants])
             char_focus.callback = focus_on_person            
 
@@ -178,82 +113,28 @@ class CharacterCommands(commands.Cog):
 
         async def examine_location(interaction: Interaction):
 
-            title = f"Looking around {location.data.char_mention}"
-            description = location.data.description if location.data.description \
-                else "Not much to say about this place."
-            footer = "Find what you were looking for?"
-
-            if location.data.reference:
-
-                embed, file = await image_embed(
-                    title = title,
-                    description = description,
-                    footer = footer,
-                    thumbnail = False,
-                    source = ImageSource.URL,
-                    asset_str = location.data.reference)
-
-            else:
-
-                embed = text_embed(title, description, footer)
-                file = None
-
-
             dialogue.view.clear_items()
-            dialogue.current_embed = embed
-            dialogue.current_file = file
+            dialogue.current_embed, dialogue.current_file = \
+                await UserEmbeds.look.examine_location(location.data)
 
             back_button = dialogue.add_button("Back to overview")
             back_button.callback = go_back
-
             dialogue.add_close()
 
             return await dialogue.refresh(interaction)
 
         async def examine_routes(interaction: Interaction):
 
-            neighs = await location.neighbors
-
-            if inlets := await location.inlet_routes:
-
-                inlet_ids = [route.from_id for route in inlets]
-                inlet_neighs = [n for n in neighs if n.location_id in inlet_ids]
-
-                description = "You can access this location from " + \
-                    oxfordize([inl.char_mention for inl in inlet_neighs]) + ", and "
-
-            else:
-                description = "There's no way in here except...well, maybe " + \
-                    "teleportation. That said, "
-
-            if outlets := await location.outlet_routes:
-
-                outlet_ids = [route.to_id for route in outlets]
-                outlet_neighs = [n for n in neighs if n.location_id in outlet_ids]
-
-                description += "you can leave this place to go to " + \
-                    oxfordize([outl.char_mention for outl in outlet_neighs]) + "."
-
-            else:
-                description += " that's where the good news ends. There's no way " + \
-                    "out except, like, teleportation."
-
-            if not await location.neighbors:
-                description = "This place has no way in and no way out. Oh dear."
-
-            embed = text_embed(
-                f"Routes to/from {location.data.char_mention}", 
-                description, 
-                "Hoping for a secret pathway?")
-            file = None
-
             dialogue.view.clear_items()
-            dialogue.current_embed = embed
-            dialogue.current_file = file
+            dialogue.current_embed, dialogue.current_file = \
+                UserEmbeds.look.examine_routes(
+                    loc_data = location.data,
+                    neighbors = neighbors,
+                    inlets = await location.inlet_routes,
+                    outlets = await location.outlet_routes), None
 
             back_button = dialogue.add_button("Back to overview")
             back_button.callback = go_back
-
             dialogue.add_close()
 
             return await dialogue.refresh(interaction)
@@ -267,6 +148,44 @@ class CharacterCommands(commands.Cog):
             view = dialogue.view, 
             ephemeral = True)
             
+    @commands.slash_command(
+        name = "move",
+        description = "Go someplace else.",
+        checks = [in_text_channel, in_prox_rp, in_char_channel])
+    async def move(self, ctx: ApplicationContext):
+
+        character = await Character.load(ctx.channel_id)
+        assert character is not None, "huh"
+
+        origin_loc = await Location.load(character.data.location_id)
+        assert origin_loc is not None, "wha"
+
+        if not await origin_loc.outlet_routes:
+            return await send_message(ctx.interaction, UserEmbeds.move.no_exit())
+
+        gw = await GameWorld.from_location(
+            character.data.location_id, 
+            character.data.roleplay_id,
+            undirected = False,
+            radius = 999)
+
+        embed, file = await UserEmbeds.move.where_to(
+            loc_data = origin_loc.data, 
+            render = gw.render())
+
+        dialogue = Dialogue(embed, file)
+
+        
+
+        dialogue.add_close()        
+
+        return await send_message(
+            ctx.interaction, 
+            dialogue.current_embed, 
+            dialogue.view, 
+            dialogue.current_file, 
+            ephemeral = True)
+    
     # @commands.slash_command(name = 'move', description = 'Go someplace else.', guild_only = True)
     # async def move(self, ctx: ApplicationContext, given_dest: Option(str, "Where would you like to go?", name = 'destination', autocomplete = complete_map) = None):
 

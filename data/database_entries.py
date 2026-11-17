@@ -30,7 +30,7 @@ class RoleplayData:
     
     @property
     def char_mention(self) -> str:
-        return f"**{self.characters_cat}**"
+        return f"*<#{self.characters_cat}>*"
 
 @dataclass
 class LocationData:

@@ -1,14 +1,14 @@
 
 from discord import Embed, File
-from typing import Coroutine
 
 from data.database_entries import CommitResult, \
-    RoleplayData, LocationData
+    RoleplayData, LocationData, CharacterData, RouteData
 from data.database_handler import _Unset, UNSET
 from libraries.user_interface import text_embed, image_embed, \
-    ImageSource, safe_send, get_channel, reference_validator
+    ImageSource, safe_send, get_channel, reference_validator, oxfordize
 
 from datetime import datetime as dt
+from io import BytesIO
 
 async def notify_log(
     rp_data: RoleplayData, 
@@ -79,6 +79,196 @@ class ErrorEmbeds:
             "No location selected.",
             "This command requires that you select a location.",
             "Try calling it again?")
+
+class _UserLook:
+
+    @staticmethod
+    async def overview(
+        loc_data: LocationData,
+        occupants: list[CharacterData],
+        neighbors: list[LocationData]
+    ) -> tuple[Embed, File | None]:
+
+        title = f"Looking around {loc_data.char_mention}"
+        description = "You look around and "
+        footer = "Take a closer look at something?"
+
+        if len(occupants) > 0:
+            occ_names = [occ.char_mention for occ in occupants]
+            description += f"see {oxfordize(occ_names)} here with you."
+
+        else:
+            description += "don't see anyone else in here with you."  
+
+        if neighbors:
+            neigh_names = [neigh.char_mention for neigh in neighbors]
+            description += f"\n\nThis location is adjacent to {oxfordize(neigh_names)}."
+        else:
+            description += "\n\nYou don't see any other way in or out. Uh oh."   
+
+        if loc_data.reference:
+
+            embed, file = await image_embed(
+                title = title,
+                description = description,
+                footer = footer,
+                thumbnail = True,
+                source = ImageSource.URL,
+                asset_str =  loc_data.reference)
+
+        else:
+
+            embed = text_embed(
+                title = title,
+                description = description,
+                footer = footer)
+            file = None
+
+        return embed, file
+
+    @staticmethod
+    def examine_char_undecided() -> Embed:
+
+        return text_embed(
+                "Someone catch your eye?",
+                f"Who would you take a closer look at?",
+                "They probably won't mind.")
+
+    @staticmethod
+    async def examine_char(
+        examined_char_data: CharacterData
+    ) -> tuple[Embed, File | None]:
+
+        title = f"Looking at {examined_char_data.char_mention}"
+        description = examined_char_data.description or "This character" + \
+            " doesn't have much known about them."
+
+        if examined_char_data.reference:
+            embed, file = await image_embed(
+                title = title,
+                description = description,
+                footer = "Pretty cool reference pic, right?",
+                thumbnail = False,
+                source = ImageSource.URL,
+                asset_str = examined_char_data.reference)
+            
+        else:
+
+            embed = text_embed(
+                title = title,
+                description = description,
+                footer = "P.S., if they had a reference pic, it would" + \
+                    " be included here.")
+            file = None
+
+        return embed, file
+
+    @staticmethod
+    async def shown_while_focusing(
+        focusing_char_data: CharacterData
+    ) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            "Like what you see?",
+            f"{focusing_char_data.char_mention} stole a glance at you.",
+            "Maybe they thought you wouldn't notice.",
+            thumbnail = True,
+            source = ImageSource.URL,
+            asset_str = focusing_char_data.reference)
+
+    @staticmethod
+    async def examine_location(loc_data: LocationData) -> tuple[Embed, File | None]:
+
+        title = f"Looking around {loc_data.char_mention}"
+        description = loc_data.description if loc_data.description \
+            else "Not much to say about this place."
+        footer = "Find what you were looking for?"
+
+        if loc_data.reference:
+
+            embed, file = await image_embed(
+                title = title,
+                description = description,
+                footer = footer,
+                thumbnail = False,
+                source = ImageSource.URL,
+                asset_str = loc_data.reference)
+
+        else:
+
+            embed = text_embed(title, description, footer)
+            file = None
+
+        return embed, file
+
+    @staticmethod
+    def examine_routes(
+        loc_data: LocationData,
+        neighbors: list[LocationData],
+        inlets: list[RouteData],
+        outlets: list[RouteData]
+    ) -> Embed:
+
+        if inlets:
+
+            inlet_ids = [route.from_id for route in inlets]
+            inlet_neighs = [n for n in neighbors if n.location_id in inlet_ids]
+
+            description = "You can access this location from " + \
+                oxfordize([inl.char_mention for inl in inlet_neighs]) + ", and "
+
+        else:
+            description = "There's no way in here except...well, maybe " + \
+                "teleportation. That said, "
+
+        if outlets:
+
+            outlet_ids = [route.to_id for route in outlets]
+            outlet_neighs = [n for n in neighbors if n.location_id in outlet_ids]
+
+            description += "you can leave this place to go to " + \
+                oxfordize([outl.char_mention for outl in outlet_neighs]) + "."
+
+        else:
+            description += " that's where the good news ends. There's no way " + \
+                "out except, like, teleportation."
+
+        if not neighbors:
+            description = "This place has no way in and no way out. Oh dear."
+
+        embed = text_embed(
+            f"Routes to/from {loc_data.char_mention}", 
+            description, 
+            "Hoping for a secret passageway?")
+
+        return embed
+
+class _UserMove:
+
+    @staticmethod
+    def no_exit() -> Embed:
+
+        return text_embed(
+            "Uh oh.",
+            "There doesn't seem to be any way out from here.",
+            "Hopefully someone can hear you from here?")       
+
+    @staticmethod
+    async def where_to(loc_data: LocationData, render: BytesIO) -> tuple[Embed, File]:
+
+        return await image_embed(
+            "Where to?",
+            f"You can leave {loc_data.char_mention} to access any of the places below.",
+            "Just pick your destination and you'll take the shortest path there.",
+            thumbnail = False,
+            source = ImageSource.BYTES,
+            asset_bytes = render) # pyright: ignore[reportReturnType]
+
+        return
+
+class UserEmbeds:
+    look = _UserLook
+    move = _UserMove
 
 class _CharDelete:
 

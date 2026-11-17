@@ -5,15 +5,14 @@ up to date.
 """
 
 from discord import Bot, TextChannel, Message
-from discord.utils import get_or_fetch
 from discord.ext import commands
 
 from data.database_handler import CommitResult
 from data.database_entries import (
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
-    character_repo, CharacterData
-)
+    character_repo, CharacterData)
+
 from libraries.embed_templates import notify_log, LocEmbeds, CharacterEmbeds
 from libraries.classes import Relayable, Roleplay, Location, Character, get_channel
 

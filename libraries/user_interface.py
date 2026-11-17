@@ -23,7 +23,13 @@ NO_AVATAR_PFP = str(cfg("images", "no_pfp"))
 LOGO = str(cfg("images", "logo"))
 BAD_LINK = str(cfg("images", "bad_link"))
 ASSETS_DIR = Path().cwd() / "assets"
-VALID_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+VALID_IMAGE_TYPES = [
+    "image/png", 
+    "image/jpeg", 
+    "image/jpg", 
+    "image/webp", 
+    "text/plain"] # I can't explain it but this image of Billy Bob proves the case
+ # https://upload.wikimedia.org/wikipedia/commons/0/00/Billy_Bob_Thornton_2017_%28cropped%29.jpg
 
 logger = get_logger("UI")
 
@@ -584,6 +590,7 @@ class Dialogue:
         await interaction.response.edit_message(
             embed = closed_embed, 
             view = self.view, 
+            attachments = [],
             delete_after = 3)
         
         return

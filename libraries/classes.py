@@ -527,24 +527,27 @@ class Location:
     async def send_to_neighbors(self,
         avatar_url: str | None = None,
         content: str | None = None,
+        mumble: bool = True,
         username: str | None = None,
         embed: Embed | None = None,
         file: File | None = None
     ) -> None:
 
-        if content is not None:
-            content = Character.mumble(content)
-
         for neighbor_data in await self.neighbors:
 
             neighbor = Location(neighbor_data)
 
-            await neighbor.send_to_occupants(
-                avatar_url = avatar_url,
-                content = content,
-                username = username,
-                embed = embed,
-                file = file)
+            for occ in await neighbor.occupants:
+
+                char_channel = await get_channel(occ.character_id)
+
+                await Relayable.send_through_hook(
+                    channel = char_channel, # pyright: ignore[reportArgumentType]
+                    avatar_url = avatar_url,
+                    content = Character.mumble(content or "") if mumble else content,
+                    username = username,
+                    embed = embed,
+                    file = file)
 
         return
 
@@ -790,7 +793,7 @@ class Character:
             c if c.isupper() else
             c if not c.isalnum() else
             c if random() < 0.3 else
-            "\*" for c in content)
+            "." for c in content)
 
 class GameWorld:
 
@@ -806,7 +809,7 @@ class GameWorld:
         graph.add_nodes_from((loc.location_id, {"name" : loc.name}) for loc in loc_datas)
 
         routes = await route_repo.fetch_all("roleplay_id", roleplay_id)
-        graph.add_edges_from((r.to_id, r.from_id) for r in routes)
+        graph.add_edges_from((r.from_id, r.to_id) for r in routes)
 
         return graph
 
@@ -822,11 +825,13 @@ class GameWorld:
         radius: int,
     ) -> GameWorld:
 
-        return ego_graph(
+        ego = ego_graph(
             await GameWorld._fetch_total(roleplay_id), 
             location_id, 
             radius = radius, 
             undirected = undirected)
+
+        return cls(ego)
 
     def render(self) -> BytesIO:
 
