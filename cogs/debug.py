@@ -5,7 +5,7 @@ from discord import ApplicationContext, Option, \
     SlashCommandGroup, Embed, ButtonStyle, Interaction
 from discord.ext import commands
 
-from libraries.classes import Roleplay, Location, GameWorld
+from libraries.classes import Roleplay, Location, GameWorld, Relayable
 from data.database_entries import roleplay_repo, location_repo
 from data.database_handler import CommitResult
 from libraries.user_interface import ImageSource, LOGO, \
@@ -24,6 +24,17 @@ class DebugCommands(commands.Cog):
         name = "debug",
         description = "For testers only! Lets you peer behind the veil.",
         guild_ids = [1111152704279035954])
+
+    @debug_group.command(name = "hook-reset", description = "Ensure the webhooks are correct.")
+    async def hook_reset(self, ctx: ApplicationContext):
+
+        had_webhook = await Relayable.find_webhook(ctx.channel) is not None
+        await Relayable.ensure_webhook(ctx.channel)
+
+        final_message = "A webhook existed already" if had_webhook else "No webhook was here yet"
+        final_message += ", but a correct webhook was put in place. Should be good now."
+
+        return await send_message(ctx.interaction, content = final_message)
 
     @debug_group.command(name = "test", description = "Test out some logic.")
     async def test(self, ctx: ApplicationContext):

@@ -19,7 +19,8 @@ from libraries.user_interface import reference_validator, \
 from libraries.embed_templates import ErrorEmbeds
 
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
-	draw_networkx_edges, shell_layout, draw_networkx_labels
+	draw_networkx_edges, shell_layout, draw_networkx_labels, \
+    shortest_path
 from matplotlib.pyplot import margins, gcf, tight_layout, axis, close, figure
 from matplotlib.patches import ArrowStyle
 from collections.abc import Callable
@@ -212,6 +213,21 @@ class Relayable:
             avatar = avatar,
             reason = "For use in roleplay.")
 
+    @staticmethod
+    def _copy_file(file: File) -> File:
+        position = file.fp.tell()
+        file.fp.seek(0)
+        try:
+            contents = file.fp.read()
+        finally:
+            file.fp.seek(position)
+
+        return File(
+            BytesIO(contents),
+            filename = file.filename or "attachment",
+            description = file.description,
+            spoiler = file.spoiler)
+
     @classmethod
     async def send_through_hook(cls, 
         channel: TextChannel, 
@@ -219,19 +235,34 @@ class Relayable:
         content: str | None = None,
         username: str | None = None,
         embed: Embed | None = None,
-        file: File | None = None
+        files: list[File] | None = None,
+        file: File | None = None,
     ) -> bool:
 
         message_details = {k: v for k, v in locals().items() if v not in (None, cls)} 
         message_details.pop("channel", None)
+        message_details.pop("cls", None)
+        message_details.pop("file", None)
+        message_details.pop("files", None)
 
         webhook = await Relayable.ensure_webhook(channel)
+        upload_files: list[File] = []
         
         try:
+            for source_file in ([file] if file is not None else []) + (files or []):
+                upload_files.append(cls._copy_file(source_file))
+
+            if upload_files:
+                message_details["files"] = upload_files
+
             await webhook.send(**message_details)
             return True
         except HTTPException:
             return False
+        finally:
+            for upload_file in upload_files:
+                upload_file.close()
+                upload_file.fp.close()
 
 class Roleplay:
     """Represents a guild (a.k.a. a server) that hosts a Prox roleplay."""
@@ -308,13 +339,13 @@ class Roleplay:
 
     async def delete(self) -> CommitResult: 
         
-        for loc_data in await self.locations:
-            location = Location(loc_data)
-            await location.delete()
-
         for character_data in await self.characters:
             character = Character(character_data)
             await character.delete()
+
+        for loc_data in await self.locations:
+            location = Location(loc_data)
+            await location.delete()
 
         return await roleplay_repo.delete(self.data.roleplay_id)
 
@@ -341,19 +372,7 @@ class Location:
     def __init__(self, data: LocationData):
         self.data = data
         self._channel: TextChannel | None = None
-        return
-
-    async def update(self, 
-        name: str | None | _Unset = UNSET, 
-        description: str | None | _Unset = UNSET,
-        reference: str | None | _Unset = UNSET,
-    ) -> CommitResult:
-        """Updates with current values. Set a value to None to null it out."""
-
-        changed_values = {k : v for k, v in locals().items() if v != self}
-        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
-
-        return await location_repo.apply(self.data, **changed_values)   
+        return 
 
     @classmethod
     async def create(cls, data: LocationData) -> Location | CommitResult:
@@ -378,6 +397,18 @@ class Location:
         fetch_result = await location_repo.fetch(location_id)
         return cls(fetch_result) if isinstance(fetch_result, LocationData) else None
 
+    async def update(self, 
+        name: str | None | _Unset = UNSET, 
+        description: str | None | _Unset = UNSET,
+        reference: str | None | _Unset = UNSET,
+    ) -> CommitResult:
+        """Updates with current values. Set a value to None to null it out."""
+
+        changed_values = {k : v for k, v in locals().items() if v != self}
+        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
+
+        return await location_repo.apply(self.data, **changed_values)  
+    
     async def delete(self) -> CommitResult:
         
         result = await location_repo.delete(self.data.location_id)
@@ -471,7 +502,8 @@ class Location:
     async def speak(self,
         content: str | None = None,
         embed: Embed | None = None,
-        file: File | None = None
+        file: File | None = None,
+        files: list[File] | None = None,
     ) -> None:
 
         loc_channel = await get_channel(self.data.location_id)
@@ -481,7 +513,8 @@ class Location:
             content = content,
             username = self.data.name,
             embed = embed,
-            file = file)
+            file = file,
+            files = files)
 
         for character in await self.occupants:
 
@@ -492,7 +525,8 @@ class Location:
                 content = content,
                 username = self.data.name,
                 embed = embed,
-                file = file)
+                file = file,
+                files = files)
 
         return
 
@@ -502,7 +536,8 @@ class Location:
         username: str | None = None,
         embed: Embed | None = None,
         file: File | None = None,
-        exclude: list[CharacterData] | None = None
+        files: list[File] | None = None,
+        exclude: list[int] | None = None
     ) -> None:
 
         if exclude is None:
@@ -510,7 +545,7 @@ class Location:
 
         for character in await self.occupants:
 
-            if character in exclude:
+            if character.character_id in exclude:
                 continue
 
             char_channel = await get_channel(character.character_id)
@@ -520,7 +555,8 @@ class Location:
                 content = content,
                 username = username,
                 embed = embed,
-                file = file)
+                file = file,
+                files = files)
 
         return
 
@@ -530,7 +566,8 @@ class Location:
         mumble: bool = True,
         username: str | None = None,
         embed: Embed | None = None,
-        file: File | None = None
+        files: list[File] | None = None,
+        file: File | None = None,
     ) -> None:
 
         for neighbor_data in await self.neighbors:
@@ -547,6 +584,7 @@ class Location:
                     content = Character.mumble(content or "") if mumble else content,
                     username = username,
                     embed = embed,
+                    files = files,
                     file = file)
 
         return
@@ -684,9 +722,9 @@ class Path:
 
         return next((r for r in [result_to, result_from] if r not in (CommitResult.SUCCESS, CommitResult.NO_UPDATE)), CommitResult.SUCCESS)
 
-    @property
-    def ends(self) -> tuple[int, int]:
-        return self.route_to.ends 
+    # @property
+    # def ends(self) -> tuple[int, int]:
+    #     return self.route_to.ends 
 
 class Character:
 
@@ -715,6 +753,20 @@ class Character:
         fetch_result = await character_repo.fetch(character_id)
         return cls(fetch_result) if isinstance(fetch_result, CharacterData) else None
 
+    async def update(self, 
+        name: str | None | _Unset = UNSET, 
+        description: str | None | _Unset = UNSET,
+        location_id: int | None | _Unset = UNSET,
+        eaves_target: int | None | _Unset = UNSET,
+        reference: str | None | _Unset = UNSET,
+    ) -> CommitResult:
+        """Updates with current values. Set a value to None to null it out."""
+
+        changed_values = {k : v for k, v in locals().items() if v != self}
+        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
+
+        return await character_repo.apply(self.data, **changed_values)  
+    
     async def delete(self) -> CommitResult:
             
         result = await character_repo.delete(self.data.character_id)
@@ -735,7 +787,8 @@ class Character:
 
     async def speak(self, 
         content: str | None = None,
-        file: File | None = None
+        file: File | None = None,
+        files: list[File] | None = None,
     ) -> CommitResult:
 
         location = await Location.load(self.data.location_id)
@@ -759,6 +812,7 @@ class Character:
             content = content,
             username = self.data.name,
             embed = None,
+            files = files,
             file = file)
         
         await Relayable.send_through_hook(
@@ -767,6 +821,7 @@ class Character:
             content = content,
             username = self.data.name,
             embed = None,
+            files = files,
             file = file)
         
         await location.send_to_occupants(
@@ -775,13 +830,15 @@ class Character:
             username = self.data.name,
             embed = None,
             file = file,
-            exclude = [self.data])
+            files = files,
+            exclude = [self.data.character_id])
 
         await location.send_to_neighbors(
             avatar_url = self.data.reference,
             content = content,
-            username = f"From the direction of {location.data.name}...",
+            username = f"{self.data.name}, from the direction of {location.data.name}...",
             embed = None,
+            files = files,
             file = file)
 
         return CommitResult.SUCCESS
@@ -797,25 +854,53 @@ class Character:
 
 class GameWorld:
 
-    def __init__(self, graph: DiGraph):
-        self.graph = graph
+    def __init__(self, graph: DiGraph | None = None):
+        self.graph = graph if graph is not None else DiGraph()
+        self._loc_lookups = dict()
+        self._route_lookups = set()
 
-    @classmethod
-    async def _fetch_total(cls, roleplay_id: int) -> DiGraph:
+    def get_path(self, origin: int, destination: int) -> list[LocationData]:
+
+        path = shortest_path(
+            self.graph,
+            source = origin,
+            target = destination)
+
+        return [self._loc_lookups[loc_id] for loc_id in path]
+
+    @staticmethod
+    async def _fetch_locs(roleplay_id: int) -> dict[int, LocationData]:
+        loc_datas = await location_repo.fetch_all("roleplay_id", roleplay_id)
+        return {lc.location_id : lc for lc in loc_datas}
+
+    @staticmethod
+    async def _fetch_routes(roleplay_id: int) -> set[tuple[int, int]]:
+        routes = await route_repo.fetch_all("roleplay_id", roleplay_id)
+        return {(r.from_id, r.to_id) for r in routes}
+
+    @staticmethod
+    def compose(
+        locations: dict[int, LocationData],
+        routes: set[tuple[int, int]]
+    ) -> DiGraph:
 
         graph = DiGraph()
 
-        loc_datas = await location_repo.fetch_all("roleplay_id", roleplay_id)
-        graph.add_nodes_from((loc.location_id, {"name" : loc.name}) for loc in loc_datas)
-
-        routes = await route_repo.fetch_all("roleplay_id", roleplay_id)
-        graph.add_edges_from((r.from_id, r.to_id) for r in routes)
+        graph.add_nodes_from((id, {"name" : data.name}) for id, data in locations.items())
+        graph.add_edges_from(r for r in routes)
 
         return graph
 
     @classmethod
     async def from_roleplay(cls, roleplay_id: int) -> GameWorld:
-        return cls(await GameWorld._fetch_total(roleplay_id))
+
+        gw = cls()
+
+        gw._loc_lookups = await gw._fetch_locs(roleplay_id)
+        gw._route_lookups = await gw._fetch_routes(roleplay_id)
+        gw.graph = gw.compose(gw._loc_lookups, gw._route_lookups)
+
+        return gw
 
     @classmethod
     async def from_location(cls, 
@@ -825,18 +910,27 @@ class GameWorld:
         radius: int,
     ) -> GameWorld:
 
-        ego = ego_graph(
-            await GameWorld._fetch_total(roleplay_id), 
+        gw = cls()
+
+        gw._loc_lookups = await gw._fetch_locs(roleplay_id)
+        gw._route_lookups = await gw._fetch_routes(roleplay_id)
+
+        gw.graph = ego_graph(
+            gw.compose(gw._loc_lookups, gw._route_lookups), 
             location_id, 
             radius = radius, 
             undirected = undirected)
 
-        return cls(ego)
+        gw._loc_lookups = {loc_id : data for loc_id, data in gw._loc_lookups.items() \
+            if loc_id in gw.graph}
+        gw._route_lookups = {r for r in gw._route_lookups if gw.graph.has_edge(*r)}
+
+        return gw
 
     def render(self) -> BytesIO:
 
         node_count = self.graph.number_of_nodes()
-        labels = {node: data["name"] for node, data in self.graph.nodes(data=True)}
+        labels = {node: data["name"] for node, data in self.graph.nodes(data = True)}
 
         side = max(6, node_count * 0.9)
         node_size = max(300, 1600 - node_count * 60)

@@ -46,7 +46,13 @@ class LocationData:
 
     @property
     def char_mention(self) -> str:
-        return f"*{self.name.capitalize()}*"
+        return f"*{self.name}*"
+
+    @property
+    def as_option(self) -> SelectOption:
+        return SelectOption(
+            label = self.name,
+            value = str(self.location_id))
 
 @dataclass
 class CharacterData:

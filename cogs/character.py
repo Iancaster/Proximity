@@ -98,10 +98,10 @@ class CharacterCommands(commands.Cog):
                     silent = True, 
                     file = shown_file)
 
-            char_focus = dialogue.add_character_select(
+            char_focus = dialogue.add_text_select(
                 label = "Character focus",
                 placeholder = "Which character?",
-                char_options = [c.as_option for c in occupants])
+                text_options = [c.as_option for c in occupants])
             char_focus.callback = focus_on_person            
 
             back_button = dialogue.add_button("Back to overview")
@@ -161,7 +161,10 @@ class CharacterCommands(commands.Cog):
         assert origin_loc is not None, "wha"
 
         if not await origin_loc.outlet_routes:
-            return await send_message(ctx.interaction, UserEmbeds.move.no_exit())
+            return await send_message(
+                ctx.interaction, 
+                embed = UserEmbeds.move.no_exit(),
+                ephemeral = True)
 
         gw = await GameWorld.from_location(
             character.data.location_id, 
@@ -175,7 +178,110 @@ class CharacterCommands(commands.Cog):
 
         dialogue = Dialogue(embed, file)
 
-        
+        dest_datas = [await location_repo.fetch(loc_id) for loc_id in gw.graph.nodes]
+        dest_datas = [dest for dest in dest_datas if isinstance(dest, LocationData)]
+
+        async def show_proposal(interaction: Interaction):
+
+            dest_id = int(dialogue._fields["Destination"].get_value())
+            path = gw.get_path(
+                origin = origin_loc.data.location_id,
+                destination = dest_id)
+            path_mentions = [p.char_mention for p in path]
+            dialogue.current_embed = UserEmbeds.move.propose_route(path_mentions)
+            dialogue.current_file = None
+
+            return await dialogue.refresh(interaction)
+
+        async def submit(interaction: Interaction):
+
+            await dialogue.close(interaction)
+
+            dest_id = int(dialogue._fields["Destination"].get_value())
+            path_data = gw.get_path(
+                origin = origin_loc.data.location_id,
+                destination = dest_id)
+
+            path_locs = [await Location.load(p.location_id) for p in path_data]
+
+            mover_embed, mover_image = await UserEmbeds.move.arrive(
+                path_data[-1].char_mention,
+                path_data[-1].reference,
+                await path_locs[-1].occupants) # pyright: ignore[reportOptionalMemberAccess]
+
+            await character.update(location_id = dest_id)
+
+            await safe_send(
+                embed = mover_embed, 
+                channels = [character.data.character_id], 
+                file = mover_image)
+
+            log_embed, log_image = await UserEmbeds.move.passed_by(
+                character.data.mention,
+                character.data.reference, # pyright: ignore[reportArgumentType]
+                [loc.mention for loc in path_data])
+            await safe_send(
+                embed = log_embed,
+                channels = [loc.location_id for loc in path_data],
+                file = log_image,
+                silent = True)
+
+            exit_embed, exit_image = await UserEmbeds.move.exit_location(
+                character.data.char_mention,
+                character.data.reference,
+                path_data[1].char_mention)
+
+            await path_locs[0].send_to_occupants( # pyright: ignore[reportOptionalMemberAccess]
+                character.data.reference,
+                username = "Movement",
+                embed = exit_embed,
+                file = exit_image)
+
+            for index, path_loc in enumerate(path_locs):
+
+                if index == 0:
+                    continue
+
+                elif index == len(path_locs) - 1:
+                    continue
+
+                pass_embed, pass_image = await UserEmbeds.move.pass_location(
+                    character.data.mention,
+                    character.data.reference,
+                    path_locs[index - 1].data.char_mention, # pyright: ignore[reportOptionalMemberAccess]
+                    path_locs[index + 1].data.char_mention) # pyright: ignore[reportOptionalMemberAccess]
+
+                await path_loc.send_to_occupants( # pyright: ignore[reportOptionalMemberAccess]
+                    character.data.reference,
+                    username = "Movement",
+                    embed = pass_embed,
+                    file = pass_image)
+
+            arrive_embed, arrive_image = await UserEmbeds.move.enter_location(
+                character.data.char_mention,
+                character.data.reference,
+                path_data[-2].char_mention)
+
+            await path_locs[-1].send_to_occupants( # pyright: ignore[reportOptionalMemberAccess]
+                character.data.reference,
+                username = "Movement",
+                embed = arrive_embed,
+                file = arrive_image,
+                exclude = [character.data.character_id])
+
+            return 
+
+        loc_select = dialogue.add_text_select(
+            label = "Destination",
+            text_options = [loc.as_option for loc in dest_datas \
+                if loc.location_id != origin_loc.data.location_id],
+            placeholder = "Where would you like to go?")
+        loc_select.callback = show_proposal
+
+        submit_button = dialogue.add_button("Travel there", style = ButtonStyle.primary)
+        submit_button.disabled = True
+        submit_button.should_disable = lambda : not dialogue.is_valid
+        submit_button.callback = submit
 
         dialogue.add_close()        
 

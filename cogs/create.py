@@ -29,8 +29,7 @@ from libraries.classes import in_text_channel, \
 # 	format_whitelist, format_new_neighbors, embolden, \
 # 	format_channels, format_roles, format_avatar
 # from libraries.autocomplete import complete_places, exclusionary_places
-# from data.listeners import direct_listeners, queue_refresh, \
-# 	to_direct_listeners
+# from data.listeners import direct_listeners, queue_refresh, to_direct_listeners
 
 class CreateCommands(commands.Cog):
 
@@ -38,12 +37,12 @@ class CreateCommands(commands.Cog):
         name = "create",
         description = "Create new Roleplays, Locations, Routes, and Characters-- in that order.",
         contexts = [InteractionContextType.guild],
-        checks = [in_text_channel, is_administrator, in_location])
+        checks = [in_text_channel, is_administrator])
 
     @create_group.command(
         name = "location", 
         description = "Create a new Location for Characters to roleplay in.",
-        checks = [in_prox_rp, is_administrator])
+        checks = [in_prox_rp])
     async def location(self, ctx: ApplicationContext):
 
         rp = await Roleplay.load(ctx.guild_id)
@@ -98,7 +97,23 @@ class CreateCommands(commands.Cog):
         submit_button.should_disable = lambda : not dialogue.is_valid
         dialogue.add_close()      
 
+        async def edit_deferred_response(interaction: Interaction):
+            await dialogue.view.refresh_children()
+
+            if dialogue.current_file is None:
+                await interaction.edit_original_response(
+                    embed = dialogue.current_embed,
+                    attachments = [],
+                    view = dialogue.view)
+            else:
+                await interaction.edit_original_response(
+                    embed = dialogue.current_embed,
+                    file = dialogue.current_file,
+                    view = dialogue.view)
+
         async def submit(interaction: Interaction):
+
+            await interaction.response.defer()
             
             url = dialogue._fields["Reference photo URL"].get_value()
             url_result = await reference_validator(url)
@@ -116,7 +131,8 @@ class CreateCommands(commands.Cog):
                 embed = ErrorEmbeds.channel_creation_err()
                 dialogue.current_embed, dialogue.current_file = embed, None
                 dialogue.view.clear_items()
-                return await dialogue.refresh(interaction)
+                dialogue.add_close()
+                return await edit_deferred_response(interaction)
 
             loc_data = LocationData(
                 location_id = loc_channel.id,
@@ -126,10 +142,20 @@ class CreateCommands(commands.Cog):
                 reference = url)
     
             await Location.create(loc_data)  
+
+            dialogue.view.clear_items()
+            dialogue.current_embed, dialogue.current_file = \
+                await LocEmbeds.create.user(
+                    description = loc_data.description,
+                    reference = dialogue._fields["Reference photo URL"].get_value())
+            dialogue.add_close()
+            await edit_deferred_response(interaction)
+
             embed, file = await LocEmbeds.create.log(
                 name = loc_data.name,
                 description = loc_data.description,
                 reference = dialogue._fields["Reference photo URL"].get_value())
+
             await notify_log(rp.data, embed, file)
 
             embed, file = await LocEmbeds.create.channel(
@@ -137,18 +163,7 @@ class CreateCommands(commands.Cog):
                 reference = dialogue._fields["Reference photo URL"].get_value())
             await safe_send(embed, [loc_channel], silent = False, file = file)
 
-            embed, file = await LocEmbeds.create.user(
-                description = loc_data.description,
-                reference = dialogue._fields["Reference photo URL"].get_value())
-
-            embed, file = await LocEmbeds.create.user(
-                description = loc_data.description,
-                reference = dialogue._fields["Reference photo URL"].get_value())
-            dialogue.current_embed, dialogue.current_file = embed, file
-            dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
             return
-
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
@@ -157,7 +172,7 @@ class CreateCommands(commands.Cog):
     @create_group.command(
         name = "route", 
         description = "Lets Characters travel between Locations.", 
-        checks = [is_administrator, in_location])
+        checks = [in_location])
     async def route(self, ctx: ApplicationContext):
 
         location = await Location.load(ctx.channel_id) 
@@ -466,7 +481,9 @@ class CreateCommands(commands.Cog):
     #     # await send_message(ctx.respond, embed, view, file)
     #     return
 
-    @create_group.command(name = "roleplay", description = "Make this server a new Proximity roleplay!")
+    @create_group.command(
+            name = "roleplay", 
+            description = "Make this server a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
         if await roleplay_repo.exists(ctx.guild_id) == CommitResult.SUCCESS :

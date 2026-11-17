@@ -6,6 +6,7 @@ up to date.
 
 from discord import Bot, TextChannel, Message
 from discord.ext import commands
+from contextlib import ExitStack
 
 from data.database_handler import CommitResult
 from data.database_entries import (
@@ -37,7 +38,7 @@ class Autonomous(commands.Cog):
         if message.author == message.guild.me: # pyright: ignore[reportOptionalMemberAccess]
             return
             
-        if message.content and message.content[0] == '\\':
+        if message.content and message.content[0] == "\\":
             return
 
         char_data = await character_repo.fetch(message.channel.id)
@@ -55,10 +56,17 @@ class Autonomous(commands.Cog):
 
             character = Character(char_data)
 
-            await message.delete(reason = "Proxied.")
-            await character.speak(
-                content = message.content, 
-                file = message.attachments[0] if message.attachments else None)
+            with ExitStack() as file_stack:
+                files = []
+                for attachment in message.attachments:
+                    file = await attachment.to_file()
+                    file_stack.callback(file.close)
+                    files.append(file)
+
+                await message.delete(reason = "Proxied.")
+                await character.speak(
+                    content = message.content,
+                    files = files)
             return
 
         loc_data = await location_repo.fetch(message.channel.id)
@@ -66,11 +74,18 @@ class Autonomous(commands.Cog):
 
             location = Location(loc_data)
             
-            await message.delete(reason = "Proxied.")
-            await location.speak(
-                content = message.content, 
-                embed = message.embeds[0] if message.embeds else None,
-                file = message.attachments[0] if message.attachments else None) # pyright: ignore[reportArgumentType]
+            with ExitStack() as file_stack:
+                files = []
+                for attachment in message.attachments:
+                    file = await attachment.to_file()
+                    file_stack.callback(file.close)
+                    files.append(file)
+
+                await message.delete(reason = "Proxied.")
+                await location.speak(
+                    content = message.content,
+                    embed = message.embeds[0] if message.embeds else None,
+                    files = files)
 
             return 
 

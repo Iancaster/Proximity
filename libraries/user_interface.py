@@ -538,29 +538,29 @@ class Dialogue:
 
         return channel_select
 
-    def add_character_select(self, 
+    def add_text_select(self, 
         label: str, 
-        char_options: list[SelectOption],
+        text_options: list[SelectOption],
         purpose: str | None = None, 
         placeholder: str | None = None,
         min_values: int = 0,
         max_values: int = 1
     ) -> TextSelect:
 
-        character_select = TextSelect(
+        text_select = TextSelect(
             label = label,
             purpose = purpose,
             placeholder = placeholder,
             dialogue_callback = self.refresh,
-            options = char_options,
+            options = text_options,
             min_values = min_values,
             max_values = max_values)
         
-        self.view.add_item(character_select)
-        character_select.callback = self.refresh
-        self.add_field(character_select)
+        self.view.add_item(text_select)
+        text_select.callback = self.refresh
+        self.add_field(text_select)
 
-        return character_select
+        return text_select
 
     def add_close(self) -> Button:
 

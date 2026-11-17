@@ -266,6 +266,100 @@ class _UserMove:
 
         return
 
+    @staticmethod
+    def propose_route(path_mentions: list[str]) -> Embed:
+
+        return text_embed(
+            f"Travel to {path_mentions[-1]}?",
+            f"You can reach {path_mentions[-1]} by going along this route:\n" + \
+                " -> ".join(path_mentions),
+            "If there's multiple ways to get there, you choose to take a different path" + \
+                " by splitting your movement into multiple smaller steps.")
+
+    @staticmethod
+    async def exit_location(
+        char_mention: str, 
+        char_ref: str | None, 
+        neigh_mention: str
+    ) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            "See you around.",
+            f"You notice {char_mention} leave in the direction of {neigh_mention}.",
+            "I'm sure you'll see them around again soon.",
+            thumbnail = True, 
+            source = ImageSource.URL,
+            asset_str = char_ref)
+
+    @staticmethod
+    async def pass_location(
+        char_mention: str, 
+        char_ref: str | None, 
+        prev_loc_mention: str,
+        next_loc_mention: str
+    ) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            "Passing through.",
+            f"You notice {char_mention} pass through. They came from" + \
+                f" the direction of {prev_loc_mention}, and kept going" + \
+                f" towards the direction of {prev_loc_mention}.",
+            "Maybe you can catch up to them, if you'd like?",
+            thumbnail = True, 
+            source = ImageSource.URL,
+            asset_str = char_ref)
+
+    @staticmethod
+    async def enter_location(
+        char_mention: str, 
+        char_ref: str | None, 
+        neigh_mention: str
+    ) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            "An arrival.",
+            f"You notice {char_mention} enter from the direction of {neigh_mention}.",
+            "Greet them?",
+            thumbnail = True, 
+            source = ImageSource.URL,
+            asset_str = char_ref)
+
+    @staticmethod
+    async def arrive(
+        loc_mention: str, 
+        loc_ref: str | None, 
+        occupants: list[CharacterData]
+    ) -> tuple[Embed, File | None]:
+
+        if occupants:
+            description = f"You notice {oxfordize([occ.char_mention for occ in occupants])} here with you."
+        else:
+            description = "You seem to be the only one here right now."
+
+        return await image_embed(
+            f"You arrive at {loc_mention}.",
+            description,
+            "What next?",
+            thumbnail = True, 
+            source = ImageSource.URL,
+            asset_str = loc_ref)
+
+    @staticmethod
+    async def passed_by(
+        char_mention: str,
+        char_ref: str,
+        path_mentions: list[str]
+    ) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            "Movement.",
+            f"{char_mention} moved from/through/to here along their path:" + \
+                " -> ".join(path_mentions),
+            "You can view their travel from their point of view via their character channel.",
+            thumbnail = True,
+            source = ImageSource.URL,
+            asset_str = char_ref)
+
 class UserEmbeds:
     look = _UserLook
     move = _UserMove
