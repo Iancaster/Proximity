@@ -35,8 +35,8 @@ async def main():
 
     bot = Bot(
         intents = intents, 
-        owner_id = cfg("account", "owner_id"),
-        debug_guilds = [1111152704279035954])
+        owner_id = cfg("account", "owner_id")
+    ) #debug_guilds = [1111152704279035954])
     set_bot(bot)
     await initialize_db()	
     

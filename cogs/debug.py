@@ -14,40 +14,11 @@ from libraries.embed_templates import ErrorEmbeds
 
 #Classes
 class DebugCommands(commands.Cog):
-    """
-    Commands that only Lancaster can use.
-    Maybe in the future I'll enforce that.
-    """
-
 
     debug_group = SlashCommandGroup(
         name = "debug",
         description = "For testers only! Lets you peer behind the veil.",
         guild_ids = [1111152704279035954])
-
-    @debug_group.command(name = "hook-reset", description = "Ensure the webhooks are correct.")
-    async def hook_reset(self, ctx: ApplicationContext):
-
-        had_webhook = await Relayable.find_webhook(ctx.channel) is not None
-        await Relayable.ensure_webhook(ctx.channel)
-
-        final_message = "A webhook existed already" if had_webhook else "No webhook was here yet"
-        final_message += ", but a correct webhook was put in place. Should be good now."
-
-        return await send_message(ctx.interaction, content = final_message)
-
-    @debug_group.command(name = "test", description = "Test out some logic.")
-    async def test(self, ctx: ApplicationContext):
-
-
-        rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None
-
-        await send_message(ctx.interaction, content = "boop", ephemeral = True)  
-
-        game_world = await GameWorld.from_roleplay(rp.data.roleplay_id)
-        print(game_world.graph.nodes[1547486058722361434])
-        return
 
     @debug_group.command(name = "server", description = "See what server info is saved in the database.")
     async def server(self, ctx: ApplicationContext):

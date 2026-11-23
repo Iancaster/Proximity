@@ -3,8 +3,7 @@
 from discord import (ApplicationContext, Interaction,
     TextChannel, CategoryChannel, Guild,
     Bot, Webhook, PermissionOverwrite, File,
-    HTTPException, NotFound, Embed, Permissions,
-    SelectOption)
+    HTTPException, NotFound, Embed)
 from discord.abc import GuildChannel
 from discord.utils import get_or_fetch, find
 
@@ -15,7 +14,7 @@ from data.database_entries import (
 
 from libraries.logger import get_logger, Lumberjack
 from libraries.user_interface import reference_validator, \
-    get_channel, get_bot, safe_del_channels
+    get_channel, get_bot, safe_del_channels, safe_send
 from libraries.embed_templates import ErrorEmbeds
 
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
@@ -23,7 +22,6 @@ from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
     shortest_path
 from matplotlib.pyplot import margins, gcf, tight_layout, axis, close, figure
 from matplotlib.patches import ArrowStyle
-from collections.abc import Callable
 from io import BytesIO
 
 from datetime import datetime as dt
@@ -48,8 +46,6 @@ async def in_prox_rp(ctx: ApplicationContext) -> bool:
     return True
 
 async def is_administrator(ctx: ApplicationContext) -> bool: # Revisit this once the bot is done.
-
-    return True
     
     if not ctx.channel.permissions_for(ctx.author).administrator:
         await ctx.respond("To prevent abuse, only server administrators may use this command.", ephemeral = True)
@@ -199,8 +195,8 @@ class Relayable:
             return True
         except NotFound:
             return True
-
-        return False
+        except:
+            return False
 
     @classmethod
     async def create_webhook(cls, channel: TextChannel) -> Webhook:
@@ -236,7 +232,7 @@ class Relayable:
         username: str | None = None,
         embed: Embed | None = None,
         files: list[File] | None = None,
-        file: File | None = None,
+        file: File | None = None
     ) -> bool:
 
         message_details = {k: v for k, v in locals().items() if v not in (None, cls)} 
@@ -271,6 +267,7 @@ class Roleplay:
 
     def __init__(self, data: RoleplayData):
         self.data = data
+        self._log_channel: TextChannel | None = None
         return
 
     @classmethod
@@ -293,6 +290,12 @@ class Roleplay:
         fetch_result = await roleplay_repo.fetch(roleplay_id)
         return cls(fetch_result) if isinstance(fetch_result, RoleplayData) else None
 
+    @classmethod
+    async def ensure_load(cls, roleplay_id: int) -> Roleplay:
+        fetch_result = await cls.load(roleplay_id)
+        assert fetch_result is not None
+        return fetch_result
+
     async def update(self, 
         log_channel_id: int | None | _Unset = UNSET, 
         locations_cat: int | None | _Unset = UNSET,
@@ -313,23 +316,24 @@ class Roleplay:
 
             channel_id = changed_values.get(channel_name, UNSET)
 
-            if isinstance(channel_id, _Unset):
+            if not isinstance(channel_id, int):
                 continue
 
             channel = await get_channel(int(channel_id))
 
             if channel is None:
                 del changed_values[channel_name]
+                continue
 
             guild = await get_or_fetch(get_bot(), "guild", self.data.roleplay_id)
             if not channel.permissions_for(guild.me).send_messages: # pyright: ignore[reportOptionalMemberAccess]
                 del changed_values[channel_name]
 
-        if reference is not UNSET:
+        if "reference" in changed_values and reference is not None:
             url_result = await reference_validator(reference) # pyright: ignore[reportArgumentType]
 
             if url_result != CommitResult.SUCCESS:
-                del changed_values["reference"]
+                changed_values.pop("reference", None)
 
         if not changed_values:
             return CommitResult.NO_UPDATE
@@ -348,6 +352,12 @@ class Roleplay:
             await location.delete()
 
         return await roleplay_repo.delete(self.data.roleplay_id)
+
+    async def notify_log(self, 
+        embed: Embed, 
+        file: File | None = None
+    ) -> None:
+        return await safe_send(embed, [self.data.log_channel_id], silent = True, file = file)
 
     @property
     async def location_count(self) -> int:
@@ -427,6 +437,12 @@ class Location:
         
         return result
 
+    async def notify_log(self, 
+        embed: Embed, 
+        file: File | None = None
+    ) -> None:
+        return await safe_send(embed, [self.data.location_id], silent = True, file = file)
+
     # async def new_route(self, 
     #     to_location: Location, 
     #     guild: Guild,
@@ -490,14 +506,6 @@ class Location:
     #     await self.send_to_inhabitants(guild, character_embed)        
     #     return True
     
-    # async def send_to_inhabitants(self, guild: Guild, embed: Embed) -> None:
-    #     """Sends a message to all characters in this location."""
-
-    #     for character in await Character.fetch_all("location_id", self.id):
-    #         char_channel = await character.get_channel(guild)
-    #         await safe_send(embed = embed, channels = [char_channel])
-
-    #     return
 
     async def speak(self,
         content: str | None = None,
@@ -977,35 +985,3 @@ class GameWorld:
         bytesIO.seek(0)
 
         return bytesIO
-
-
-#         self.eaves_target: int | None = None
-#         self.name: str | None = None
-#         self.description: str | None = None
-#         self.reference: str | None = None
-
-#         DatabaseMixin.__init__(
-#             self,
-#             entry_class = CharacterEntry, 
-#             id = id, 
-#             console_level = console_level)
-
-#         return
-    
-#     @staticmethod
-#     async def fetch_all(col_name: str, value: int | str, *_, **__) -> Iterable[Character]:
-        
-#         return await DatabaseMixin.fetch_all(
-#             col_name = col_name, 
-#             value = value,
-#             entry_class = CharacterEntry,
-#             final_class = Character)
-    
-# @dataclass(slots = True)
-# class Character:
-#     name: str
-#     avatar: str
-#     location_id: str
-#     eavesdropping: bool
-
-    

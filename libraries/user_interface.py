@@ -74,7 +74,7 @@ def text_embed(
 
     return embed
 
-async def validate_url(url: str | None) -> bool:
+async def _validate_url(url: str | None) -> bool:
 
     if url is None:
         return False
@@ -111,7 +111,7 @@ async def image_embed(
 
         if asset_str in [LOGO, BAD_LINK, NO_AVATAR_PFP, "", None]:
             asset_str = ""
-        elif not await validate_url(asset_str):
+        elif not await _validate_url(asset_str):
             asset_str = NO_AVATAR_PFP
 
         if asset_str:
@@ -145,7 +145,7 @@ async def reference_validator(proposed_URL: str) -> CommitResult:
     if proposed_URL == "":
         return CommitResult.NO_UPDATE
 
-    if not await validate_url(proposed_URL):
+    if not await _validate_url(proposed_URL):
         return CommitResult.FOREIGN_KEY_FAIL
 
     return CommitResult.SUCCESS
@@ -439,41 +439,44 @@ class Dialogue:
         if disable_timeout:
             self.view.timeout = None
 
-        self._fields: dict[str, DialogueMixin] = {}
-        self._field_values : dict[str, Any] = {}
+        self.fields: dict[str, DialogueMixin] = {}
 
         self.current_embed = starting_embed
-        self.previous_embed: Embed | None = starting_embed
+        self._previous_embed: Embed | None = starting_embed
 
         self.current_file = starting_file
-        self.previous_file: File | None = starting_file
+        self._previous_file: File | None = starting_file
 
         return
 
     async def refresh(self, interaction: Interaction) -> None:
 
-        kwargs = {}
-        kwargs["view"] = self.view
+        options = {}
+        options["view"] = self.view
 
-        if self.current_embed != self.previous_embed:
-            self.previous_embed = self.current_embed
-            kwargs["embed"] = self.current_embed
+        if self.current_embed != self._previous_embed:
+            self._previous_embed = self.current_embed
+            options["embed"] = self.current_embed
         
-        if self.current_file != self.previous_file:
-            self.previous_file = self.current_file
+        if self.current_file != self._previous_file:
+            self._previous_file = self.current_file
 
             if self.current_file is not None:
-                kwargs["file"] = self.current_file
+                options["file"] = self.current_file
 
             if self.current_file in (MISSING, None):
-                kwargs["attachments"] = []
+                options["attachments"] = []
 
         await self.view.refresh_children()
 
         try:
-            await interaction.response.edit_message(**kwargs)
+
+            if interaction.response.is_done():
+                await interaction.edit_original_response(**options)
+            else:
+                await interaction.response.edit_message(**options)
         
-        except NotFound, HTTPException:
+        except HTTPException:
 
             try:
                 await interaction.respond(
@@ -492,7 +495,7 @@ class Dialogue:
             dialogue_callback = self.refresh)
         
         self.view.add_item(button)
-        self._fields[button.field_name] = button
+        self.fields[button.field_name] = button
 
         return button
 
@@ -512,7 +515,7 @@ class Dialogue:
                 print(f"Warning: child {child} does not implement DialogueMixin. Skipping insert.")
                 continue
 
-            self._fields[child.field_name] = child
+            self.fields[child.field_name] = child
 
         return
 
@@ -573,10 +576,7 @@ class Dialogue:
         return button
     
     def add_field(self, field) -> None:
-
-        self._fields[field.field_name] = field
-        self._field_values[field.field_name] = field.get_value()
-
+        self.fields[field.field_name] = field
         return
 
     async def close(self, interaction: Interaction):
@@ -597,7 +597,7 @@ class Dialogue:
 
     @property
     def is_valid(self) -> bool:
-        return all(item.is_valid() for item in self._fields.values())
+        return all(item.is_valid() for item in self.fields.values())
 
 async def send_message(
     interaction: Interaction, 
@@ -616,7 +616,11 @@ async def send_message(
     if file is not None:
         options["file"] = file
 
-    await interaction.response.send_message(**options)
+    if interaction.response.is_done():
+        options.pop("ephemeral", None)
+        await interaction.edit_original_response(**options)
+    else:
+        await interaction.response.send_message(**options)
 
     if view is not None:
         view.set_interaction(interaction)
@@ -645,6 +649,29 @@ async def safe_send(
             logger.warning(f"Failed to send message to channel {chan.id}.")
 
     return
+
+async def safe_del_channel(
+    channel: GuildChannel | int | None,
+    reason: str
+) -> CommitResult:
+
+    if channel is None:
+        return CommitResult.NO_UPDATE
+
+    if isinstance(channel, int):
+        channel = await get_channel(channel)
+
+    if channel is None:
+        return CommitResult.ROW_MISSING
+
+    try:
+        await channel.delete(reason = reason)
+        
+    except HTTPException:
+        logger.warning(f"Failed to delete channel {channel.id}.")
+        return CommitResult.UNKNOWN_ERR
+
+    return CommitResult.SUCCESS
 
 async def safe_del_channels(
     channels: list[GuildChannel | None],

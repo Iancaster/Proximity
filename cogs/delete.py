@@ -5,7 +5,7 @@ from discord import ApplicationContext, Interaction, InteractionContextType, But
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from libraries.embed_templates import notify_log, RoleplayEmbeds
+from libraries.embed_templates import RoleplayEmbeds, LocEmbeds
 from libraries.classes import Roleplay, Location, \
     in_text_channel, is_administrator, in_prox_rp
 from data.database_entries import (
@@ -13,7 +13,6 @@ from data.database_entries import (
     location_repo, LocationData)
 from libraries.user_interface import Dialogue, ImageSource, \
     text_embed, image_embed, send_message, LOGO
-from libraries.embed_templates import notify_log, LocEmbeds
 
 class DeleteCommands(commands.Cog):
 
@@ -21,7 +20,7 @@ class DeleteCommands(commands.Cog):
         name = "delete",
         description = "Get rid of Locations, Routes, or Characters. Or the RP itself.",
         contexts = [InteractionContextType.guild],
-        checks = [in_text_channel, is_administrator, in_prox_rp])
+        checks = [in_prox_rp])
 
     @delete_group.command(name = "location", description = "Delete a location.")
     async def location(self, ctx: ApplicationContext):
@@ -52,7 +51,7 @@ class DeleteCommands(commands.Cog):
             embed, file = await LocEmbeds.delete.log(
                 location.data.name,
                 location.data.reference)
-            await notify_log(rp.data, embed, file)
+            await rp.notify_log(embed, file)
 
             if interaction.channel_id != location.data.location_id:
 
@@ -379,30 +378,26 @@ class DeleteCommands(commands.Cog):
 
     # 	return
 
-    @delete_group.command(name = "roleplay", description = "Delete all RP data and channels. Use with caution.")
+    @delete_group.command(
+        name = "roleplay", 
+        description = "Delete all RP data and channels. Use with caution.")
     async def roleplay(self, ctx: ApplicationContext):
 
         rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None, "Redo your checks."
+        assert rp is not None
 
         async def delete_data(interaction: Interaction):
 
             await rp.delete()
             embed, file = await RoleplayEmbeds.delete.log(rp.data.reference)
-            await notify_log(rp.data, embed, file)
+            await rp.notify_log(embed, file)
 
             dialogue.current_embed, dialogue.current_file = \
                 await RoleplayEmbeds.delete.user(rp.data.name, rp.data.reference)
             dialogue.view.clear_items()
             return await dialogue.refresh(interaction)
 
-        embed = text_embed(
-            "Delete all data?",
-            "You're about to delete all roleplay data, including"
-                " all Locations and Characters. Any associated" 
-                " channels will be deleted, apart from the"
-                " log channel you set when you registered the server.",
-            "This is irreversible, so make sure you're certain you want this.")
+        embed = RoleplayEmbeds.delete.confirm_delete()
 
         dialogue = Dialogue(embed)
         delete_button = dialogue.add_button("Delete all data", ButtonStyle.danger)

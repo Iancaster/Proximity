@@ -14,7 +14,7 @@ from data.database_entries import (
 from libraries.user_interface import text_embed, send_message, \
     image_embed, reference_validator, ImageSource, Dialogue, Popup, \
     LOGO
-from libraries.embed_templates import notify_log, RoleplayEmbeds
+from libraries.embed_templates import RoleplayEmbeds, LocEmbeds, CharEmbeds
 
 # Classes
 class ReviewCommands(commands.Cog):
@@ -23,14 +23,14 @@ class ReviewCommands(commands.Cog):
         name = "review",
         description = "Review any part of the server, from places to people.",
         contexts = [InteractionContextType.guild],
-        checks = [in_text_channel, is_administrator, in_prox_rp])
+        checks = [in_prox_rp])
 
     @review_group.command(name = "location", description = "Examine or change the details of a Location.")
     async def location(self, ctx: ApplicationContext):
 
         location = await Location.load(ctx.channel_id)
         rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None, "tf"
+        assert rp is not None
 
         async def add_components(curr_location: Location, curr_dialogue: Dialogue) -> None:
 
@@ -61,7 +61,10 @@ class ReviewCommands(commands.Cog):
                 required = False,
                 style = InputTextStyle.paragraph)
 
-            details_button = curr_dialogue.add_button(label = "Review Location details", style = ButtonStyle.blurple)
+            details_button = curr_dialogue.add_button(
+                label = "Review Location details", 
+                style = ButtonStyle.blurple)
+            
             curr_dialogue.add_modal(details_popup, details_button)
 
             submit_button = curr_dialogue.add_button(label = "Submit edits", style = ButtonStyle.success)
@@ -72,14 +75,14 @@ class ReviewCommands(commands.Cog):
 
                 nonlocal curr_dialogue, curr_location
 
-                url =  curr_dialogue._fields["Reference"].get_value()
+                url =  curr_dialogue.fields["Reference"].get_value()
                 url_result = await reference_validator(url)
                 if url_result != CommitResult.SUCCESS:
                     url = None
 
                 await curr_location.update(
-                    name = curr_dialogue._fields["Name"].get_value(),
-                    description = curr_dialogue._fields["Description"].get_value(),
+                    name = curr_dialogue.fields["Name"].get_value(),
+                    description = curr_dialogue.fields["Description"].get_value(),
                     reference = url)
 
                 curr_dialogue = await review_location(curr_location, curr_dialogue)   
@@ -146,14 +149,7 @@ class ReviewCommands(commands.Cog):
 
         if location is None:
 
-            embed = text_embed(
-                "Which Location?",
-                ("Please select a Location channel from the dropdown below" +
-                    " to review its details. You can also call this command" +
-                    " in a Location channel to select it automatically."),
-                "This will show you everything about the place.")
-
-            dialogue = Dialogue(embed)
+            dialogue = Dialogue(LocEmbeds.review.select_location())
 
             channel_select = dialogue.add_channel_select(
                 label = "Pick a Location to review.",
@@ -161,16 +157,18 @@ class ReviewCommands(commands.Cog):
                 placeholder = "#the-castle",
                 min_values = 1)
 
-            submit_button = dialogue.add_button("Select Location", ButtonStyle.primary)
+            submit_button = dialogue.add_button("Select Location", ButtonStyle.success)
 
             async def select(interaction: Interaction):
                 nonlocal dialogue, location
+                
                 location = await Location.load(channel_select.values[0].id)
+                assert location is not None
+
                 dialogue.view.clear_items()
-                dialogue = await review_location(location, dialogue) # pyright: ignore[reportArgumentType]
+                dialogue = await review_location(location, dialogue)
                 await add_components(location, dialogue) # pyright: ignore[reportArgumentType]
-                await dialogue.refresh(interaction)
-                return
+                return await dialogue.refresh(interaction)
 
             submit_button.callback = select
             location_ids = [loc.location_id for loc in await rp.locations]
@@ -180,14 +178,12 @@ class ReviewCommands(commands.Cog):
             dialogue.add_close()
 
         else:
-            dialogue = await review_location(curr_location = location, curr_dialogue = None)
+            dialogue = await review_location(location, curr_dialogue = None)
 
-        await send_message(ctx.interaction,
+        return await send_message(ctx.interaction,
             dialogue.current_embed,
             dialogue.view,
             ephemeral = True)
-
-        return
 
     # @review_group.command(name = 'path', description = 'Look at (or edit) paths.')
     # async def path(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place to start from?', name = 'place', autocomplete = complete_places, required = False)):
@@ -663,28 +659,17 @@ class ReviewCommands(commands.Cog):
     async def roleplay(self, ctx: ApplicationContext):
 
         rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None, "This server is not a roleplay server. Please set it up first."
+        assert rp is not None
 
-        embed, file = await image_embed(
-            f"Reviewing {rp.data.name}",
-            f"**Character Count:** {await rp.character_count} / {rp.data.character_limit}"
-                f"\n**Character Category:** " +
-                    (f"{rp.data.char_mention}" if rp.data.characters_cat is not None else "None yet.") +
-                f"\n**Location Count:** {await rp.location_count} / {rp.data.location_limit}"
-                f"\n**Location Category:** " +
-                    (f"{rp.data.loc_mention}" if rp.data.locations_cat is not None else "None yet.") +
-                f"\n**Log Channel:** {rp.data.log_mention}"
-                f"\n**Description:** {rp.data.description}"
-                "\n**Reference:** " +
-                    ("See below." if rp.data.reference else "None (yet). You should add one!"),
-            "Would you perhaps like to change these things?",
-            thumbnail = rp.data.reference is None,
-            source = ImageSource.URL if rp.data.reference is not None else ImageSource.ASSET,
-            asset_str = rp.data.reference or "")
+        embed, file = await RoleplayEmbeds.review.overview(
+            rp_data = rp.data,
+            character_count = await rp.character_count,
+            location_count = await rp.location_count)
 
         dialogue = Dialogue(embed, file, disable_timeout = True)
         details_popup = Popup(title = "Roleplay details")
 
+        # Modal nonsense
         dialogue.add_channel_select(
             label = "logging",
             purpose = " for admin logs",
@@ -726,14 +711,16 @@ class ReviewCommands(commands.Cog):
             placeholder = "10 - Subscribe to increase this limit!",
             required = False)
 
-        details_button = dialogue.add_button(label = "Edit roleplay details", style = ButtonStyle.blurple)
+        details_button = dialogue.add_button(
+            label = "Edit roleplay details", 
+            style = ButtonStyle.blurple)
         dialogue.add_modal(details_popup, details_button)
 
         proposals = {
-            "log_channel_id" : dialogue._fields["logging"].get_value(),
-            "name" : dialogue._fields["Title"].get_value(),
-            "description" : dialogue._fields["Description"].get_value(),
-            "reference" : dialogue._fields["Reference photo URL"].get_value()}
+            "log_channel_id" : dialogue.fields["logging"].get_value(),
+            "name" : dialogue.fields["Title"].get_value(),
+            "description" : dialogue.fields["Description"].get_value(),
+            "reference" : dialogue.fields["Reference photo URL"].get_value()}
         
         async def submit(interaction: Interaction):
 
@@ -744,51 +731,44 @@ class ReviewCommands(commands.Cog):
             old_rp_data = RoleplayData(**rp.data.__dict__.copy())
             await rp.update(**proposals)
 
-            embed, file = await RoleplayEmbeds.update.user(
+            embed, file = await RoleplayEmbeds.review.user(
                 old_rp_data,
                 proposals,
                 rp.data)
 
-            await notify_log(rp.data, embed, file)
+            await rp.notify_log(embed, file)
             
             dialogue.current_embed, dialogue.current_file = embed, file
             dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
+            return await dialogue.refresh(interaction)
 
-            return
-
-        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
-
-        def should_disable():
+        def should_disable_submit():
 
             nonlocal proposals
             proposals = {
-                "log_channel_id" : dialogue._fields["logging"].get_value(),
-                "name" : dialogue._fields["Title"].get_value(),
-                "description" : dialogue._fields["Description"].get_value(),
-                "reference" : dialogue._fields["Reference photo URL"].get_value()}
+                "log_channel_id" : dialogue.fields["logging"].get_value(),
+                "name" : dialogue.fields["Title"].get_value(),
+                "description" : dialogue.fields["Description"].get_value(),
+                "reference" : dialogue.fields["Reference photo URL"].get_value()}
 
             if not dialogue.is_valid:
                 return True
 
             changes_proposed = {k : v for k, v in proposals.items() if v != getattr(rp.data, k)}
             return not len(changes_proposed) > 0
-        
-        submit_button.should_disable = lambda : not dialogue.is_valid
 
+        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
         submit_button.callback = submit
-        submit_button.should_disable = should_disable
+        submit_button.should_disable = should_disable_submit
         dialogue.add_close()
 
         await dialogue.view.refresh_children()
-        await send_message(
+        return await send_message(
             ctx.interaction,
             embed,
             dialogue.view,
             file = file,
             ephemeral = True)
-
-        return
 
 def setup(prox):
     prox.add_cog(ReviewCommands(prox), override = True)

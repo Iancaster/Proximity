@@ -1,7 +1,7 @@
 
 from libraries.classes import Roleplay, Location, Route, Character, Relayable
-from libraries.user_interface import Dialogue, Popup, ImageSource, \
-    text_embed, image_embed, send_message, reference_validator, LOGO, \
+from libraries.user_interface import Dialogue, Popup, \
+    text_embed, send_message, reference_validator, LOGO, \
     safe_send
 from data.database_entries import ( 
     roleplay_repo, RoleplayData,
@@ -9,8 +9,8 @@ from data.database_entries import (
     character_repo, CharacterData,
     route_repo, RouteData)
 from data.database_handler import CommitResult
-from libraries.embed_templates import notify_log, \
-    RoleplayEmbeds, LocEmbeds, CharacterEmbeds, ErrorEmbeds, RouteEmbeds
+from libraries.embed_templates import RoleplayEmbeds, \
+    LocEmbeds, CharEmbeds, ErrorEmbeds, RouteEmbeds
 
 from discord import ApplicationContext, InteractionContextType, \
     ButtonStyle, InputTextStyle, Interaction, TextChannel, Embed
@@ -20,16 +20,6 @@ from discord.commands import SlashCommandGroup
 from libraries.classes import in_text_channel, \
     is_administrator, in_prox_rp, in_location, \
     Roleplay
-
-# from libraries.new_classes import GuildData, ChannelManager, Path, Location, \
-# 	DialogueView, Character, ListenerManager
-# from libraries.universal import mbd, loading, no_redundancies, \
-# 	send_message, identify_place_channel, character_change
-# from libraries.formatting import format_words, discordify, unique_name, \
-# 	format_whitelist, format_new_neighbors, embolden, \
-# 	format_channels, format_roles, format_avatar
-# from libraries.autocomplete import complete_places, exclusionary_places
-# from data.listeners import direct_listeners, queue_refresh, to_direct_listeners
 
 class CreateCommands(commands.Cog):
 
@@ -45,25 +35,18 @@ class CreateCommands(commands.Cog):
         checks = [in_prox_rp])
     async def location(self, ctx: ApplicationContext):
 
-        rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None, "howwww"
-
+        rp = await Roleplay.ensure_load(ctx.guild_id)
+        
         if rp.data.location_limit is not None \
             and await rp.location_count >= rp.data.location_limit:
 
             embed = await LocEmbeds.create.hit_limit(
                 location_limit = rp.data.location_limit, 
                 end_date = rp.data.subscription_end)
-            
-            await ctx.respond(embed = embed, ephemeral = True)
-            return
 
-        embed = text_embed(
-            "Someplace new?",
-            "All you need to provide is a name, and"
-                " I can make the Location and its channel. But if you like," \
-                " you can include a description and a reference photo.", 
-            "All of this can be edited later with /review Location.")
+            return await send_message(ctx.interaction, embed, ephemeral = True)
+
+        embed = LocEmbeds.create.set_details() 
         
         dialogue = Dialogue(embed, disable_timeout = True)
         details_popup = Popup(title = "New location details")
@@ -90,39 +73,30 @@ class CreateCommands(commands.Cog):
             required = False,
             style = InputTextStyle.paragraph)
 
-        details_button = dialogue.add_button(label = "Set Location details", style = ButtonStyle.blurple)
+        details_button = dialogue.add_button(
+            label = "Set Location details", 
+            style = ButtonStyle.blurple)
         dialogue.add_modal(details_popup, details_button)
 
-        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
+        submit_button = dialogue.add_button(
+            label = "Submit", 
+            style = ButtonStyle.success)
         submit_button.should_disable = lambda : not dialogue.is_valid
-        dialogue.add_close()      
-
-        async def edit_deferred_response(interaction: Interaction):
-            await dialogue.view.refresh_children()
-
-            if dialogue.current_file is None:
-                await interaction.edit_original_response(
-                    embed = dialogue.current_embed,
-                    attachments = [],
-                    view = dialogue.view)
-            else:
-                await interaction.edit_original_response(
-                    embed = dialogue.current_embed,
-                    file = dialogue.current_file,
-                    view = dialogue.view)
+        dialogue.add_close()  
 
         async def submit(interaction: Interaction):
 
             await interaction.response.defer()
-            
-            url = dialogue._fields["Reference photo URL"].get_value()
-            url_result = await reference_validator(url)
+
+            loc_name = dialogue.fields["Name"].get_value()
+            reference_url = dialogue.fields["Reference photo URL"].get_value()
+            url_result = await reference_validator(reference_url)
 
             if url_result != CommitResult.SUCCESS:
-                url = None
+                reference_url = None
 
             loc_channel = await Relayable.create_channel(
-                channel_name = dialogue._fields["Name"].get_value(), 
+                channel_name = loc_name, 
                 guild_id = interaction.guild_id, # pyright: ignore[reportArgumentType]
                 is_location = True)
             
@@ -132,38 +106,36 @@ class CreateCommands(commands.Cog):
                 dialogue.current_embed, dialogue.current_file = embed, None
                 dialogue.view.clear_items()
                 dialogue.add_close()
-                return await edit_deferred_response(interaction)
+                return await dialogue.refresh(interaction)
 
             loc_data = LocationData(
                 location_id = loc_channel.id,
                 roleplay_id = loc_channel.guild.id,
-                name = dialogue._fields["Name"].get_value(),
-                description = dialogue._fields["Description"].get_value(),
-                reference = url)
-    
-            await Location.create(loc_data)  
+                name = loc_name,
+                description = dialogue.fields["Description"].get_value(),
+                reference = reference_url)
 
             dialogue.view.clear_items()
             dialogue.current_embed, dialogue.current_file = \
                 await LocEmbeds.create.user(
                     description = loc_data.description,
-                    reference = dialogue._fields["Reference photo URL"].get_value())
+                    reference = reference_url)
             dialogue.add_close()
-            await edit_deferred_response(interaction)
+            await dialogue.refresh(interaction)
 
-            embed, file = await LocEmbeds.create.log(
+            location = await Location.create(loc_data)  
+            if not isinstance(location, Location):
+                return
+
+            await rp.notify_log(*await LocEmbeds.create.log(
                 name = loc_data.name,
                 description = loc_data.description,
-                reference = dialogue._fields["Reference photo URL"].get_value())
+                reference = reference_url))
 
-            await notify_log(rp.data, embed, file)
-
-            embed, file = await LocEmbeds.create.channel(
+            return await location.notify_log(*await LocEmbeds.create.channel(
                 description = loc_data.description,
-                reference = dialogue._fields["Reference photo URL"].get_value())
-            await safe_send(embed, [loc_channel], silent = False, file = file)
+                reference = reference_url))
 
-            return
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
@@ -176,10 +148,10 @@ class CreateCommands(commands.Cog):
     async def route(self, ctx: ApplicationContext):
 
         location = await Location.load(ctx.channel_id) 
-        assert location is not None, "checks failed"
+        assert location is not None
 
-        rp_data = await roleplay_repo.fetch(ctx.guild_id)
-        assert isinstance(rp_data, RoleplayData), "eh"
+        rp = await Roleplay.load(ctx.guild_id)
+        assert isinstance(rp, RoleplayData)
 
         directions = {
             "<->" : "Goes both ways",
@@ -214,7 +186,7 @@ class CreateCommands(commands.Cog):
 
         async def submit(interaction: Interaction):
 
-            neighbors = dialogue._fields["Neighbors"].get_channel_ids() # pyright: ignore[reportAttributeAccessIssue]
+            neighbors = dialogue.fields["Neighbors"].get_channel_ids() # pyright: ignore[reportAttributeAccessIssue]
             neighbors = [await location_repo.fetch(n) for n in neighbors]
             neighbors = [n for n in neighbors if not isinstance(n, CommitResult)]
 
@@ -256,14 +228,14 @@ class CreateCommands(commands.Cog):
                     data = RouteData(
                         from_id = location.data.location_id,
                         to_id = neigh.location_id,
-                        roleplay_id = rp_data.roleplay_id)
+                        roleplay_id = rp.data.roleplay_id)
                     await Route.create(data)
 
                 if "<" in chosen_dir:
                     data = RouteData(
                         from_id = neigh.location_id,
                         to_id = location.data.location_id,
-                        roleplay_id = rp_data.roleplay_id)
+                        roleplay_id = rp.data.roleplay_id)
                     await Route.create(data)
 
                 embed = await RouteEmbeds.create.channel(
@@ -276,7 +248,7 @@ class CreateCommands(commands.Cog):
                 location.data, 
                 neighbors, 
                 chosen_dir)
-            await notify_log(rp_data, embed)
+            await rp.notify_log(embed)
 
             embed = await RouteEmbeds.create.channel(
                 location.data,
@@ -291,8 +263,7 @@ class CreateCommands(commands.Cog):
 
             dialogue.current_embed = embed
             dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
-            return
+            return await dialogue.refresh(interaction)
             
         dialogue.add_channel_select(
             "Neighbors",
@@ -313,205 +284,35 @@ class CreateCommands(commands.Cog):
 
         submit_button = dialogue.add_button("Submit", style = ButtonStyle.success)
         submit_button.callback = submit
-        submit_button.should_disable = lambda : not dialogue._fields["Neighbors"].get_value()
+        submit_button.should_disable = lambda : not dialogue.fields["Neighbors"].get_value()
         submit_button.disabled = True
 
         dialogue.add_close()
 
-        await send_message(ctx.interaction,
+        return await send_message(ctx.interaction,
             dialogue.current_embed,
             dialogue.view,
             ephemeral = True)
-
-        return
-
-    #@new_group.command(name = 'character', description = 'A new actor onstage.')
-    # async def character(self, ctx: ApplicationContext):
-
-    #     server = RPServer(ctx.guild_id)
-
-    #     async def refresh():
-
-    #         nonlocal valid_url, name, place_name, allowed_people
-
-    #         description = '\n• Character name: '
-    #         name = view.name() or name
-    #         description += f'*{name}*' if name else 'Not set yet. What will they be called?'
-
-    #         description += '\n• Starting location: '
-    #         if view.places():
-    #             place_name = view.places()[0]
-
-    #         if place_name:
-    #             place = GD.places[place_name]
-    #             description += f"<#{place.channel_ID}>"
-    #         else:
-    #             description += "Use the dropdown to choose where they'll join."
-
-    #         description += '\n• Player(s): '
-    #         if view.people():
-    #             allowed_people = view.people()
-    #             description += await format_words([person.mention for person in view.people()])
-    #         else:
-    #             allowed_people = [ctx.author]
-    #             description += 'At a minimum, you and admins have access to this character.'
-
-    #         description += '\n• Role(s): '
-    #         if view.roles():
-    #             description += await format_roles(view.roles())
-    #         else:
-    #             description += 'Use the dropdown to give the character some roles.'
-
-    #         avatar, valid_url, avatar_message = await format_avatar(view.url())
-    #         description += f'\n• Avatar: {avatar_message}'
-
-    #         embed, file = await mbd(
-    #             'New character?',
-    #             description,
-    #             "You can always change these things later with /review character.",
-    #             (avatar, 'thumb'))
-    #         return embed, file
-
-    #     def checks():
-    #         nonlocal name, place_name
-    #         return not (name and place_name)
-
-    #     async def submit(interaction: Interaction):
-
-    #         await loading(interaction)
-
-    #         nonlocal GD, valid_url, name, place_name, allowed_people
-
-    #         #Inform character
-    #         CM = ChannelManager(interaction.guild)
-    #         character_channel = await CM.create_channel('characters', await discordify(name), allowed_people)
-
-    #         embed, _ = await mbd(
-    #             f'Welcome to your Character Channel, {name}.',
-    #             "Roleplay with others by talking here. Nearby characters will hear." + \
-    #             f"\n• Other people who can send messages here can also RP as {name}." + \
-    #             f"\n• Start the message with `\\` if you don't want it to leave this chat." + \
-    #             f"\n• You can `/look` around. {name} is at **#{place_name}** right now." + \
-    #             "\n• Do `/move` to go to other places you can reach." + \
-    #             "\n• You can `/eavesdrop` on nearby characters." + \
-    #             "\n• Other people can't see your `/commands` directly..." + \
-    #             "\n• ...Until you hit Submit, and start moving or eavesdropping.",
-    #             'You can always type /help to get more help.')
-    #         await character_channel.send(embed = embed)
-
-    #         char_data = Character(character_channel.id)
-    #         char_data.channel_ID = character_channel.id
-    #         char_data.location = place_name
-    #         char_data.roles = view.roles()
-    #         char_data.name = name
-
-    #         if view.url() and valid_url:
-    #             char_data.avatar = view.url()
-
-    #         await char_data.save()
-
-    #         #Inform the node occupants
-    #         place = GD.places[place_name]
-    #         player_embed, _ = await mbd(
-    #             'Someone new.',
-    #             f"*{char_data.name}* is here.",
-    #             'Perhaps you should greet them.',
-    #             (char_data.avatar, 'thumb'))
-    #         await to_direct_listeners(
-    #             player_embed,
-    #             interaction.guild,
-    #             place.channel_ID,
-    #             occupants_only = True)
-
-    #         #Add the players to the guild nodes as occupants
-    #         await GD.insert_character(char_data, place_name)
-    #         GD.characters[char_data.id] = char_data.name
-    #         await GD.save()
-
-    #         await character_change(character_channel, char_data)
-
-    #         #Inform admins node
-    #         description = f"• Added <#{char_data.id}> as a character. " + \
-    #             f"\n• They're starting at <#{place.channel_ID}>."
-    #         if char_data.roles:
-    #             description += f"\n• They have the role(s) of {await format_roles({char_data.roles})}"
-    #         embed, _ = await mbd(
-    #             f'Hello, **{char_data.name}**.',
-    #             description,
-    #             'You can view all characters and where they are with /review server.',
-    #             (char_data.avatar, 'thumb'))
-    #         place_channel = await get_or_fetch(interaction.guild, 'channel', place.channel_ID)
-    #         await place_channel.send(embed = embed)
-
-    #         LM = ListenerManager(interaction.guild, GD)
-    #         await LM.load_channels()
-    #         await LM.insert_character(char_data, skip_eaves = True)
-
-    #         return await no_redundancies(
-    #             (interaction.channel.name == place_name),
-    #             embed,
-    #             interaction)
-
-
-    #     dialogue = Dialogue()
-        
-    #     async def refresh(interaction: Interaction):
-    #         character_name = "New Character"
-    #         description = ( 
-    #             "Create a new character! Here's what we need: " 
-    #             f" - Name: {character_name}"
-    #             f" - Starting Location: ")
-            
-    #         await 
-        
-    #     embed, file = await image_embed(
-    #         title = f"{character_name} inbound.",
-    #         description = description,
-    #     )
-
-    #     # view = DialogueView(refresh, checks)
-    #     # await view.add_places(GD.places.keys())
-    #     # await view.add_people()
-    #     # await view.add_roles()
-    #     # await view.add_submit(submit)
-    #     # await view.add_rename()
-    #     # await view.add_URL()
-    #     # await view.add_cancel()
-    #     # embed, file = await refresh()
-    #     # await send_message(ctx.respond, embed, view, file)
-    #     return
 
     @create_group.command(
             name = "roleplay", 
             description = "Make this server a new Proximity roleplay!")
     async def roleplay(self, ctx: ApplicationContext):
 
-        if await roleplay_repo.exists(ctx.guild_id) == CommitResult.SUCCESS :
-
-            embed = text_embed(
-                "Way ahead of you.",
-                "This server is already registered for roleplay. If you want to start over," \
-                " delete the existing data with `/delete roleplay` and then call this" \
-                " command again.",
-                "But if you just want a /create location or a /create character, call those instead.")
-            
+        if await roleplay_repo.exists(ctx.guild_id) == CommitResult.SUCCESS:
+            embed = RoleplayEmbeds.create.exists_already()
             return await send_message(ctx.interaction, embed, ephemeral = True)
             
-        embed = text_embed(
-            "Let's do this.",
-            "First things first, your roleplay needs a name. Plus,"
-                " you need to designate a channel for admin logs (like" \
-                " character creation, place creation, and so on)." \
-                " And if you're feeling fancy, you can also add a" \
-                " description or even a reference photo. ", 
-            "You can change all these things later with /review roleplay.")
+        embed = RoleplayEmbeds.create.set_initial_details()
         
         dialogue = Dialogue(embed, disable_timeout = True)
+
         dialogue.add_channel_select(
             label = "Logging", 
             purpose = " for admin logs",
             min_values = 1)
 
+        # Details modal
         details_popup = Popup(title = "Roleplay details")
 
         details_popup.add_text(
@@ -540,45 +341,49 @@ class CreateCommands(commands.Cog):
             label = "Maximum player count",
             placeholder = "10 - Subscribe to increase this limit!",
             required = False)
-
+        
         details_popup.add_text(
             label = "Maximum location count",
             placeholder = "10 - Subscribe to increase this limit!",
             required = False)
 
-        details_button = dialogue.add_button(label = "Set roleplay details", style = ButtonStyle.blurple)
+        details_button = dialogue.add_button(
+            label = "Set roleplay details", 
+            style = ButtonStyle.blurple)
+        
         dialogue.add_modal(details_popup, details_button)
-
-        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
-        submit_button.should_disable = lambda : not dialogue.is_valid
-        dialogue.add_close()
+        # End Modal
 
         async def submit(interaction: Interaction):
 
-            url = dialogue._fields["Reference photo URL"].get_value()
+            url = dialogue.fields["Reference photo URL"].get_value()
             url_result = await reference_validator(url)
 
             rp_data = RoleplayData(
                 roleplay_id = ctx.guild_id,
-                name = dialogue._fields["Title"].get_value(),
-                log_channel_id = dialogue._fields["Logging"].get_value(),
-                description = dialogue._fields["Description"].get_value(),
+                name = dialogue.fields["Title"].get_value(),
+                log_channel_id = dialogue.fields["Logging"].get_value(),
+                description = dialogue.fields["Description"].get_value(),
                 reference = url if url_result == CommitResult.SUCCESS else None)
 
-            await Roleplay.create(rp_data)
+            rp = await Roleplay.create(rp_data)
+            if not isinstance(rp, Roleplay):
+                return
+            
             embed, file = await RoleplayEmbeds.create.log(
                 rp_data.name, 
                 rp_data.reference)
-            await notify_log(rp_data, embed, file)
+            await rp.notify_log(embed, file)
             
             dialogue.current_embed, dialogue.current_file = \
                 await RoleplayEmbeds.create.user(rp_data.name, url_result)
             dialogue.view.clear_items()
-            await dialogue.refresh(interaction)
+            return await dialogue.refresh(interaction)
 
-            return
-
+        submit_button = dialogue.add_button(label = "Submit", style = ButtonStyle.success)
+        submit_button.should_disable = lambda : not dialogue.is_valid
         submit_button.callback = submit
+        dialogue.add_close()
 
         await dialogue.view.refresh_children()
         return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)

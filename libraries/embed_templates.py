@@ -10,21 +10,6 @@ from libraries.user_interface import text_embed, image_embed, \
 from datetime import datetime as dt
 from io import BytesIO
 
-async def notify_log(
-    rp_data: RoleplayData, 
-    embed: Embed,
-    file: File | None = None
-) -> bool:
-    """Returns bool that says whether it found the log channel."""
-
-    log_channel = await get_channel(rp_data.log_channel_id)
-
-    if log_channel is None:
-        return False
-
-    await safe_send(embed, [log_channel], silent = True, file = file)
-    return True
-
 class ErrorEmbeds:
 
     @staticmethod
@@ -303,7 +288,7 @@ class _UserMove:
             "Passing through.",
             f"You notice {char_mention} pass through. They came from" + \
                 f" the direction of {prev_loc_mention}, and kept going" + \
-                f" towards the direction of {prev_loc_mention}.",
+                f" towards the direction of {next_loc_mention}.",
             "Maybe you can catch up to them, if you'd like?",
             thumbnail = True, 
             source = ImageSource.URL,
@@ -398,7 +383,7 @@ class _CharDelete:
 class _CharReview:
     ...
 
-class CharacterEmbeds:
+class CharEmbeds:
     delete = _CharDelete
     #create =
     review = _CharReview 
@@ -547,6 +532,15 @@ class _LocCreate:
             "Proceeds go straight towards server costs and feature improvements.")
 
     @staticmethod
+    def set_details() -> Embed:
+        return text_embed(
+            "Someplace new?",
+            "All you need to provide is a name, and"
+                " I can make the Location and its channel. But if you like," \
+                " you can include a description and a reference photo.", 
+            "All of this can be edited later with /review Location.")
+
+    @staticmethod
     async def log(
         name: str, 
         description: str | None, 
@@ -666,6 +660,15 @@ class _LocCreate:
 class _LocReview:
 
     @staticmethod
+    def select_location() -> Embed:
+        return text_embed(
+            title = "Which Location?",
+            description = ("Please select a Location channel from the dropdown below" +
+                " to review its details. You can also call this command" +
+                " in a Location channel to select it automatically."),
+            footer = "This will show you everything about the place.")
+
+    @staticmethod
     async def user(
         description: str | None, 
         reference: str | None
@@ -679,6 +682,16 @@ class LocEmbeds:
     review = _LocReview
 
 class _RoleplayDelete:
+
+    @staticmethod
+    def confirm_delete() -> Embed:
+        return text_embed(
+            "Delete all data?",
+            "You're about to delete all roleplay data, including"
+                " all Locations and Characters. Any associated" 
+                " channels will be deleted, apart from the"
+                " log channel you set when you registered the server.",
+            "This is irreversible, so make sure you're certain you want this.")
 
     @staticmethod
     async def log(reference: str | None) -> tuple[Embed, File | None]:
@@ -706,6 +719,29 @@ class _RoleplayDelete:
             asset_str = reference)
 
 class _RoleplayCreate:
+
+    @staticmethod
+    def exists_already() -> Embed:
+
+        return text_embed(
+            title = "Way ahead of you.",
+            description = ("This server is already registered for roleplay. "
+                "If you want to start over, delete the existing data with "
+                "`/delete roleplay` and then call this command again."),
+            footer ="But if you just want a /create location or a /create " \
+                "character, call those instead.")
+
+    @staticmethod
+    def set_initial_details() -> Embed:
+
+        return text_embed(
+            "Let's do this.",
+            "First things first, your roleplay needs a name. You'll,"
+                " also need to set a log channel to record things like" \
+                " creating or editing the roleplay." \
+                " And if you're feeling fancy, you can also add a" \
+                " description or even a reference photo. ", 
+            "You can change all these things later with /review roleplay.")
 
     @staticmethod
     async def log(rp_name: str, reference: str | None) -> tuple[Embed, File | None]:
@@ -751,7 +787,30 @@ class _RoleplayCreate:
             source = ImageSource.URL,
             asset_str = reference)
 
-class _RoleplayUpdate:
+class _RoleplayReview:
+
+    @staticmethod
+    async def overview(
+        rp_data: RoleplayData, 
+        character_count: int,
+        location_count: int) -> tuple[Embed, File | None]:
+
+        return await image_embed(
+            f"Reviewing {rp_data.name}",
+            f"**Character Count:** {character_count} / {rp_data.character_limit}"
+                f"\n**Character Category:** " +
+                    (f"{rp_data.char_mention}" if rp_data.characters_cat is not None else "None yet.") +
+                f"\n**Location Count:** {location_count} / {rp_data.location_limit}"
+                f"\n**Location Category:** " +
+                    (f"{rp_data.loc_mention}" if rp_data.locations_cat is not None else "None yet.") +
+                f"\n**Log Channel:** {rp_data.log_mention}"
+                f"\n**Description:** {rp_data.description}"
+                "\n**Reference:** " +
+                    ("See below." if rp_data.reference else "None (yet). You should add one!"),
+            "Would you perhaps like to change these things?",
+            thumbnail = rp_data.reference is None,
+            source = ImageSource.URL if rp_data.reference is not None else ImageSource.ASSET,
+            asset_str = rp_data.reference or "")
 
     @staticmethod
     async def log(
@@ -843,7 +902,7 @@ class _RoleplayUpdate:
         new_rp_data: RoleplayData
     ) -> tuple[Embed, File | None]: 
 
-        return await _RoleplayUpdate.log(
+        return await _RoleplayReview.log(
             old_rp_data, 
             prop_diffs, 
             new_rp_data) 
@@ -851,4 +910,4 @@ class _RoleplayUpdate:
 class RoleplayEmbeds:
     delete = _RoleplayDelete
     create = _RoleplayCreate
-    update = _RoleplayUpdate
+    review = _RoleplayReview

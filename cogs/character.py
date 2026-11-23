@@ -18,7 +18,7 @@ from data.database_entries import (
     character_repo, CharacterData,
     route_repo, RouteData)
 from data.database_handler import CommitResult
-from libraries.embed_templates import CharacterEmbeds, UserEmbeds
+from libraries.embed_templates import CharEmbeds, UserEmbeds
 
 from discord import ApplicationContext, ButtonStyle, Interaction
 from discord.ext import commands
@@ -80,7 +80,7 @@ class CharacterCommands(commands.Cog):
 
             async def focus_on_person(interaction: Interaction):
 
-                focus_id = int(dialogue._fields["Character focus"].get_value())
+                focus_id = int(dialogue.fields["Character focus"].get_value())
                 examined_char_data = await character_repo.fetch(focus_id)
 
                 assert isinstance(examined_char_data, CharacterData), "ayo??"
@@ -183,7 +183,7 @@ class CharacterCommands(commands.Cog):
 
         async def show_proposal(interaction: Interaction):
 
-            dest_id = int(dialogue._fields["Destination"].get_value())
+            dest_id = int(dialogue.fields["Destination"].get_value())
             path = gw.get_path(
                 origin = origin_loc.data.location_id,
                 destination = dest_id)
@@ -197,7 +197,7 @@ class CharacterCommands(commands.Cog):
 
             await dialogue.close(interaction)
 
-            dest_id = int(dialogue._fields["Destination"].get_value())
+            dest_id = int(dialogue.fields["Destination"].get_value())
             path_data = gw.get_path(
                 origin = origin_loc.data.location_id,
                 destination = dest_id)
@@ -246,7 +246,7 @@ class CharacterCommands(commands.Cog):
                     continue
 
                 pass_embed, pass_image = await UserEmbeds.move.pass_location(
-                    character.data.mention,
+                    character.data.char_mention,
                     character.data.reference,
                     path_locs[index - 1].data.char_mention, # pyright: ignore[reportOptionalMemberAccess]
                     path_locs[index + 1].data.char_mention) # pyright: ignore[reportOptionalMemberAccess]

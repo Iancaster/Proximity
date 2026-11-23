@@ -14,7 +14,7 @@ from data.database_entries import (
     location_repo, LocationData,
     character_repo, CharacterData)
 
-from libraries.embed_templates import notify_log, LocEmbeds, CharacterEmbeds
+from libraries.embed_templates import LocEmbeds, CharEmbeds
 from libraries.classes import Relayable, Roleplay, Location, Character, get_channel
 
 SELF_ID = 1114004384926421126 
@@ -183,19 +183,17 @@ class Autonomous(commands.Cog):
     @commands.Cog.listener() 
     async def on_guild_channel_delete(self, channel: TextChannel):
 
-        rp_data = await roleplay_repo.fetch(channel.guild.id)
-
-        if not isinstance(rp_data, RoleplayData):
+        rp = await Roleplay.load(channel.guild.id)
+        if rp is None:
             return
 
         character = await Character.load(channel.id)
         if character is not None:            
             await character.delete()
-            embed, file = await CharacterEmbeds.delete.auto(
+            embed, file = await CharEmbeds.delete.auto(
                 character.data.name, 
                 character.data.reference)
-            await notify_log(rp_data, embed, file)
-            return
+            return await rp.notify_log(embed, file)
 
         location = await Location.load(channel.id)
         if location is None:
@@ -207,9 +205,7 @@ class Autonomous(commands.Cog):
             embed, file = await LocEmbeds.delete.auto(
                 location.data.name, 
                 location.data.reference)
-            await notify_log(rp_data, embed, file)
- 
-            return
+            return await rp.notify_log(embed, file)
 
         return
 
