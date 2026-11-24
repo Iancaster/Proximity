@@ -67,7 +67,7 @@ class DeleteCommands(commands.Cog):
 
         location = await Location.load(ctx.channel_id)
 
-        if await location_repo.exists(ctx.channel_id):
+        if location is not None:
 
             embed = text_embed(
                 "Delete this location?",
@@ -101,8 +101,7 @@ class DeleteCommands(commands.Cog):
             async def select(interaction: Interaction):
                 nonlocal location
                 location = await Location.load(channel_select.values[0].id)
-                await delete_location(interaction)
-                return
+                return await delete_location(interaction)
             
             submit_button.callback = select
 

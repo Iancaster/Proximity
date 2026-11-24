@@ -376,7 +376,7 @@ class CreateCommands(commands.Cog):
             await rp.notify_log(embed, file)
             
             dialogue.current_embed, dialogue.current_file = \
-                await RoleplayEmbeds.create.user(rp_data.name, url_result)
+                await RoleplayEmbeds.create.user(rp_data.reference, url_result)
             dialogue.view.clear_items()
             return await dialogue.refresh(interaction)
 

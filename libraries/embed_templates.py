@@ -564,12 +564,14 @@ class _LocCreate:
         
         if reference is None:
             footer = "This Location has no reference photo attached."
+        
         elif await reference_validator(reference) != CommitResult.SUCCESS:
             footer = ("The reference photo provided wasn't valid.")
+        
         else:
             footer = "Pretty nifty reference photo."
 
-        footer = "Be sure to connect it to other locations with /create Route."
+        footer += "Be sure to connect it to other locations with /create Route."
         
         return await image_embed(
             f"New Location: {name}",
@@ -591,11 +593,11 @@ class _LocCreate:
             " to place them here.\n\n")
 
         if not description:
-            embed_description = ("This Location has no description" 
+            embed_description += ("This Location has no description" 
                 " yet, but you can add one with `/review Location`.")
             
         else:
-            embed_description = ("This Location has the following" 
+            embed_description += ("This Location has the following" 
                 " description, which is visible to players who `/look` around:"
                 "\n>>> ") + description
 
@@ -629,11 +631,11 @@ class _LocCreate:
         embed_description = ("Check out the new digs.\n\n")
 
         if not description:
-            embed_description = ("This location has no description" 
+            embed_description += ("This location has no description" 
                 " yet, but a Host can add one with `/review location`.")
             
         else:
-            embed_description = ("This location has the following" 
+            embed_description += ("This location has the following" 
                 " description, which is visible to players who `/look` around:"
                 "\n>>> ") + description
 
