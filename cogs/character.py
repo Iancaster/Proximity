@@ -17,7 +17,6 @@ from data.database_entries import (
     location_repo, LocationData,
     character_repo, CharacterData,
     route_repo, RouteData)
-from data.database_handler import CommitResult
 from libraries.embed_templates import CharEmbeds, UserEmbeds
 
 from discord import ApplicationContext, ButtonStyle, Interaction

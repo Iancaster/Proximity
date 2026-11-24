@@ -58,7 +58,11 @@ class DebugCommands(commands.Cog):
             source = ImageSource.URL,
             asset_str =  asset_str)
 
-        return await send_message(ctx.interaction, embed, file = file, ephemeral = True)
+        return await send_message(
+            ctx.interaction, 
+            embed, 
+            file = file, 
+            ephemeral = True)
 
 def setup(prox):
     prox.add_cog(DebugCommands(prox), override = True)

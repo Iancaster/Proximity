@@ -1,8 +1,14 @@
 
-from libraries.classes import Roleplay, Location, Route, Character, Relayable
+from discord import ApplicationContext, InteractionContextType, \
+    ButtonStyle, InputTextStyle, Interaction, TextChannel, Embed
+from discord.ext import commands
+from discord.commands import SlashCommandGroup
+
+from libraries.classes import (in_text_channel, \
+    is_administrator, in_prox_rp, in_location, \
+    Roleplay, Location, Route, Character, Relayable)
 from libraries.user_interface import Dialogue, Popup, \
-    text_embed, send_message, reference_validator, LOGO, \
-    safe_send
+    send_message, reference_validator, LOGO, safe_send
 from data.database_entries import ( 
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
@@ -11,15 +17,6 @@ from data.database_entries import (
 from data.database_handler import CommitResult
 from libraries.embed_templates import RoleplayEmbeds, \
     LocEmbeds, CharEmbeds, ErrorEmbeds, RouteEmbeds
-
-from discord import ApplicationContext, InteractionContextType, \
-    ButtonStyle, InputTextStyle, Interaction, TextChannel, Embed
-from discord.ext import commands
-from discord.commands import SlashCommandGroup
-
-from libraries.classes import in_text_channel, \
-    is_administrator, in_prox_rp, in_location, \
-    Roleplay
 
 class CreateCommands(commands.Cog):
 
@@ -44,7 +41,10 @@ class CreateCommands(commands.Cog):
                 location_limit = rp.data.location_limit, 
                 end_date = rp.data.subscription_end)
 
-            return await send_message(ctx.interaction, embed, ephemeral = True)
+            return await send_message(
+                ctx.interaction, 
+                embed, 
+                ephemeral = True)
 
         embed = LocEmbeds.create.set_details() 
         
@@ -139,8 +139,13 @@ class CreateCommands(commands.Cog):
         submit_button.callback = submit
 
         await dialogue.view.refresh_children()
-        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
-
+        return await send_message(
+            ctx.interaction, 
+            embed, 
+            dialogue.view, 
+            ephemeral = True)
+    
+    # Rework this to simply disallow no-new-neighbor submissions
     @create_group.command(
         name = "route", 
         description = "Lets Characters travel between Locations.", 
@@ -153,36 +158,13 @@ class CreateCommands(commands.Cog):
         rp = await Roleplay.load(ctx.guild_id)
         assert isinstance(rp, RoleplayData)
 
-        directions = {
-            "<->" : "Goes both ways",
-            "->" : "Only goes from here to the other location",
-            "<-" : "Only allows travel *from* those locations *to* here"}
-        directionality = 0
+        curr_dir = "<->"
+        dir_to_recip = {
+            "<->" : "<->",
+            "->" : "<-",
+            "<-" : "->"}       
 
-        async def build_embed(selected_direction: int = directionality) -> Embed:
-
-            nonlocal directions
-
-            description = ("What other Location(s) should this be connected to? Select" + 
-                " one or more Locations you want to ensure are connected" + 
-                " and choose what direction the pathways go.")
-
-            for i, pair in enumerate(directions.items()):
-
-                arrow, expl = pair                
-                if i == selected_direction:
-                    description += f"\n**- {arrow} {expl}**"
-                else:
-                    description += f"\n- {arrow} {expl}"
-
-            embed = text_embed(
-                "Where to?",
-                description,
-                "Most of the time, you want your Routes to be two-ways, not one-way.")
-
-            return embed            
-
-        dialogue = Dialogue(await build_embed())
+        dialogue = Dialogue(RouteEmbeds.create.set_neighbors(curr_dir))
 
         async def submit(interaction: Interaction):
 
@@ -194,44 +176,26 @@ class CreateCommands(commands.Cog):
 
                 dialogue.current_embed = ErrorEmbeds.no_locs_selected()
                 dialogue.view.clear_items()
-                await dialogue.refresh(interaction)
-                return
+                return await dialogue.refresh(interaction)
 
             existing_routes = [end for route in await location.connections for end in (route.to_id, route.from_id)]
             neighbors = [n for n in neighbors if n.location_id not in existing_routes]
 
             if not neighbors:
-                dialogue.current_embed = text_embed(
-                    "No new connections.",
-                    ("`/create Route` is only for creating new Routes-- if you" +
-                        " already have a Route between this Location and another," +
-                        " then this command won't affect it. If you want to overwrite" +
-                        " a Route, you can use `/review Route` or just `/delete" +
-                        " Route` and recreate."),
-                    "Feel free to call the command again.")
+                dialogue.current_embed = RouteEmbeds.create.no_new_neighbors()
                 dialogue.view.clear_items()
-                await dialogue.refresh(interaction)
-                return
-
-            chosen_dir = list(directions.keys())[directionality]
-
-            if chosen_dir == "<->":
-                reciprocal = "<->"
-            elif chosen_dir == "->":
-                reciprocal = "<-"
-            else:
-                reciprocal = "->"
+                return await dialogue.refresh(interaction)
 
             for neigh in neighbors:
 
-                if ">" in chosen_dir:
+                if ">" in curr_dir:
                     data = RouteData(
                         from_id = location.data.location_id,
                         to_id = neigh.location_id,
                         roleplay_id = rp.data.roleplay_id)
                     await Route.create(data)
 
-                if "<" in chosen_dir:
+                if "<" in curr_dir:
                     data = RouteData(
                         from_id = neigh.location_id,
                         to_id = location.data.location_id,
@@ -241,25 +205,26 @@ class CreateCommands(commands.Cog):
                 embed = await RouteEmbeds.create.channel(
                     origin = neigh,
                     destinations = [location.data],
-                    directionality = reciprocal)
+                    directionality = dir_to_recip[curr_dir])
+                
                 await safe_send(embed, [neigh.location_id], silent = True)
 
             embed = await RouteEmbeds.create.log(
                 location.data, 
                 neighbors, 
-                chosen_dir)
+                curr_dir)
             await rp.notify_log(embed)
 
             embed = await RouteEmbeds.create.channel(
                 location.data,
                 neighbors,
-                chosen_dir)
+                curr_dir)
             await safe_send(embed, [location.data.location_id], silent = True)
 
             embed = await RouteEmbeds.create.user(
                 location.data, 
                 neighbors,
-                chosen_dir)
+                curr_dir)
 
             dialogue.current_embed = embed
             dialogue.view.clear_items()
@@ -273,23 +238,26 @@ class CreateCommands(commands.Cog):
             max_values = 5)
 
         async def cycle_direction(interaction: Interaction):
-            nonlocal directionality
-            directionality = directionality + 1 if directionality < 2 else 0
-            dialogue.current_embed = await build_embed(directionality)
-            await dialogue.refresh(interaction)
-            return
+            nonlocal curr_dir
+            all_dirs = list(dir_to_recip.keys())
+            next_dir_index = all_dirs.index(curr_dir) + 1
+            curr_dir = all_dirs[next_dir_index] if \
+                next_dir_index <= len(all_dirs) else all_dirs[0] 
+            dialogue.current_embed = RouteEmbeds.create.set_neighbors(curr_dir)
+            return await dialogue.refresh(interaction)
         
         dir_button = dialogue.add_button("Change direction", style = ButtonStyle.secondary)
         dir_button.callback = cycle_direction
 
         submit_button = dialogue.add_button("Submit", style = ButtonStyle.success)
         submit_button.callback = submit
-        submit_button.should_disable = lambda : not dialogue.fields["Neighbors"].get_value()
+        submit_button.should_disable = lambda : not dialogue.is_valid
         submit_button.disabled = True
 
         dialogue.add_close()
 
-        return await send_message(ctx.interaction,
+        return await send_message(
+            ctx.interaction,
             dialogue.current_embed,
             dialogue.view,
             ephemeral = True)
@@ -301,7 +269,10 @@ class CreateCommands(commands.Cog):
 
         if await roleplay_repo.exists(ctx.guild_id) == CommitResult.SUCCESS:
             embed = RoleplayEmbeds.create.exists_already()
-            return await send_message(ctx.interaction, embed, ephemeral = True)
+            return await send_message(
+                ctx.interaction, 
+                embed, 
+                ephemeral = True)
             
         embed = RoleplayEmbeds.create.set_initial_details()
         
@@ -386,7 +357,11 @@ class CreateCommands(commands.Cog):
         dialogue.add_close()
 
         await dialogue.view.refresh_children()
-        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
+        return await send_message(
+            ctx.interaction, 
+            embed, 
+            dialogue.view, 
+            ephemeral = True)
     
 def setup(prox):
     prox.add_cog(CreateCommands(prox), override = True)

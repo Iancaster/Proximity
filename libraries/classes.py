@@ -18,7 +18,7 @@ from libraries.user_interface import reference_validator, \
 from libraries.embed_templates import ErrorEmbeds
 
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
-	draw_networkx_edges, shell_layout, draw_networkx_labels, \
+    draw_networkx_edges, shell_layout, draw_networkx_labels, \
     shortest_path
 from matplotlib.pyplot import margins, gcf, tight_layout, axis, close, figure
 from matplotlib.patches import ArrowStyle
@@ -48,7 +48,8 @@ async def in_prox_rp(ctx: ApplicationContext) -> bool:
 async def is_administrator(ctx: ApplicationContext) -> bool: # Revisit this once the bot is done.
     
     if not ctx.channel.permissions_for(ctx.author).administrator:
-        await ctx.respond("To prevent abuse, only server administrators may use this command.", ephemeral = True)
+        embed = ErrorEmbeds.non_admin()
+        await ctx.respond(embed = embed, ephemeral = True)
         return False
 
     return True
@@ -193,9 +194,7 @@ class Relayable:
         try:
             await webhook.delete(reason = "No longer needed.")
             return True
-        except NotFound:
-            return True
-        except:
+        except HTTPException:
             return False
 
     @classmethod

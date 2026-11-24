@@ -1,14 +1,18 @@
 #!/usr/bin/python3
 
-from data.database_handler import initialize_db, close_db
-from libraries.user_interface import set_bot
-from discord import Bot, Game, Intents, ApplicationContext, CheckFailure, NotFound
 from asyncio import run
 from time import time
 from dotenv import load_dotenv
-from config.cfg_parser import cfg
 from os import environ
-from typing import Coroutine, Any
+from typing import Coroutine
+
+from discord import Bot, Game, Intents, ApplicationContext, CheckFailure, NotFound
+
+from data.database_handler import initialize_db, close_db
+from libraries.user_interface import set_bot
+from libraries.logger import get_logger
+from config.cfg_parser import cfg
+
 
 boot_time: float = time()
 
@@ -22,6 +26,7 @@ intents.webhooks = True
 load_dotenv()
 
 post_ready: Coroutine | None = None
+logger = get_logger("Main")
 
 def set_post_ready(coro: Coroutine):
     global post_ready
@@ -48,7 +53,7 @@ async def main():
         
         await bot.change_presence(activity = Game(str(cfg("account", "activity")) or " with someone's heart."))
 
-        print(f"{bot.user.name} woke up in {time() - boot_time:.2f} seconds.")
+        logger.info(f"{bot.user.name} woke up in {time() - boot_time:.2f} seconds.")
 
         if post_ready is not None:
             await post_ready() # pyright: ignore[reportCallIssue]
@@ -80,3 +85,11 @@ async def main():
 
 if __name__ == "__main__":
     run(main())
+
+## Cleanup candidates
+
+# - Inline `text_embed` calls in `delete.py` (to move into `embed_templates.py`).
+# - Unused imports (`LOGO`, `CharEmbeds`, `Route`, `get_channel`, `CharacterData`, `route_repo`, and others).
+# - Trailing whitespace across most files.
+# - Unreachable code after the `return` in `autonomous.py::on_guild_channel_delete`.
+# - The stray `return` after `return await image_embed(...)` in `_UserMove.where_to`.

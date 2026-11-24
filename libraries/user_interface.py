@@ -1,19 +1,19 @@
 """Used for sending through Discord."""
 
-from discord import ComponentType, Interaction, ChannelType, MISSING, \
-    HTTPException, TextChannel, Bot, SelectOption
-from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
-from discord.abc import GuildChannel
-from discord.errors import NotFound
-from discord import File, Embed, ButtonStyle, InputTextStyle
-from discord.utils import get_or_fetch
-
 from aiohttp import ClientSession, ClientTimeout
 from typing import Callable, Any
 from io import BytesIO
 from enum import IntEnum
 from pathlib import Path
 from abc import ABC, abstractmethod
+
+from discord import ComponentType, Interaction, ChannelType, MISSING, \
+    HTTPException, TextChannel, Bot, SelectOption
+from discord.ui import View, Select, Button as ButtonInput, Modal, InputText
+from discord.abc import GuildChannel
+from discord import File, Embed, ButtonStyle, InputTextStyle
+from discord.utils import get_or_fetch
+
 from config.cfg_parser import cfg
 from libraries.logger import get_logger
 from data.database_handler import _Unset, CommitResult
@@ -365,6 +365,8 @@ class Popup(Modal):
     
 class DialogueView(View):
 
+    logger = get_logger("Dialogue View")
+
     timeout_embed = text_embed(
         "Timed out.",
         "Interactions generally time out after thirty seconds of inactivity. Feel free to call the command again!",
@@ -416,7 +418,12 @@ class DialogueView(View):
         for child in self.children:  
 
             if not isinstance(child, DialogueMixin):
-                print(f"Warning: child {child} does not implement DialogueMixin. Skipping refresh.")
+                
+                self.logger.warning(f"Warning: child {child} does not implement" + 
+                    f" DialogueMixin in {self.original_interaction.guild_id}." +  # pyright: ignore[reportOptionalMemberAccess]
+                    f" for message {self.original_interaction.message.id}." +  # pyright: ignore[reportOptionalMemberAccess]
+                    " Skipping refresh.")
+                
                 continue
 
             await child.full_refresh()
@@ -428,6 +435,8 @@ class DialogueView(View):
         return any(field.get_value() for field in self.fields)
  
 class Dialogue:
+
+    logger = get_logger("Dialogue")
 
     def __init__(self, 
         starting_embed: Embed, 
@@ -481,8 +490,10 @@ class Dialogue:
             try:
                 await interaction.respond(
                     "The original message has been deleted-- perhaps it timed out?"
-                        " Please call the command again.", ephemeral = True)
-            except:
+                        " Please call the command again.", 
+                    ephemeral = True)
+                
+            except HTTPException:
                 pass
 
         return
@@ -512,7 +523,10 @@ class Dialogue:
         for child in popup.children:
 
             if not isinstance(child, DialogueMixin):
-                print(f"Warning: child {child} does not implement DialogueMixin. Skipping insert.")
+                
+                self.logger.warning(f"Warning: child {child} does not" + \
+                    " implement DialogueMixin. Skipping insert.")
+                
                 continue
 
             self.fields[child.field_name] = child
@@ -690,380 +704,3 @@ async def safe_del_channels(
             logger.warning(f"Failed to delete channel {chan.id}.")
 
     return
-
-# class DialogueView(View):
-#     refresh: Callable = ib(default = None)
-#     should_disable_submit: Callable = ib(default = lambda: False)
-
-#     # Interior
-#     def __attrs_pre_init__(self):
-#         super().__init__()
-#         return
-
-#     def __attrs_post_init__(self):
-#         self.timeout = 120
-
-#         self.created_components = set()
-
-#         self.overwriting = False
-#         self.clearing = False
-#         self.directionality = 1
-#         return
-
-#     async def _call_refresh(self, interaction: Interaction):
-#         embed, file = await self.refresh()
-#         if 'submit' in self.created_components:
-#             should_disable = self.should_disable_submit()
-#             if self.submit.disabled != should_disable:
-#                 self.submit.style = ButtonStyle.success
-#                 self.submit.disabled = should_disable
-#                 await interaction.response.edit_message(embed = embed, file = file, view = self)
-#                 return
-#         await interaction.response.edit_message(embed = embed, file = file)
-#         return
-
-
-#     async def _close(self, interaction: Interaction):
-
-#         embed, _ = await mbd(
-#             'Closed.',
-#             "This will now delete itself.",
-#             'Feel free to call the command again.')
-
-#         await interaction.response.edit_message(
-#             embed = embed,
-#             attachments = [],
-#             view = None,
-#             delete_after = 5)
-#         return
-
-
-
-#     def people(self):
-#         return self.people_select.values
-
-#     async def add_characters(self, characters: dict, singular: bool = False, callback: Callable = None):
-
-#         self._characters_dict = characters
-
-#         if not characters:
-#             self.character_select_textual = True
-#             self.character_select = Select(
-#                 placeholder = 'No characters to select.',
-#                 disabled = True)
-#             self.character_select.add_option(
-#                 label = '_')
-#             self.add_item(self.character_select)
-#             return
-
-#         if singular:
-#             plurality = ''
-#         else:
-#             plurality = 's'
-
-#         if len(characters) < 25:
-#             self.character_select_textual = True
-
-#             self.character_select = Select(
-#                 select_type = ComponentType.string_select,
-#                 placeholder = f'Which character{plurality}?',
-#                 min_values = 0,
-#                 max_values = 1 if singular else len(characters))
-#             [self.character_select.add_option(label = name, value = str(ID)) for ID, name in characters.items()]
-
-#         else:
-#             self.character_select_textual = False
-
-#             self.character_select = Select(
-#                 select_type = ComponentType.channel_select,
-#                 placeholder = f'Which character{plurality}?',
-#                 min_values = 0,
-#                 max_values = 1 if singular else 25,
-#                 channel_types = [ChannelType.text])
-
-#         self.character_select.callback = callback or self._call_refresh
-#         self.add_item(self.character_select)
-#         self.created_components.add('character_select')
-#         return
-
-#     def characters(self):
-#         if self.character_select_textual:
-#             return {int(ID) : self._characters_dict[int(ID)] for index, ID in enumerate(self.character_select.values)}
-
-#         return {channel.id : self._characters_dict[channel.id] for channel in self.character_select.values if channel.id in self._characters_dict}
-
-#     async def add_roles(self, singular: bool = False, callback: Callable = None):
-
-#         self.role_select = Select(
-#             placeholder = f"Which role{'' if singular else 's'}?",
-#             select_type = ComponentType.role_select,
-#             min_values = 0,
-#             max_values = 25)
-
-#         self.role_select.callback = callback or self._call_refresh
-#         self.add_item(self.role_select)
-#         self.created_components.add('role_select')
-#         return
-
-#     def roles(self):
-#         return {role.id for role in self.role_select.values}
-
-#     async def add_places(self, place_names: iter,  singular: bool = True, callback: Callable = None):
-
-#         self.place_names = place_names
-
-#         if not place_names:
-#             self.place_select_textual = True
-#             self.place_select = Select(
-#                 placeholder = 'No places to select.',
-#                 disabled = True)
-#             self.place_select.add_option(
-#                 label = '_')
-#             self.add_item(self.place_select)
-#             return
-
-#         if singular:
-#             plurality = ''
-#         else:
-#             plurality = 's'
-
-#         if len(place_names) < 25:
-#             self.place_select_textual = True
-
-#             self.place_select = Select(
-#                 select_type = ComponentType.string_select,
-#                 placeholder = f'Which place{plurality}?',
-#                 min_values = 0,
-#                 max_values = 1 if singular else len(place_names))
-#             [self.place_select.add_option(label = name) for name in place_names]
-
-#         else:
-#             self.place_select_textual = False
-
-#             self.place_select = Select(
-#                 select_type = ComponentType.channel_select,
-#                 placeholder = f'Which place{plurality}?',
-#                 min_values = 0,
-#                 max_values = 1 if singular else 25,
-#                 channel_types = [ChannelType.text])
-
-#         self.place_select.callback = callback or self._call_refresh
-#         self.add_item(self.place_select)
-#         self.created_components.add('place_select')
-#         return
-
-#     def places(self):
-#         if self.place_select_textual:
-#             return self.place_select.values
-
-#         return {channel.name for channel in self.place_select.values if channel.name in self.place_names}
-
-#     async def add_paths(self, neighbors: dict, callback: Callable = None):
-
-#         self.path_select = Select(
-#             placeholder = 'Which path(s)?',
-#             min_values = 0,
-#             max_values = len(neighbors))
-#         self.path_select.callback = callback or self._call_refresh
-
-#         for neighbor, edge in neighbors.items():
-
-#             match edge.directionality:
-
-#                 case 0:
-#                     self.path_select.add_option(label = f'<- {neighbor}',
-#                         value = neighbor)
-
-#                 case 1:
-#                     self.path_select.add_option(label = f'<-> {neighbor}',
-#                         value = neighbor)
-
-#                 case 2:
-#                     self.path_select.add_option(label = f'-> {neighbor}',
-#                         value = neighbor)
-
-#         self.add_item(self.path_select)
-#         self.created_components.add('path_select')
-#         return
-
-#     def paths(self):
-#         return self.path_select.values
-
-#     # Modals
-#     async def add_rename(self, existing: str = '', callback: Callable = None):
-
-#         modal = Modal(title = 'Choose a new name?')
-
-#         name_select = InputText(
-#             label = 'name',
-#             style = InputTextStyle.short,
-#             min_length = 0,
-#             max_length = 25,
-#             placeholder = "What should it be?",
-#             value = existing)
-#         modal.add_item(name_select)
-#         modal.callback = callback or self._call_refresh
-
-#         async def send_modal(interaction: Interaction):
-#             await interaction.response.send_modal(modal = modal)
-#             return
-
-#         modal_button = Button(
-#             label = 'Change Name',
-#             style = ButtonStyle.success)
-
-#         modal_button.callback = send_modal
-#         self.add_item(modal_button)
-#         self.name_select = name_select
-#         self.existing = existing
-#         self.created_components.add('namer')
-#         return
-
-#     def name(self):
-
-#         if 'namer' not in self.created_components:
-#             return None
-
-#         if self.name_select.value == self.existing:
-#             return None
-
-#         return self.name_select.value
-
-#     async def add_URL(self, callback: Callable = None):
-
-#         modal = Modal(title = 'Choose a new avatar?')
-
-#         url_select = InputText(
-#             label = 'url',
-#             style = InputTextStyle.short,
-#             min_length = 1,
-#             max_length = 200,
-#             placeholder = "What's the image URL?")
-#         modal.add_item(url_select)
-#         modal.callback = callback or self._call_refresh
-
-#         async def send_modal(interaction: Interaction):
-#             await interaction.response.send_modal(modal = modal)
-#             return
-
-#         modal_button = Button(
-#             label = 'Change Avatar',
-#             style = ButtonStyle.success)
-
-#         modal_button.callback = send_modal
-#         self.add_item(modal_button)
-#         self.url_select = url_select
-#         return
-
-#     def url(self):
-#         return self.url_select.value
-
-#     #Buttons
-#     async def add_submit(self, callback: callable):
-
-#         submit = Button(
-#             label = 'Submit',
-#             style = ButtonStyle.secondary if self.should_disable_submit() else ButtonStyle.success)
-#         submit.callback = callback
-#         submit.disabled = self.should_disable_submit()
-#         self.add_item(submit)
-#         self.submit = submit
-#         self.created_components.add('submit')
-#         return
-
-#     #Buttons
-#     async def add_confirm(self, callback: callable):
-#         confirm = Button(
-#             label = 'Confirm',
-#             style = ButtonStyle.danger)
-#         confirm.callback = callback
-#         self.add_item(confirm)
-#         self.created_components.add('confirm')
-#         return
-
-#     async def add_clear(self, callback: Callable = None):
-#         clear = Button(
-#             label = 'Clear Whitelist',
-#             style = ButtonStyle.secondary)
-
-#         async def clearing(interaction: Interaction):
-#             self.clearing = not self.clearing
-#             if callback:
-#                 await callback(interaction)
-#             else:
-#                 await self._call_refresh(interaction)
-#             return
-
-#         clear.callback = clearing
-#         self.add_item(clear)
-#         self.created_components.add('clear')
-#         return
-
-#     async def add_overwrite(self):
-#         overwrite = Button(
-#             label = 'Toggle Overwrite',
-#             style = ButtonStyle.secondary)
-
-#         async def overwriting(interaction: Interaction):
-#             self.overwriting = not self.overwriting
-#             await self._call_refresh(interaction)
-#             return
-
-#         overwrite.callback = overwriting
-#         self.add_item(overwrite)
-#         self.created_components.add('overwrite')
-#         return
-
-#     async def add_directionality(self):
-#         directionality = Button(
-#             label = 'Toggle Directionality',
-#             style = ButtonStyle.secondary)
-
-#         async def change_directionality(interaction: Interaction):
-
-#             if self.directionality == 2:
-#                 self.directionality = 0
-#             else:
-#                 self.directionality += 1
-
-#             await self._call_refresh(interaction)
-#             return
-
-#         directionality.callback = change_directionality
-#         self.add_item(directionality)
-#         self.created_components.add('directionality')
-#         return
-
-#     async def add_cancel(self):
-
-#         cancel = Button(
-#             label = 'Cancel',
-#             style = ButtonStyle.secondary)
-#         cancel.callback = self._close
-#         self.add_item(cancel)
-#         return
-
-#     #Methods
-#     async def format_whitelist(self, components: iter):
-
-#         if self.clearing:
-#             return "\n• Whitelist: Removing all restrictions. Click 'Clear Whitelist' again" + \
-#                 " to use the old whitelist, or if you select any roles or characters below, to use that."
-
-#         if self.roles() or self.characters():
-#             return "\n• New whitelist(s)-- will overwrite the old whitelist:" + \
-#                 f" {await format_whitelist(self.roles(), self.characters())}"
-
-#         first_component = next(iter(components), None)
-
-#         if len(components) == 1:
-#             return "\n• Whitelist:" + \
-#                 f" {await format_whitelist(first_component.allowed_roles, first_component.allowed_characters)}"
-
-#         if any(com.allowed_roles != first_component.allowed_roles or
-#             com.allowed_characters != first_component.allowed_characters for com in components):
-#             return '\n• Whitelists: Multiple different whitelists.'
-
-#         return "\n• Whitelists: Every part has the same whitelist. " + \
-#             await format_whitelist(first_component.allowed_roles,
-#                 first_component.allowed_characters)

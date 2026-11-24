@@ -8,7 +8,6 @@ from discord import Bot, TextChannel, Message
 from discord.ext import commands
 from contextlib import ExitStack
 
-from data.database_handler import CommitResult
 from data.database_entries import (
     roleplay_repo, RoleplayData,
     location_repo, LocationData,

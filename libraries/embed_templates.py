@@ -13,6 +13,14 @@ from io import BytesIO
 class ErrorEmbeds:
 
     @staticmethod
+    def non_admin() -> Embed:
+
+        return text_embed(
+            title = "No can do.",
+            description = "To prevent abuse, only admins can call this command.",
+            footer = "Sorry.")
+
+    @staticmethod
     def non_text_channel() -> Embed:
 
         return text_embed(
@@ -239,17 +247,20 @@ class _UserMove:
             "Hopefully someone can hear you from here?")       
 
     @staticmethod
-    async def where_to(loc_data: LocationData, render: BytesIO) -> tuple[Embed, File]:
+    async def where_to(
+        loc_data: LocationData, 
+        render: BytesIO
+    ) -> tuple[Embed, File]:
 
         return await image_embed(
-            "Where to?",
-            f"You can leave {loc_data.char_mention} to access any of the places below.",
-            "Just pick your destination and you'll take the shortest path there.",
+            title = "Where to?",
+            description = f"You can leave {loc_data.char_mention} to access" + \
+                " any of the places below.",
+            footer = "Just pick your destination and you'll take the" + \
+                " shortest path there.",
             thumbnail = False,
             source = ImageSource.BYTES,
             asset_bytes = render) # pyright: ignore[reportReturnType]
-
-        return
 
     @staticmethod
     def propose_route(path_mentions: list[str]) -> Embed:
@@ -389,6 +400,42 @@ class CharEmbeds:
     review = _CharReview 
 
 class _RouteCreate:
+
+    @staticmethod
+    def set_neighbors(selected_direction: str) -> Embed:
+
+        dir_expls = {
+            "<->" : "Goes both ways",
+            "->" : "Only goes from here to the other location",
+            "<-" : "Only allows travel *from* those locations *to* here"}
+
+        description = ("What other Location(s) should this be connected to? Select" + 
+            " one or more Locations you want to ensure are connected" + 
+            " and choose what direction the pathways go.")
+
+        for dir, expl in dir_expls.items():
+           
+            if dir == selected_direction:
+                description += f"\n**- {dir} {expl}**"
+            else:
+                description += f"\n- {dir} {expl}"
+
+        return text_embed(
+            title = "Where to?",
+            description = description,
+            footer = "Most of the time, you want your Routes to be two-ways, not one-way.")
+
+    @staticmethod
+    def no_new_neighbors() -> Embed:
+
+        return text_embed(
+            title = "No new connections.",
+            description = ("`/create Route` is only for creating new Routes-- if you" +
+                " already have a Route between this Location and another," +
+                " then this command won't affect it. If you want to overwrite" +
+                " a Route, you can use `/review Route` or just `/delete" +
+                " Route` and recreate."),
+            footer = "Feel free to call the command again.")
 
     @staticmethod
     async def log(

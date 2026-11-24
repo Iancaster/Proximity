@@ -180,7 +180,8 @@ class ReviewCommands(commands.Cog):
         else:
             dialogue = await review_location(location, curr_dialogue = None)
 
-        return await send_message(ctx.interaction,
+        return await send_message(
+            ctx.interaction,
             dialogue.current_embed,
             dialogue.view,
             ephemeral = True)

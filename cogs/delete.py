@@ -12,7 +12,7 @@ from data.database_entries import (
     roleplay_repo, RoleplayData,
     location_repo, LocationData)
 from libraries.user_interface import Dialogue, ImageSource, \
-    text_embed, image_embed, send_message, LOGO
+    text_embed, send_message, LOGO
 
 class DeleteCommands(commands.Cog):
 
@@ -112,7 +112,11 @@ class DeleteCommands(commands.Cog):
             await dialogue.view.refresh_children()
 
         dialogue.add_close()
-        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
+        return await send_message(
+            ctx.interaction, 
+            embed, 
+            dialogue.view, 
+            ephemeral = True)
 
     # @delete_group.command(name = 'path', description = 'Seperate two or more places.')
     # async def path(self, ctx: ApplicationContext, given_place: Option(str, description = 'Which place to start from?', name = 'place', autocomplete = complete_places, required = False)):
@@ -403,7 +407,11 @@ class DeleteCommands(commands.Cog):
         delete_button.callback = delete_data
         dialogue.add_close()
     
-        return await send_message(ctx.interaction, embed, dialogue.view, ephemeral = True)
+        return await send_message(
+            ctx.interaction, 
+            embed, 
+            dialogue.view, 
+            ephemeral = True)
 
 def setup(prox):
     prox.add_cog(DeleteCommands(prox), override = True)
