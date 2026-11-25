@@ -164,6 +164,17 @@ def oxfordize(words: list, prefix: str = "", suffix: str = "") -> str:
     return ", ".join(f"{prefix}{item}{suffix}" for item in words[:-1]) + \
         f", and {prefix}{words[-1]}{suffix}"
 
+def ellipticize(string: str, max_length: int) -> str:
+
+    if string == "":
+        return "..."
+
+    if len(string) <= max_length:
+        return string
+
+    else:
+        return string[:max_length - 3] + "..."
+
 class DialogueMixin(ABC):
 
     def __init__(self, 

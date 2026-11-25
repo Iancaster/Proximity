@@ -92,4 +92,3 @@ if __name__ == "__main__":
 # - Unused imports (`LOGO`, `CharEmbeds`, `Route`, `get_channel`, `CharacterData`, `route_repo`, and others).
 # - Trailing whitespace across most files.
 # - Unreachable code after the `return` in `autonomous.py::on_guild_channel_delete`.
-# - The stray `return` after `return await image_embed(...)` in `_UserMove.where_to`.

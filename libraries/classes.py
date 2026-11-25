@@ -1,31 +1,30 @@
 """Where most core functionality resides."""
 
+from io import BytesIO
+from datetime import datetime as dt
+from random import random
+from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
+    draw_networkx_edges, shell_layout, draw_networkx_labels, \
+    shortest_path
+from matplotlib.pyplot import margins, gcf, tight_layout, \
+    axis, close, figure
+from matplotlib.patches import ArrowStyle
+
 from discord import (ApplicationContext, Interaction,
     TextChannel, CategoryChannel, Guild,
     Bot, Webhook, PermissionOverwrite, File,
-    HTTPException, NotFound, Embed)
-from discord.abc import GuildChannel
+    HTTPException, Embed, AllowedMentions)
 from discord.utils import get_or_fetch, find
 
 from data.database_handler import CommitResult, UNSET, _Unset
 from data.database_entries import (
     roleplay_repo, location_repo, character_repo, route_repo,
     RoleplayData, LocationData, CharacterData, RouteData)
-
 from libraries.logger import get_logger, Lumberjack
 from libraries.user_interface import reference_validator, \
-    get_channel, get_bot, safe_del_channels, safe_send
+    get_channel, get_bot, safe_del_channels, safe_send, \
+    ellipticize
 from libraries.embed_templates import ErrorEmbeds
-
-from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
-    draw_networkx_edges, shell_layout, draw_networkx_labels, \
-    shortest_path
-from matplotlib.pyplot import margins, gcf, tight_layout, axis, close, figure
-from matplotlib.patches import ArrowStyle
-from io import BytesIO
-
-from datetime import datetime as dt
-from random import random
 
 async def in_text_channel(ctx: ApplicationContext) -> bool:
 
@@ -236,9 +235,13 @@ class Relayable:
 
         message_details = {k: v for k, v in locals().items() if v not in (None, cls)} 
         message_details.pop("channel", None)
-        message_details.pop("cls", None)
         message_details.pop("file", None)
         message_details.pop("files", None)
+
+        if username:
+            message_details["username"] = ellipticize(
+                string = message_details["username"], 
+                max_length = 80)
 
         webhook = await Relayable.ensure_webhook(channel)
         upload_files: list[File] = []
@@ -250,14 +253,19 @@ class Relayable:
             if upload_files:
                 message_details["files"] = upload_files
 
-            await webhook.send(**message_details)
-            return True
+            await webhook.send(
+                **message_details, 
+                allowed_mentions = AllowedMentions.none())
+        
         except HTTPException:
             return False
+        
         finally:
             for upload_file in upload_files:
                 upload_file.close()
                 upload_file.fp.close()
+
+        return True
 
 class Roleplay:
     """Represents a guild (a.k.a. a server) that hosts a Prox roleplay."""
@@ -514,20 +522,27 @@ class Location:
     ) -> None:
 
         loc_channel = await get_channel(self.data.location_id)
-        await Relayable.send_through_hook(
-            channel = loc_channel, # pyright: ignore[reportArgumentType]
-            avatar_url = self.data.reference,
-            content = content,
-            username = self.data.name,
-            embed = embed,
-            file = file,
-            files = files)
+
+        if isinstance(loc_channel, TextChannel):
+
+            await Relayable.send_through_hook(
+                channel = loc_channel,
+                avatar_url = self.data.reference,
+                content = content,
+                username = self.data.name,
+                embed = embed,
+                file = file,
+                files = files)
 
         for character in await self.occupants:
 
             char_channel = await get_channel(character.character_id)
+
+            if not isinstance(char_channel, TextChannel):
+                continue
+            
             await Relayable.send_through_hook(
-                channel = char_channel, # pyright: ignore[reportArgumentType]
+                channel = char_channel,
                 avatar_url = self.data.reference,
                 content = content,
                 username = self.data.name,
@@ -556,6 +571,10 @@ class Location:
                 continue
 
             char_channel = await get_channel(character.character_id)
+            
+            if not isinstance(char_channel, TextChannel):
+                continue
+        
             await Relayable.send_through_hook(
                 channel = char_channel, # pyright: ignore[reportArgumentType]
                 avatar_url = avatar_url,
@@ -584,6 +603,9 @@ class Location:
             for occ in await neighbor.occupants:
 
                 char_channel = await get_channel(occ.character_id)
+
+                if not isinstance(char_channel, TextChannel):
+                    continue
 
                 await Relayable.send_through_hook(
                     channel = char_channel, # pyright: ignore[reportArgumentType]
