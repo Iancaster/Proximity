@@ -4,15 +4,16 @@ updates, like events and keeping the listeners
 up to date.
 """
 
-from discord import Bot, TextChannel, Message
-from discord.ext import commands
 from contextlib import ExitStack
+from asyncio import sleep
+
+from discord import Bot, TextChannel, Message, Guild
+from discord.ext import commands
 
 from data.database_entries import (
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
     character_repo, CharacterData)
-
 from libraries.embed_templates import LocEmbeds, CharEmbeds
 from libraries.classes import Relayable, Roleplay, Location, Character, get_channel
 
@@ -25,11 +26,7 @@ class Autonomous(commands.Cog):
     async def on_message(self, message: Message):
 
         if not isinstance(message.channel, TextChannel):
-            return
-        
-        webhook = await Relayable.find_webhook(message.channel)
-        if webhook is None:
-            return        
+            return  
 
         if message.webhook_id:
             return
@@ -177,6 +174,10 @@ class Autonomous(commands.Cog):
     #     await new_version.send(embed = embed)
 
     #     return
+    
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild: Guild):
+        return await roleplay_repo.delete(guild.id)
 
 # make a way to detect and prevent character deletion
     @commands.Cog.listener() 
@@ -185,6 +186,10 @@ class Autonomous(commands.Cog):
         rp = await Roleplay.load(channel.guild.id)
         if rp is None:
             return
+
+        await sleep(1) # Load-bearing. Lets .delete() methods delete the
+                       # data and therefor differentiate auto- and user-
+                       # triggered channel deletions.
 
         character = await Character.load(channel.id)
         if character is not None:            

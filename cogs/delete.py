@@ -26,22 +26,17 @@ class DeleteCommands(commands.Cog):
     async def location(self, ctx: ApplicationContext):
 
         rp = await Roleplay.load(ctx.guild_id)
-        assert rp is not None, "Redo your checks."
+        assert rp is not None
  
         async def delete_location(interaction: Interaction):
 
-            if location is None:
-                return None
+            assert location is not None
 
             if await location.occupant_count != 0:
 
-                embed = text_embed(
-                    "Can't delete this location.",
-                    f"{location.data.mention} still has characters in it. Please move"
-                        " them somewhere else first with `/review character`.",
-                    "This is to prevent characters from being stranded in a nonexistant location.")
-                dialogue.current_embed = embed
+                dialogue.current_embed = LocEmbeds.delete.blocked(location.data.mention)
                 dialogue.view.clear_items()
+                dialogue.add_close()
                 return await dialogue.refresh(interaction)
                 
             if interaction.channel_id == location.data.location_id:
@@ -69,25 +64,14 @@ class DeleteCommands(commands.Cog):
 
         if location is not None:
 
-            embed = text_embed(
-                "Delete this location?",
-                f"You're about to delete <#{ctx.channel_id}> and all Routes to and from it.",
-                "This is irreversible, so make sure you really want to do this.")
-
+            embed = LocEmbeds.delete.confirmation(location.data.mention)
             dialogue = Dialogue(embed) 
             submit_button = dialogue.add_button("Delete this location", ButtonStyle.danger)
             submit_button.callback = delete_location
             
         else:
             
-            embed = text_embed(
-                "Which location?",
-                ("Please select a location channel from the dropdown below"
-                    " to delete the location. You can also call this command"
-                    " in a location channel to select it automatically."),
-                "This will delete the location, its channel, and all" + 
-                    " routes to and from it.")
-
+            embed = LocEmbeds.delete.selection()
             dialogue = Dialogue(embed) 
 
             channel_select = dialogue.add_channel_select(
@@ -100,16 +84,22 @@ class DeleteCommands(commands.Cog):
 
             async def select(interaction: Interaction):
                 nonlocal location
-                location = await Location.load(channel_select.values[0].id)
-                return await delete_location(interaction)
+                
+                proposal = await Location.load(channel_select.values[0].id)
+                if proposal is not None:
+                    location = proposal
+                    await delete_location(interaction)
+                else:
+                    await dialogue.refresh(interaction)
+
+                return 
             
             submit_button.callback = select
 
             location_ids = [loc_data.location_id for loc_data in await rp.locations]
             submit_button.should_disable = (lambda : not channel_select.is_valid() or 
                 channel_select.values[0].id not in location_ids)
-            
-            await dialogue.view.refresh_children()
+            submit_button.disabled = True
 
         dialogue.add_close()
         return await send_message(

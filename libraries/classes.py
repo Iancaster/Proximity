@@ -2,13 +2,12 @@
 
 from io import BytesIO
 from datetime import datetime as dt
-from random import random
+from random import randint
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
     draw_networkx_edges, shell_layout, draw_networkx_labels, \
     shortest_path
 from matplotlib.pyplot import margins, gcf, tight_layout, \
     axis, close, figure
-from matplotlib.patches import ArrowStyle
 
 from discord import (ApplicationContext, Interaction,
     TextChannel, CategoryChannel, Guild,
@@ -23,7 +22,7 @@ from data.database_entries import (
 from libraries.logger import get_logger, Lumberjack
 from libraries.user_interface import reference_validator, \
     get_channel, get_bot, safe_del_channels, safe_send, \
-    ellipticize
+    ellipticize, safe_del_channel
 from libraries.embed_templates import ErrorEmbeds
 
 async def in_text_channel(ctx: ApplicationContext) -> bool:
@@ -178,8 +177,14 @@ class Relayable:
 
         if user is None:
             return None
+
+        try:
+            webhooks = await channel.webhooks()
+
+        except HTTPException:
+            return None
         
-        return find(lambda w : w.user.id == user.id if w.user else False, await channel.webhooks()) 
+        return find(lambda w : w.user.id == user.id if w.user else False, webhooks) 
     
     @staticmethod
     async def delete_webhook(channel: TextChannel) -> bool:
@@ -332,8 +337,13 @@ class Roleplay:
                 del changed_values[channel_name]
                 continue
 
-            guild = await get_or_fetch(get_bot(), "guild", self.data.roleplay_id)
-            if not channel.permissions_for(guild.me).send_messages: # pyright: ignore[reportOptionalMemberAccess]
+            guild = await get_or_fetch(
+                obj = get_bot(), 
+                attr = "guild", 
+                id = self.data.roleplay_id, 
+                default = None)
+            
+            if guild is None or not channel.permissions_for(guild.me).send_messages: 
                 del changed_values[channel_name]
 
         if "reference" in changed_values and reference is not None:
@@ -428,21 +438,31 @@ class Location:
     
     async def delete(self) -> CommitResult:
         
-        result = await location_repo.delete(self.data.location_id)
         loc_channel = await get_channel(self.data.location_id)
-        await safe_del_channels([loc_channel], "Location deleted by user.")
+        del_result = await safe_del_channel(loc_channel, "Location deleted by user.")
+
+        if del_result == CommitResult.UNKNOWN_ERR:
+            return CommitResult.UNKNOWN_ERR
+
+        db_result = await location_repo.delete(self.data.location_id)
 
         rp = await Roleplay.load(self.data.roleplay_id)
+
         if rp is None:
-            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}"
-                + f" when deleting location {self.data.location_id}.")
-            return result
+            
+            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}" + \
+                f" when deleting location {self.data.location_id}.")
+            
+            return db_result
  
         if await rp.location_count == 0:
+
             loc_category = await get_channel(rp.data.locations_cat)            
-            await safe_del_channels([loc_category], "No more locations remain in this RP.")
+            await safe_del_channel(loc_category, "No more locations remain in this RP.")
+
+            await rp.update(locations_cat = None)
         
-        return result
+        return db_result
 
     async def notify_log(self, 
         embed: Embed, 
@@ -798,21 +818,31 @@ class Character:
     
     async def delete(self) -> CommitResult:
             
-        result = await character_repo.delete(self.data.character_id)
         char_channel = await get_channel(self.data.character_id)
-        await safe_del_channels([char_channel], "Character deleted by user.")
+        del_result = await safe_del_channel(char_channel, "Character deleted by user.")
+
+        if del_result == CommitResult.UNKNOWN_ERR:
+            return CommitResult.UNKNOWN_ERR
+
+        db_result = await character_repo.delete(self.data.character_id)
 
         rp = await Roleplay.load(self.data.roleplay_id)
+
         if rp is None:
-            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}"
-                + f" when deleting character {self.data.character_id}.")
-            return result
+            
+            self._logger.warning(f"Could not find roleplay {self.data.roleplay_id}" + \
+                f" when deleting character {self.data.character_id}.")
+            
+            return db_result
 
         if await rp.character_count == 0:
+            
             char_category = await get_channel(rp.data.characters_cat)            
-            await safe_del_channels([char_category], "No more characters remain in this RP.")
+            await safe_del_channel(char_category, "No more characters remain in this RP.")
+
+            await rp.update(characters_cat = None)
         
-        return result
+        return db_result
 
     async def speak(self, 
         content: str | None = None,
@@ -875,11 +905,28 @@ class Character:
     @staticmethod
     def mumble(content: str) -> str:
 
-        return ''.join(
-            c if c.isupper() else
-            c if not c.isalnum() else
-            c if random() < 0.3 else
-            "." for c in content)
+        heard_window = 8
+        lead = randint(0, 6)
+        heard_fraction = 0.3
+        period = round(heard_window / heard_fraction)
+
+        result: list[str] = []
+
+        for index, char in enumerate(content):
+
+            if index < lead:
+                result.append(".")
+
+            elif not char.isalnum():
+                result.append(char)
+
+            elif index % period < heard_window:
+                result.append(char)
+
+            else:
+                result.append(".")
+
+        return "".join(result)
 
 class GameWorld:
 
@@ -990,7 +1037,7 @@ class GameWorld:
             node_size = node_size,
             edge_color = "black",
             width = 2.0,
-            arrowstyle = ArrowStyle("-|>"), # pyright: ignore[reportArgumentType]
+            arrowstyle = "-|>",
             arrowsize = 25,
             min_source_margin = 30,
             min_target_margin = 30) 
@@ -1000,9 +1047,10 @@ class GameWorld:
         axis("off")
 
         map_image = gcf()
-        close()
         bytesIO = BytesIO()
-        map_image.savefig(bytesIO, format = "jpg", dpi = 150)
+        map_image.savefig(bytesIO, format = "png", dpi = 150)
         bytesIO.seek(0)
+
+        close(fig = map_image)
 
         return bytesIO

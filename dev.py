@@ -61,8 +61,10 @@ async def create_wedding_hall() -> Location | CommitResult:
 
 async def main() -> None:
 
-    await Relayable.ensure_webhook(await get_channel(1572697989804199950))
-    await Relayable.ensure_webhook(await get_channel(1572697989804199951))
+    print(Character.mumble("\"My, how the rain soothes the soul," \
+        " wouldn't you agree?\" I look out the window with a sober" \
+        " peace."))
+    
     return
 
     rp = await Roleplay.load(DEV_GUILD_ID)

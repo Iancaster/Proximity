@@ -699,19 +699,11 @@ async def safe_del_channel(
     return CommitResult.SUCCESS
 
 async def safe_del_channels(
-    channels: list[GuildChannel | None],
+    channels: list[GuildChannel | int | None],
     reason: str
 ) -> None:
     
     for chan in channels:
-
-        if chan is None:
-            continue
-            
-        try:
-            await chan.delete(reason = reason)
-            
-        except HTTPException:
-            logger.warning(f"Failed to delete channel {chan.id}.")
+        await safe_del_channel(chan, reason)
 
     return

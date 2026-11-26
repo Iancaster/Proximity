@@ -69,9 +69,9 @@ class ErrorEmbeds:
     def no_locs_selected() -> Embed:
 
         return text_embed(
-            "No location selected.",
-            "This command requires that you select a location.",
-            "Try calling it again?")
+            title = "No Location selected.",
+            description = "This command requires that you select a Location.",
+            footer = "Try calling it again?")
 
 class _UserLook:
 
@@ -95,7 +95,7 @@ class _UserLook:
 
         if neighbors:
             neigh_names = [neigh.char_mention for neigh in neighbors]
-            description += f"\n\nThis location is adjacent to {oxfordize(neigh_names)}."
+            description += f"\n\nThis Location is adjacent to {oxfordize(neigh_names)}."
         else:
             description += "\n\nYou don't see any other way in or out. Uh oh."   
 
@@ -207,7 +207,7 @@ class _UserLook:
             inlet_ids = [route.from_id for route in inlets]
             inlet_neighs = [n for n in neighbors if n.location_id in inlet_ids]
 
-            description = "You can access this location from " + \
+            description = "You can access this Location from " + \
                 oxfordize([inl.char_mention for inl in inlet_neighs]) + ", and "
 
         else:
@@ -406,8 +406,8 @@ class _RouteCreate:
 
         dir_expls = {
             "<->" : "Goes both ways",
-            "->" : "Only goes from here to the other location",
-            "<-" : "Only allows travel *from* those locations *to* here"}
+            "->" : "Only goes from here to the other Location",
+            "<-" : "Only allows travel *from* those Locations *to* here"}
 
         description = ("What other Location(s) should this be connected to? Select" + 
             " one or more Locations you want to ensure are connected" + 
@@ -523,6 +523,40 @@ class RouteEmbeds:
 class _LocDelete:
 
     @staticmethod
+    def blocked(mention: str) -> Embed:
+
+        return text_embed(
+            title = "Can't delete this Location.",
+            description = f"{mention} still has characters in it. Please move" + \
+                " them somewhere else first with `/review Character`.",
+            footer = "This is to prevent Characters from being stranded in " + \
+                "a nonexistant Location. Just imagine...")
+
+    @staticmethod
+    def selection() -> Embed:
+
+        return text_embed(
+            title = "Which Location?",
+            description = ("Choose which Location you want to delete" +
+                " by selecting its channel in dropdown below. You'll" +
+                " be asked to confirm whether you're sure if you want"
+                " to delete."),
+            footer = "Or you can also call this command in a Location" + \
+                " channel to select it automatically.")
+        
+
+    @staticmethod
+    def confirmation(mention: str) -> Embed:
+
+        return text_embed(
+            title = "Delete this location?",
+            description = (f"You're about to delete {mention} and all" + 
+                " Routes to and from it. Side note: it has to be empty" + 
+                " of Characters."),
+            footer = "This is irreversible, so make sure you really" + \
+                " want to do this.")
+
+    @staticmethod
     async def log(loc_name: str, reference: str | None) -> tuple[Embed, File | None]:
 
         return await image_embed(
@@ -532,7 +566,7 @@ class _LocDelete:
                 " Please verify that the channel was"
                 " deleted properly, because sometimes it can fail due to"
                 " external factors or lack of permissions."),
-            "Feel free to make other locations in its stead!",
+            "Feel free to make other Locations in its stead!",
             thumbnail = True,
             source = ImageSource.URL,
             asset_str = reference)
@@ -543,7 +577,7 @@ class _LocDelete:
         return await image_embed(
             "Location deleted.",
             f"You've deleted **{name}** and all routes connected to it.",
-            "This can't be undone, but you can always make a new location.",
+            "This can't be undone, but you can always make a new Location.",
             thumbnail = True,
             source = ImageSource.URL,
             asset_str = reference)
@@ -573,7 +607,7 @@ class _LocCreate:
         return text_embed(
             "Easy there.",
             f"Looks like you're already at your limit of {location_limit}" \
-                " locations. If you'd like more, think about a subscription." \
+                " Locations. If you'd like more, think about a subscription." \
                 " Each roleplay starts with a free week of subscription-- this" \
                 f" one ended on {end_date.isoformat()}.", 
             "Proceeds go straight towards server costs and feature improvements.")
@@ -618,7 +652,7 @@ class _LocCreate:
         else:
             footer = "Pretty nifty reference photo."
 
-        footer += "Be sure to connect it to other locations with /create Route."
+        footer += " Be sure to connect it to other Locations with /create Route."
         
         return await image_embed(
             f"New Location: {name}",
@@ -678,11 +712,11 @@ class _LocCreate:
         embed_description = ("Check out the new digs.\n\n")
 
         if not description:
-            embed_description += ("This location has no description" 
-                " yet, but a Host can add one with `/review location`.")
+            embed_description += ("This Location has no description" 
+                " yet, but a Host can add one with `/review Location`.")
             
         else:
-            embed_description += ("This location has the following" 
+            embed_description += ("This Location has the following" 
                 " description, which is visible to players who `/look` around:"
                 "\n>>> ") + description
 
@@ -692,7 +726,7 @@ class _LocCreate:
             " channel directly..._")
         
         if reference is None:
-            footer = "This location has no reference photo attached, currently."
+            footer = "This Location has no reference photo attached, currently."
         elif await reference_validator(reference) != CommitResult.SUCCESS:
             footer = ("Unfortunately, the reference photo passed in isn't valid.")
         else:
@@ -750,7 +784,7 @@ class _RoleplayDelete:
             "The following has been deleted: " 
                 "\n - All server data (name, description, reference, etc)."
                 "\n - All Locations, their channels, and all Routes between them."
-                "\n - All Characters and their location channels.",
+                "\n - All Characters and their Location channels.",
             "Sorry to see you go.",
             thumbnail = True,
             source = ImageSource.URL,
@@ -796,11 +830,13 @@ class _RoleplayCreate:
     async def log(rp_name: str, reference: str | None) -> tuple[Embed, File | None]:
 
         return await image_embed(
-            f"Roleplay Created: **{rp_name}**",
-            ("Success! This server is now a Proximity roleplay."
-                " Start with `/create Location`, then you can `/create Route`."
-                " Finally, `/create Character`s. Don't be afraid to ask for `/help`."),
-            "Let's get started!",
+            title = f"Roleplay Created: **{rp_name}**",
+            description = ("Success! This server is now a Proximity Roleplay." +
+                " Start with `/create Location`. Do that a few times, then use" +
+                " `/create Route` so people can travel between the Locations." +
+                " Finally, use `/create Character` for each of your NPCs and players." + 
+                " And don't be afraid to ask for `/help`."),
+            footer = "Let's get started!",
             thumbnail = True,
             source = ImageSource.URL,
             asset_str = reference)
@@ -888,7 +924,7 @@ class _RoleplayReview:
                     " doesn't restrict logging messages from being sent.")
 
         if "locations_cat" in acc_diffs:
-            embed_description += f"\n - Changed the locations category to *<#{acc_diffs["locations_cat"]}>*."
+            embed_description += f"\n - Changed the Locations category to *<#{acc_diffs["locations_cat"]}>*."
 
         if "characters_cat" in acc_diffs:
             embed_description +=  f"\n - Changed the characters category to *<#{acc_diffs["characters_cat"]}>*."
@@ -900,7 +936,7 @@ class _RoleplayReview:
             embed_description += f"\n - New character limit: **{acc_diffs["character_limit"]}**."
 
         if "location_limit" in acc_diffs:
-            embed_description += f"\n - New location limit: **{acc_diffs["location_limit"]}**."
+            embed_description += f"\n - New Location limit: **{acc_diffs["location_limit"]}**."
 
         if "reference" in prop_diffs:
 
