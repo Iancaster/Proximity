@@ -186,7 +186,7 @@ class Repository(Generic[EntryType]):
         """Persist `changes`; on success, mutate `entry` in place to match."""
 
         pk_values = tuple(getattr(entry, col) for col in self._primary_key)
-        changes = {k: v for k, v in changes.items() if k is not UNSET}
+        changes = {k: v for k, v in changes.items() if v is not UNSET}
         result = await self.update(*pk_values, **changes)
 
         if result is CommitResult.SUCCESS:

@@ -819,7 +819,7 @@ class _RoleplayCreate:
 
         return text_embed(
             "Let's do this.",
-            "First things first, your roleplay needs a name. You'll,"
+            "First things first, your roleplay needs a name. You'll"
                 " also need to set a log channel to record things like" \
                 " creating or editing the roleplay." \
                 " And if you're feeling fancy, you can also add a" \

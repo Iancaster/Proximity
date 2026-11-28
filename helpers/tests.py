@@ -205,7 +205,7 @@ async def tests(tests_checklist: dict, test_guild: Guild, only_severe: bool = Fa
 
 			print(f'\n  {test_count + 1}. \033[1;33;40m {result[0]}' + \
 				f'\033[1;37;40m: {result[1]}.' + \
-				'\n    Result: ', end = '')
+				'\n    Result: ', end = "")
 			if result[2]:
 				print('\033[1;31;40m Failure. \033[1;37;40m')
 				print(f'    - Impact: {result[3]}' + \

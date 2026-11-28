@@ -4,26 +4,27 @@ from io import BytesIO
 from datetime import datetime as dt
 from random import randint
 from networkx import DiGraph, ego_graph, draw_networkx_nodes, \
-    draw_networkx_edges, shell_layout, draw_networkx_labels, \
-    shortest_path
+    draw_networkx_edges, shell_layout, draw_networkx_labels, shortest_path
 from matplotlib.pyplot import margins, gcf, tight_layout, \
     axis, close, figure
 
-from discord import (ApplicationContext, Interaction,
-    TextChannel, CategoryChannel, Guild,
-    Bot, Webhook, PermissionOverwrite, File,
-    HTTPException, Embed, AllowedMentions)
+from discord import ApplicationContext, TextChannel, \
+    CategoryChannel, Webhook, PermissionOverwrite, File, HTTPException, \
+    Embed, AllowedMentions
 from discord.utils import get_or_fetch, find
 
 from data.database_handler import CommitResult, UNSET, _Unset
 from data.database_entries import (
-    roleplay_repo, location_repo, character_repo, route_repo,
-    RoleplayData, LocationData, CharacterData, RouteData)
+    roleplay_repo, RoleplayData,
+    location_repo, LocationData,
+    character_repo, CharacterData,
+    route_repo, RouteData)
 from libraries.logger import get_logger, Lumberjack
 from libraries.user_interface import reference_validator, \
     get_channel, get_bot, safe_del_channels, safe_send, \
-    ellipticize, safe_del_channel
+    ellipticize, safe_del_channel, ASSETS_DIR
 from libraries.embed_templates import ErrorEmbeds
+
 
 async def in_text_channel(ctx: ApplicationContext) -> bool:
 
@@ -73,7 +74,7 @@ async def in_char_channel(ctx: ApplicationContext) -> bool:
 class Relayable:
     """Methods for manipulating channels that relay, like Locations and Character channels."""
 
-    default_avatar_asset: str = "logo.png"        
+    default_avatar_asset: str = "logo.png"    
 
     @staticmethod
     async def create_category(
@@ -82,7 +83,7 @@ class Relayable:
     ) -> CategoryChannel | CommitResult:
 
         rp = await Roleplay.load(guild_id)
-        if rp is None:
+        if rp is None:            
             return CommitResult.NO_UPDATE 
         
         guild = await get_or_fetch(get_bot(), "guild", guild_id, default = None)
@@ -115,7 +116,8 @@ class Relayable:
         db_result = await rp.update(**{category_type : category.id})
 
         if db_result != CommitResult.SUCCESS:
-            await safe_del_channels([category], "Failed to update RP with new category.")
+            await safe_del_channels([category], \
+                reason = "Failed to update RP with new category.")
             return CommitResult.NO_UPDATE
         
         return category
@@ -127,21 +129,30 @@ class Relayable:
         is_location: bool
     ) -> TextChannel | CommitResult:
 
-        fetch_result = await roleplay_repo.fetch(guild_id)
+        rp_data = await roleplay_repo.fetch(guild_id)
 
-        if not isinstance(fetch_result, RoleplayData):
+        if not isinstance(rp_data, RoleplayData):
             return CommitResult.NO_UPDATE
 
-        category = await get_channel(fetch_result.locations_cat if is_location else fetch_result.characters_cat)
+        category = await get_channel(rp_data.locations_cat if \
+            is_location else rp_data.characters_cat)
+        
         if category is None:
-            category_result = await Relayable.create_category(guild_id, is_location)
+            category_result = await Relayable.create_category(
+                guild_id = guild_id, 
+                is_location_cat = is_location)
 
             if not isinstance(category_result, CategoryChannel):
                 return CommitResult.NO_UPDATE
 
             category = category_result
 
-        guild = await get_or_fetch(get_bot(), "guild", id = fetch_result.roleplay_id, default = None)
+        guild = await get_or_fetch(
+            obj = get_bot(), 
+            attr = "guild", 
+            id = rp_data.roleplay_id, 
+            default = None)
+        
         if guild is None:
             return CommitResult.NO_UPDATE
 
@@ -204,7 +215,7 @@ class Relayable:
     @classmethod
     async def create_webhook(cls, channel: TextChannel) -> Webhook:
 
-        with open("assets/" + cls.default_avatar_asset, "rb") as file:
+        with open(ASSETS_DIR / cls.default_avatar_asset, "rb") as file:
             avatar = file.read()
  
         return await channel.create_webhook(
@@ -238,7 +249,7 @@ class Relayable:
         file: File | None = None
     ) -> bool:
 
-        message_details = {k: v for k, v in locals().items() if v not in (None, cls)} 
+        message_details = {k : v for k, v in locals().items() if v not in (None, cls)} 
         message_details.pop("channel", None)
         message_details.pop("file", None)
         message_details.pop("files", None)
@@ -268,7 +279,6 @@ class Relayable:
         finally:
             for upload_file in upload_files:
                 upload_file.close()
-                upload_file.fp.close()
 
         return True
 
@@ -279,7 +289,6 @@ class Roleplay:
 
     def __init__(self, data: RoleplayData):
         self.data = data
-        self._log_channel: TextChannel | None = None
         return
 
     @classmethod
@@ -321,7 +330,7 @@ class Roleplay:
     ) -> CommitResult:
         """Updates with current values. Set a value to None to null it out."""
 
-        changed_values = {k : v for k, v in locals().items() if v != self}
+        changed_values = {k : v for k, v in locals().items() if k != "self"}
         changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
 
         for channel_name in ("log_channel_id", "locations_cat", "characters_cat"):
@@ -431,8 +440,9 @@ class Location:
     ) -> CommitResult:
         """Updates with current values. Set a value to None to null it out."""
 
-        changed_values = {k : v for k, v in locals().items() if v != self}
-        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
+        changed_values = {k : v for k, v in locals().items() if  k != "self"}
+        changed_values = {k : v for k, v in changed_values.items() if \
+            v != getattr(self.data, k) and v is not UNSET}
 
         return await location_repo.apply(self.data, **changed_values)  
     
@@ -659,7 +669,7 @@ class Location:
         if not neigh_ids:
             return []
         
-        neigh_ids.remove(self.data.location_id)
+        neigh_ids.discard(self.data.location_id)
         results = [await location_repo.fetch(id) for id in neigh_ids]
 
         return [res for res in results if isinstance(res, LocationData)]
@@ -702,74 +712,78 @@ class Route:
 
     @property
     def ends(self) -> tuple[int, int]:
-        return (self.data.to_id, self.data.from_id)
+        return (self.data.from_id, self.data.to_id)
 
     def __str__(self) -> str:
         return f"{self.data.from_id} -> {self.data.to_id}"
 
-class Path:
+# class Path:
 
-    _logger = get_logger("Path Logger")
+#     _logger = get_logger("Path Logger")
 
-    def __init__(self, 
-        route_to: Route | None, 
-        route_from: Route | None):
+#     def __init__(self, 
+#         route_to: Route | None, 
+#         route_from: Route | None):
 
-        self.route_to = route_to
-        self.route_from = route_from
+#         self.route_to = route_to
+#         self.route_from = route_from
 
-        return
+#         return
 
-    @classmethod
-    async def create(cls, 
-        route_to: Route | None,
-        route_from: Route | None = None,
-        load_reverse_route: bool = True
-    ) -> Path:
+#     @classmethod
+#     async def create(cls, 
+#         route_to: Route | None,
+#         route_from: Route | None = None,
+#         load_reverse_route: bool = True
+#     ) -> Path:
 
-        if route_to is None and route_from is None:
-            return cls(None, None)
+#         if route_to is None and route_from is None:
+#             return cls(None, None)
 
-        if route_to is not None \
-            and route_from is not None \
-            and route_to.data.to_id != route_from.data.from_id:
+#         if route_to is not None \
+#             and route_from is not None \
+#             and (route_to.data.to_id != route_from.data.from_id \
+#             or route_to.data.from_id != route_from.data.to_id):
 
-            cls._logger.error("Provided route_to and route_from are mismatched!" + \
-                f" Received {route_to} and {route_from}.")
+#             cls._logger.error("Provided route_to and route_from are mismatched!" + \
+#                 f" Received {route_to} and {route_from}.")
 
-            return cls(route_to, route_from)
+#             return cls(route_to, route_from)
 
-        if route_to is None and load_reverse_route:
+#         if route_to is None and load_reverse_route:
             
-            route_to = await Route.load(
-                route_from.data.to_id, # pyright: ignore[reportOptionalMemberAccess]
-                route_from.data.from_id) # pyright: ignore[reportOptionalMemberAccess]
+#             route_to = await Route.load(
+#                 route_from.data.to_id, # pyright: ignore[reportOptionalMemberAccess]
+#                 route_from.data.from_id) # pyright: ignore[reportOptionalMemberAccess]
 
-        if route_from is None and load_reverse_route:
+#         if route_from is None and load_reverse_route:
             
-            route_from = await Route.load(
-                route_to.data.to_id, # pyright: ignore[reportOptionalMemberAccess]
-                route_to.data.from_id) # pyright: ignore[reportOptionalMemberAccess]
+#             route_from = await Route.load(
+#                 route_to.data.to_id, # pyright: ignore[reportOptionalMemberAccess]
+#                 route_to.data.from_id) # pyright: ignore[reportOptionalMemberAccess]
 
-        return cls(route_to, route_from)      
+#         return cls(route_to, route_from)      
 
-    @classmethod
-    async def load(cls, 
-        from_id: int, 
-        to_id: int
-    ) -> Path | None:
+#     @classmethod
+#     async def load(cls, 
+#         from_id: int, 
+#         to_id: int
+#     ) -> Path | None:
 
-        route_to = await Route.load(from_id, to_id)        
-        route_from = await Route.load(to_id, from_id)
+#         route_to = await Route.load(from_id, to_id)        
+#         route_from = await Route.load(to_id, from_id)
 
-        return cls(route_to, route_from)
+#         if route_to is None and route_from is None:
+#             return None
 
-    async def delete(self) -> CommitResult:
+#         return cls(route_to, route_from)
 
-        result_to = await self.route_to.delete() if self.route_to is not None else CommitResult.NO_UPDATE        
-        result_from = await self.route_from.delete() if self.route_from is not None else CommitResult.NO_UPDATE
+#     async def delete(self) -> CommitResult:
 
-        return next((r for r in [result_to, result_from] if r not in (CommitResult.SUCCESS, CommitResult.NO_UPDATE)), CommitResult.SUCCESS)
+#         result_to = await self.route_to.delete() if self.route_to is not None else CommitResult.NO_UPDATE        
+#         result_from = await self.route_from.delete() if self.route_from is not None else CommitResult.NO_UPDATE
+
+#         return next((r for r in [result_to, result_from] if r not in (CommitResult.SUCCESS, CommitResult.NO_UPDATE)), CommitResult.SUCCESS)
 
     # @property
     # def ends(self) -> tuple[int, int]:
@@ -811,8 +825,9 @@ class Character:
     ) -> CommitResult:
         """Updates with current values. Set a value to None to null it out."""
 
-        changed_values = {k : v for k, v in locals().items() if v != self}
-        changed_values = {k : v for k, v in changed_values.items() if v != getattr(self.data, k) and v is not UNSET}
+        changed_values = {k : v for k, v in locals().items() if  k != "self"}
+        changed_values = {k : v for k, v in changed_values.items() if 
+            v != getattr(self.data, k) and v is not UNSET}
 
         return await character_repo.apply(self.data, **changed_values)  
     
@@ -931,9 +946,12 @@ class Character:
 class GameWorld:
 
     def __init__(self, graph: DiGraph | None = None):
+        
         self.graph = graph if graph is not None else DiGraph()
-        self._loc_lookups = dict()
-        self._route_lookups = set()
+        self._loc_lookups: dict[int, LocationData] = dict()
+        self._route_lookups: set[tuple[int, int]] = set()
+
+        return 
 
     def get_path(self, origin: int, destination: int) -> list[LocationData]:
 
@@ -947,7 +965,7 @@ class GameWorld:
     @staticmethod
     async def _fetch_locs(roleplay_id: int) -> dict[int, LocationData]:
         loc_datas = await location_repo.fetch_all("roleplay_id", roleplay_id)
-        return {lc.location_id : lc for lc in loc_datas}
+        return {data.location_id : data for data in loc_datas}
 
     @staticmethod
     async def _fetch_routes(roleplay_id: int) -> set[tuple[int, int]]:
@@ -963,7 +981,7 @@ class GameWorld:
         graph = DiGraph()
 
         graph.add_nodes_from((id, {"name" : data.name}) for id, data in locations.items())
-        graph.add_edges_from(r for r in routes)
+        graph.add_edges_from(routes)
 
         return graph
 
@@ -1006,7 +1024,7 @@ class GameWorld:
     def render(self) -> BytesIO:
 
         node_count = self.graph.number_of_nodes()
-        labels = {node: data["name"] for node, data in self.graph.nodes(data = True)}
+        labels = {node : data["name"] for node, data in self.graph.nodes(data = True)}
 
         side = max(6, node_count * 0.9)
         node_size = max(300, 1600 - node_count * 60)

@@ -1,18 +1,19 @@
 
 from asyncio import run
+from PIL import Image
+
 from discord import TextChannel, CategoryChannel, Message
+
+from main import set_post_ready, main as main_main
 from libraries.logger import get_logger
 from libraries.classes import Roleplay, Location, \
-    Relayable, Route, Path, Character, get_channel
-
+    Relayable, Route, Character, get_channel
 from data.database_entries import (
     roleplay_repo, RoleplayData,
     location_repo, LocationData,
     character_repo, CharacterData)
 from data.database_handler import initialize_db, CommitResult 
 
-from main import set_post_ready, main as main_main
-from PIL import Image
 
 logger = get_logger(console_level = 0)
 

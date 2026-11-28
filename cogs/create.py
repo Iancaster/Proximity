@@ -156,7 +156,7 @@ class CreateCommands(commands.Cog):
         assert location is not None
 
         rp = await Roleplay.load(ctx.guild_id)
-        assert isinstance(rp, RoleplayData)
+        assert isinstance(rp, Roleplay)
 
         curr_dir = "<->"
         dir_to_recip = {

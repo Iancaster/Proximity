@@ -146,7 +146,7 @@ class Lumberjack(Logger):
                 if include_args:
                     args_str = ', '.join([str(arg) for arg in args])
                     kwargs_str = ', '.join([f"{k} = {v}" for k, v in kwargs.items()])
-                    all_args = f"{args_str}{', ' if args_str and kwargs_str else ''}{kwargs_str}"
+                    all_args = f"{args_str}{', ' if args_str and kwargs_str else ""}{kwargs_str}"
                     self.log(level, f"...with the following arguments: ({all_args}).")
 
                 start_time = time()
