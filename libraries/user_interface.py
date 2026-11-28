@@ -60,6 +60,17 @@ class ImageSource(IntEnum):
     URL = 1
     BYTES = 2
 
+def ellipticize(string: str, max_length: int) -> str:
+    
+    if string == "":
+        return "..."
+
+    if len(string) <= max_length:
+        return string
+
+    else:
+        return string[:max_length - 3] + "..."
+
 def text_embed(
     title: str = "No Title", 
     description: str = "No description.", 
@@ -67,8 +78,8 @@ def text_embed(
     ) -> Embed:
 
     embed = Embed(
-        title = title,
-        description = description,
+        title = ellipticize(title, max_length = 256),
+        description = ellipticize(description, max_length = 4096),
         color = 670869)
     embed.set_footer(text = footer)
 
@@ -163,17 +174,6 @@ def oxfordize(words: list, prefix: str = "", suffix: str = "") -> str:
 
     return ", ".join(f"{prefix}{item}{suffix}" for item in words[:-1]) + \
         f", and {prefix}{words[-1]}{suffix}"
-
-def ellipticize(string: str, max_length: int) -> str:
-
-    if string == "":
-        return "..."
-
-    if len(string) <= max_length:
-        return string
-
-    else:
-        return string[:max_length - 3] + "..."
 
 class DialogueMixin(ABC):
 
